@@ -511,6 +511,7 @@ bool MathOpt::PolyLCP::checkPolyFeas(const unsigned long int &decimalEncoding,
  * @return True if at least one polyhedron is feasible
  */
 bool MathOpt::PolyLCP::outerApproximate(const std::vector<bool> &encoding, bool clear) {
+  std::cout << "poly_lcp line 515" << std::endl;
   ZEROAssert(encoding.size() == this->Compl.size());
   if (clear) {
 	 this->clearPolyhedra(false);

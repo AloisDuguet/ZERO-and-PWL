@@ -88,14 +88,13 @@ bool MathOpt::IP_Param::finalize() {
 	 }
 	 // Add integralities
 	 for (unsigned int i = 0; i < this->Integers.size(); ++i) {
-		auto var = y[static_cast<int>(Integers.at(i))];
+		y[static_cast<int>(Integers.at(i))].set(GRB_CharAttr_VType, 'I');
 		// Unfortunately, we need to reset the bounds for these variables
-		var.set(GRB_CharAttr_VType, 'I');
+		auto var = y[static_cast<int>(Integers.at(i))];
 		var.set(GRB_DoubleAttr_LB, this->Bounds.at(Integers.at(i)).first);
 		var.set(GRB_DoubleAttr_UB, this->Bounds.at(Integers.at(i)).second);
 	 }
 
-	 this->IPModel.update();
 	 Utils::addSparseConstraints(B, b, y, "Constr_", &this->IPModel, GRB_LESS_EQUAL, nullptr);
 
 	 this->IPModel.update();
@@ -204,6 +203,7 @@ MathOpt::IP_Param &MathOpt::IP_Param::set(const arma::sp_mat   &C_in,
 														const arma::vec      &c_in,
 														const arma::vec      &integers_in,
 														const VariableBounds &Bounds_in) {
+  std::cout << "line 208 !integers_in.empty() " << !integers_in.empty() << std::endl;
   ZEROAssert(!integers_in.empty());
   this->Q.zeros(c_in.size(), c_in.size());
   this->A.zeros(b_in.size(), C_in.n_cols);
@@ -230,7 +230,8 @@ MathOpt::IP_Param &MathOpt::IP_Param::set(arma::sp_mat   &&C_in,
 														arma::vec      &&b_in,
 														arma::vec      &&c_in,
 														arma::vec      &&integers_in,
-														VariableBounds &&Bounds_in) {
+ 														VariableBounds &&Bounds_in) {
+  std::cout << "line 235 integers_in.empty() " << !integers_in.empty() << std::endl;
   ZEROAssert(!integers_in.empty());
   this->Q.zeros(c_in.size(), c_in.size());
   this->A.zeros(b_in.size(), C_in.n_cols);
@@ -257,8 +258,9 @@ double MathOpt::IP_Param::computeObjective(const arma::vec &y,
 														 const arma::vec &x,
 														 bool             checkFeas,
 														 double           tol) const {
-
+  std::cout << "line 263 y.n_rows " << y.n_rows << " == this->getNumVars() " << this->getNumVars() << std::endl;
   ZEROAssert(y.n_rows == this->getNumVars());
+  std::cout << "line 265 x.n_rows " << x.n_rows << " == this->getNumParams() " << this->getNumParams() << std::endl;
   ZEROAssert(x.n_rows == this->getNumParams());
   if (checkFeas)
 	 if (!this->isFeasible(y, x, tol))
@@ -299,6 +301,7 @@ bool MathOpt::IP_Param::isFeasible(const arma::vec &y, const arma::vec &x, doubl
  */
 bool MathOpt::IP_Param::addConstraints(const arma::sp_mat &A_in, const arma::vec &b_in) {
 
+  std::cout << "line 306 B.n_cols " << B.n_cols << " == A_in.n_cols " << A_in.n_cols << std::endl;
   ZEROAssert(this->B.n_cols == A_in.n_cols);
 
   this->B = arma::join_cols(this->B, A_in);
@@ -342,8 +345,11 @@ unsigned int MathOpt::IP_Param::KKT(arma::sp_mat &M, arma::sp_mat &N, arma::vec 
 							 arma::zeros<arma::sp_mat>(this->numConstr, this->numConstr)));
   N = arma::join_cols(this->C, -this->getA(true));
   q = arma::join_cols(this->c, arma::join_cols(this->b, this->b_bounds));
+  std::cout << "line 350 M.n_cols " << M.n_cols << " == (numVars + numConstr + this->B_bounds.n_rows) " << (numVars + numConstr + this->B_bounds.n_rows) << std::endl;
   ZEROAssert(M.n_cols == (numVars + numConstr + this->B_bounds.n_rows));
+  std::cout << "line 352 N.n_cols " << N.n_cols << " == numParams " << numParams << std::endl;
   ZEROAssert(N.n_cols == numParams);
+  std::cout << "line 354 q.size() " << q.size() << " this->c.size() + this->b.size() + this->b_bounds.size() " << this->c.size() + this->b.size() + this->b_bounds.size() << std::endl;
   ZEROAssert(q.size() == (this->c.size() + this->b.size() + this->b_bounds.size()));
   return M.n_rows;
 }
@@ -351,7 +357,6 @@ unsigned int MathOpt::IP_Param::KKT(arma::sp_mat &M, arma::sp_mat &N, arma::vec 
  * @brief Presolved the IP model and replaces the object in the class with the (possibly) simplified
  * model. Note: this should be used with care. First, it can mess the sizes of the
  * variables/constraints. Second, it may be resource consuming.
- * @todo currently disabled. check the method
  */
 void MathOpt::IP_Param::presolve() {
   return;
@@ -480,7 +485,9 @@ void MathOpt::IP_Param::presolve() {
 
 	 LOG_S(1) << "MathOpt::IP_Param::presolve: done.";
   } catch (GRBException &e) {
-	 LOG_S(1) << "MathOpt::IP_Param::presolve: cannot complete presolve.";
+	 std::cerr  << e.getErrorCode() << " - "<< e.getMessage() << std::endl;
+	 throw ZEROException(ZEROErrorCode::SolverError,
+								std::to_string(e.getErrorCode()) + e.getMessage());
   }
 }
 

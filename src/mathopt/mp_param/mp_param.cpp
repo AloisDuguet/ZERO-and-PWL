@@ -114,6 +114,7 @@ MathOpt::MP_Param &MathOpt::MP_Param::addDummy(unsigned int pars, unsigned int v
 		this->Bounds.push_back({0, GRB_INFINITY});
 		B_bounds.at(startingBounds + i, startingVars + i) = -1;
 	 }
+	 std::cout << "line 118" << std::endl;
 	 ZEROAssert(B_bounds.n_rows == b_bounds.size());
   }
   switch (position) {
@@ -173,6 +174,7 @@ MathOpt::MP_Param &MathOpt::MP_Param::addDummy(unsigned int pars, unsigned int v
  */
 void MathOpt::MP_Param::detectBounds() {
 
+
   unsigned int nConstr = this->b.size();
 
   // We claim that any bound is in the form of A_ix+B_iy <= b_i, where B_i contains a single
@@ -180,6 +182,9 @@ void MathOpt::MP_Param::detectBounds() {
   std::vector<unsigned int> shedRows; // Keeps track of removed rows
 
   double diff = double(this->B.n_cols) - this->Bounds.size();
+  // changed here
+  std::cout << "\nB.n_cols: " << double(this->B.n_cols) << "\nBounds.size(): " << Bounds.size() << "\ndiff: " << diff << "\n" << std::endl;
+  std::cout << "size of B right now: " << B.size() << std::endl;
   ZEROAssert(diff >= 0);
   for (unsigned int i = 0; i < diff; i++)
 	 this->Bounds.push_back({0, GRB_INFINITY});
@@ -189,63 +194,72 @@ void MathOpt::MP_Param::detectBounds() {
 		// Then we have a candidate bound constraint. Let's check for xs
 		if (A.row(i).n_nonzero == 0) {
 		  // This is a bound constraint
-		  // Get the non-zero element
-		  auto it = B.row(i).begin();
-		  // Get the variable index
-		  unsigned int j = it.col();
-		  // There is just one non-zero on this row!
-		  if (!Utils::isEqual(B.at(i, j), 0)) {
+		  for (auto it = B.row(i).begin(); it != B.row(i).end(); ++it) {
+			 unsigned int j = it.col();
+			 // There is just one non-zero on this row!
+			 if (!Utils::isEqual(B.at(i, j), 0)) {
 
-			 if (B.at(i, j) > 0) {
-				if (b.at(i) >= 0) {
-				  // This is an upper bound on the variable.
-				  // a_i * x_j <= b_i where a_i,b_i are both positive
-				  double mult  = Utils::isEqual(B.at(i, j), 1) ? 1.0 : (B.at(i, j));
-				  double bound = b.at(i) / mult;
 
-				  if (bound < Bounds.at(j).second || Bounds.at(j).second == GRB_INFINITY) {
-					 // If we have an improving UB
+				if (B.at(i, j) > 0) {
+				  if (b.at(i) >= 0) {
+					 // This is an upper bound on the variable.
+					 // a_i * x_j <= b_i where a_i,b_i are both positive
+					 double mult  = Utils::isEqual(B.at(i, j), 1) ? 1 : (B.at(i, j));
+					 double bound = b.at(i) / mult;
+
+					 if (bound < Bounds.at(j).second || Bounds.at(j).second == GRB_INFINITY) {
+						// If we have an improving UB
+						if (bound != 0) {
+						  /*LOG_S(INFO)
+								<< "MathOpt::MP_Param::detectBounds: Variable " << std::to_string(j)
+								<< " has an upper bound of " << std::to_string(bound);*/
+						  // If this is a new bound, increase the counter.
+						  Bounds.at(j).second = bound;
+						} else {
+						  /*LOG_S(INFO)
+								<< "MathOpt::MP_Param::detectBounds: Variable " << std::to_string(j)
+								<< " is fixed to " << std::to_string(bound);*/
+						  Bounds.at(j).second = 0;
+						  Bounds.at(j).first  = 0;
+						}
+					 }
+					 // In any case, shed the row
+					 shedRows.push_back(i);
+				  } else {
+					 // This is a variable fixed to zero
+					 /*LOG_S(INFO) << "MathOpt::MP_Param::detectBounds: Variable "
+													  << std::to_string(j) << " is fixed to zero.";*/
+					 Bounds.at(j).second = 0;
+					 shedRows.push_back(i);
+				  }
+				  break;
+				  // next row
+				}
+
+				else if (B.at(i, j) < 0) {
+				  if (b.at(i) < 0) {
+					 // This is a lower bound. We need to check that is actually useful
+					 double mult  = Utils::isEqual(B.at(i, j), -1) ? -1 : (B.at(i, j));
+					 double bound = b.at(i) / mult;
+
+					 if (bound > Bounds.at(j).first) {
+						// We have an improving bound
 						/*LOG_S(INFO)
 							 << "MathOpt::MP_Param::detectBounds: Variable " << std::to_string(j)
-							 << " has an upper bound of " << std::to_string(bound);*/
-						Bounds.at(j).second = bound;
+							 << " has a lower bound of " << std::to_string(bound);*/
+						Bounds.at(j).first = bound;
+					 }
+					 // In any case, shed the row
+					 shedRows.push_back(i);
+				  } else {
+					 // Trivial constraint. Can be removed
+					 /*LOG_S(INFO) << "MathOpt::MP_Param::detectBounds: Trivial constraint "
+													  << std::to_string(i) << " pruned";*/
+					 shedRows.push_back(i);
 				  }
-				  // In any case, shed the row
-				  shedRows.push_back(i);
-				} else {
-				  // a_i * x_j <= b_i where a_i<0 and b_i>0
-				  // This is a variable fixed to zero
-				  /*LOG_S(INFO) << "MathOpt::MP_Param::detectBounds: Variable "
-													<< std::to_string(j) << " is fixed to zero.";*/
-				  Bounds.at(j).second = 0;
-				  shedRows.push_back(i);
+				  break;
+				  // next row
 				}
-				break;
-				// next row
-			 }
-
-			 else if (B.at(i, j) < 0) {
-				if (b.at(i) < 0) {
-				  // This is a lower bound. We need to check that is actually useful
-				  double mult  = Utils::isEqual(B.at(i, j), -1) ? -1.0 : (B.at(i, j));
-				  double bound = b.at(i) / mult;
-
-				  if (bound > Bounds.at(j).first) {
-					 // We have an improving lower bound
-					 /*LOG_S(INFO)
-						  << "MathOpt::MP_Param::detectBounds: Variable " << std::to_string(j)
-						  << " has a lower bound of " << std::to_string(bound);*/
-					 Bounds.at(j).first = bound;
-				  }
-				  // In any case, shed the row
-				  shedRows.push_back(i);
-				} else {
-				  // Trivial constraint. Can be removed
-				  /*LOG_S(INFO) << "MathOpt::MP_Param::detectBounds: Trivial constraint "
-													<< std::to_string(i) << " pruned";*/
-				  shedRows.push_back(i);
-				}
-				// next row
 			 }
 		  }
 		}
@@ -257,7 +271,7 @@ void MathOpt::MP_Param::detectBounds() {
 	 // Shed the rows of A,B,b
 	 std::sort(shedRows.begin(), shedRows.end());
 
-	 for (long i = shedRows.size() - 1; i >= 0; --i) {
+	 for (int i = shedRows.size() - 1; i >= 0; --i) {
 		A.shed_row(shedRows.at(i));
 		B.shed_row(shedRows.at(i));
 		b.shed_row(shedRows.at(i));
@@ -275,6 +289,7 @@ void MathOpt::MP_Param::detectBounds() {
  * @warning The size of Bounds should be the future numVars.
  */
 void MathOpt::MP_Param::rewriteBounds() {
+
 
   LOG_S(2) << "MathOpt::MP_Param::rewriteBounds: Starting.";
   int boundSize = this->Bounds.size();
@@ -325,6 +340,7 @@ void MathOpt::MP_Param::rewriteBounds() {
   this->B_bounds.submat(nUB, 0, nLB + nUB - 1, boundSize - 1) = LB;
   this->b_bounds.subvec(nUB, nLB + nUB - 1)                   = rLB;
 
+  std::cout << "line 344" << std::endl;
   ZEROAssert(this->b_bounds.size() == this->B_bounds.n_rows);
 }
 
@@ -520,7 +536,9 @@ double MathOpt::MP_Param::computeObjective(const arma::vec &y,
 														 bool             checkFeasibility,
 														 double           tol) const {
 
+  std::cout << "line 540" << std::endl;
   ZEROAssert(y.n_rows == this->getNumVars());
+   std::cout << "line 542" << std::endl;
   ZEROAssert(x.n_rows == this->getNumParams());
   if (checkFeasibility)
 	 this->isFeasible(y, x, tol);

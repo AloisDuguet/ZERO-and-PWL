@@ -46,7 +46,7 @@ set(ZERO_DEP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 # CUSTOM HINTS FOR DEPENDENCIES
 #######################################
 SET(ZERO_GUROBIHINT "" CACHE STRING "Hint for the Gurobi Path")
-set(GUROBI_DIR "/home/gurobi/9.5.0/linux64/" "/Library/gurobi950/macos_universal2" "C:\\dev\\gurobi900\\win64" ${ZERO_GUROBIHINT})
+set(GUROBI_DIR "/home/gurobi/9.5.0/linux64/" "/Library/gurobi910/mac64" "C:\\dev\\gurobi900\\win64" ${ZERO_GUROBIHINT})
 set(PATH_DIR "${ZERO_DEP_DIR}/path")
 set(CONDA_ENV "${ZERO_DEP_DIR}/conda")
 set(SCIP_ROOT_DIR "${CONDA_ENV}")
@@ -91,7 +91,6 @@ while (ZERO_LOOP)
         set(ZERO_INSTALL_DEPS ON)
     endif ()
 endwhile ()
-
 # CustomCoin
 include(cmake/InstallCustomCoin.cmake)
 
@@ -127,11 +126,11 @@ add_library(
         src/games/algorithms/IPG/ipg_cutandplay.cpp
         src/games/algorithms/IPG/ipg_zeroregrets.cpp
         src/interfaces/epec_models.cpp
-        src/interfaces/ipg_models.cpp)
+        src/interfaces/ipg_models.cpp
+	test/read_from_armadillo.cpp)
 set_target_properties(
         ZERO PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_VISIBILITY_PRESET hidden
-        VISIBILITY_INLINES_HIDDEN ON
-        LIBRARY_OUTPUT_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
+        VISIBILITY_INLINES_HIDDEN ON)
 target_link_libraries(
         ZERO
         PRIVATE blas lapack pthread m ${LUSOL_LIBRARY} ${PATH_LIBRARY} ${CMAKE_DL_LIBS}
@@ -190,26 +189,40 @@ set_target_properties(
         IPGExample PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_VISIBILITY_PRESET hidden
         VISIBILITY_INLINES_HIDDEN ON)
 
+add_executable(IPGTest examples/test_IPG.cpp)
+target_include_directories(IPGTest PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(IPGTest ZERO)
+set_target_properties(
+        IPGTest PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_VISIBILITY_PRESET hidden
+        VISIBILITY_INLINES_HIDDEN ON)
+
+
+add_executable(APL-CSB examples/test_CSB.cpp)
+target_include_directories(APL-CSB PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(APL-CSB ZERO)
+set_target_properties(
+        APL-CSB PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_VISIBILITY_PRESET hidden
+        VISIBILITY_INLINES_HIDDEN ON)
+
+add_executable(test_instance IPG-and-PWL/src/test_appli.cpp)
+target_include_directories(test_instance PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(test_instance ZERO)
+set_target_properties(
+        test_instance PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_VISIBILITY_PRESET hidden
+        VISIBILITY_INLINES_HIDDEN ON)
+
+add_executable(test_instance_with_try IPG-and-PWL/src/test_appli_with_try.cpp)
+target_include_directories(test_instance_with_try PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(test_instance_with_try ZERO)
+set_target_properties(
+        test_instance_with_try PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_VISIBILITY_PRESET hidden
+        VISIBILITY_INLINES_HIDDEN ON)
+
 add_executable(UCPExample examples/UCP.cpp)
 target_include_directories(UCPExample PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(UCPExample ZERO)
 set_target_properties(
         UCPExample PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_VISIBILITY_PRESET hidden
-        VISIBILITY_INLINES_HIDDEN ON)
-
-add_executable(NASPExample examples/NASP.cpp)
-target_include_directories(NASPExample PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(NASPExample ZERO)
-set_target_properties(
-        NASPExample PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_VISIBILITY_PRESET hidden
-        VISIBILITY_INLINES_HIDDEN ON)
-
-
-add_executable(Approximation examples/approximation/test_appli.cpp)
-target_include_directories(Approximation PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(Approximation ZERO)
-set_target_properties(
-        Approximation PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_VISIBILITY_PRESET hidden
         VISIBILITY_INLINES_HIDDEN ON)
 
 
@@ -231,3 +244,5 @@ message("\tCoin (lib):\t\t${COIN_UTILS} ${COIN_CGL} ${COIN_OSI}")
 message("\tCoin (include):\t\t${COIN_INCLUDE_DIR}")
 message("\tPATH (include):\t${PATH_INCLUDE_DIR}")
 message("\tPATH (library):\t${PATH_LIBRARY}")
+#message("\tSCIP (include):\t${SCIP_INCLUDE_DIRS}")
+#message("\tSCIP (lib):\t\t${SCIP_LIBRARIES}")

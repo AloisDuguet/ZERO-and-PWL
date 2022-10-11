@@ -57,10 +57,9 @@ protected:
 			 if (numExploredNodes >= minNodes) {
 				arma::vec x, z;
 				double    obj = -GRB_INFINITY;
-				this->done    = true;
 				this->LCP->solve(Data::LCP::Algorithms::PATH, x, z, 15, 0, obj, 1);
 
-				long len = std::min(long(x.size() + z.size()), long(this->numVars));
+				unsigned long int len = x.size() + z.size();
 				if (len == this->numVars) {
 				  double sol[len];
 				  // Fill vector
@@ -74,7 +73,7 @@ protected:
 					 // this->addCut(expr,GRB_EQUAL,sol[i]);
 					 count++;
 				  }
-				  for (unsigned long int i = 0; i < z.size() && x.size() + i < len; ++i) {
+				  for (unsigned long int i = 0; i < z.size(); ++i) {
 					 sol[i + count] = Utils::isEqual(z.at(i), 0, 1e-6, 1 - 1e-4) ? 0 : z.at(i);
 					 // GRBLinExpr expr = {this->Vars[i+count]};
 					 // this->addCut(expr,GRB_EQUAL,sol[i+count]);
@@ -121,6 +120,7 @@ void MathOpt::LCP::defConst(GRBEnv *env)
   this->nR  = this->M.n_rows;
   this->nC  = this->M.n_cols;
   int diff  = this->nC - this->BoundsX.size();
+  std::cout << "line 123" << std::endl;
   ZEROAssert(diff >= 0);
   if (diff > 0)
 	 for (int i = 0; i < diff; ++i)
@@ -359,6 +359,7 @@ std::unique_ptr<GRBModel> MathOpt::LCP::LCPasMIP(bool              solve,
   model->set(GRB_IntParam_SolutionLimit, solLimit);
   model->set(GRB_IntParam_OutputFlag, 0);
   model->setObjective(GRBLinExpr{0}, GRB_MINIMIZE);
+  model->write("TheLCP.lp");
   this->setMIPObjective(*model);
 
   if (solve)
@@ -425,7 +426,9 @@ std::unique_ptr<GRBModel> MathOpt::LCP::LCPasMILP(const arma::sp_mat &C,
   std::unique_ptr<GRBModel> model = this->LCPasMIP(true, -1, 1, 1);
   // Reset the solution limit. We need to solve to optimality
   model->set(GRB_IntParam_SolutionLimit, GRB_MAXINT);
+  std::cout << "line 430" << std::endl;
   ZEROAssert(C.n_cols == x_minus_i.n_rows);
+  std::cout << "line 432" << std::endl;
   ZEROAssert(c.n_rows == C.n_rows);
   arma::vec Cx(c.n_rows, arma::fill::zeros);
   try {
@@ -526,6 +529,7 @@ void MathOpt::LCP::save(const std::string &filename, bool erase) const {
  */
 
 long int MathOpt::LCP::load(const std::string &filename, long int pos) {
+  std::cout << "line 533" << std::endl;
   ZEROAssert(this->Env);
 
   std::string headercheck;
@@ -656,7 +660,9 @@ void MathOpt::LCP::makeQP(MathOpt::QP_Objective &QP_obj, MathOpt::QP_Param &QP) 
 
 void MathOpt::LCP::addCustomCuts(const arma::sp_mat &A_in, const arma::vec &b_in) {
 
+  std::cout << "line 666" << std::endl;
   ZEROAssert(this->A.n_cols == A_in.n_cols);
+  std::cout << "line 666" << std::endl;
   ZEROAssert(b_in.size() == A_in.n_rows);
 
   this->A = arma::join_cols(this->A, A_in);
@@ -894,6 +900,7 @@ std::unique_ptr<GRBModel> MathOpt::LCP::getMIP(bool indicators) {
  * @return True if successful
  */
 bool MathOpt::LCP::setMIPLinearObjective(const arma::vec &c) {
+  std::cout << "line 904" << std::endl;
   ZEROAssert(c.size() <= this->nC);
   this->c_Obj.zeros(this->nC);
   this->c_Obj.subvec(0, c.size() - 1) = c;
@@ -911,8 +918,11 @@ bool MathOpt::LCP::setMIPLinearObjective(const arma::vec &c) {
  * @return True if successful
  */
 bool MathOpt::LCP::setMIPQuadraticObjective(const arma::vec &c, const arma::sp_mat &Q) {
+  std::cout << "line 922" << std::endl;
   ZEROAssert(c.size() <= this->nC);
+  std::cout << "line 924" << std::endl;
   ZEROAssert(c.size() == Q.n_cols);
+  std::cout << "line 926" << std::endl;
   ZEROAssert(Q.is_square());
 
   this->c_Obj.zeros(this->nC);
@@ -962,7 +972,7 @@ void MathOpt::LCP::setMIPObjective(GRBModel &MIP) {
 	 // Feasibility MIP
 	 GRBLinExpr obj = 0;
 	 // Get hold of the Variables and Eqn Variables
-
+	 /*
 	 for (unsigned long int i = 0; i < nC; i++) {
 		GRBVar vars[]  = {MIP.getVarByName("x_" + std::to_string(i))};
 		double coeff[] = {1};
@@ -974,6 +984,7 @@ void MathOpt::LCP::setMIPObjective(GRBModel &MIP) {
 		double coeff[] = {1};
 		obj.addTerms(coeff, vars, 1);
 	 }
+	  */
 
 	 MIP.setObjective(obj, GRB_MINIMIZE);
 	 MIP.set(GRB_IntParam_MIPFocus, 1);

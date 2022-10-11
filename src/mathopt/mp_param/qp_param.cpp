@@ -143,10 +143,13 @@ unsigned int MathOpt::QP_Param::KKT(arma::sp_mat &M, arma::sp_mat &N, arma::vec 
 		arma::join_rows(-this->getB(true),
 							 arma::zeros<arma::sp_mat>(this->numConstr, this->numConstr)));
 
+  std::cout << "qp line 147" << std::endl;
   ZEROAssert(M.n_cols == (numVars + numConstr + this->B_bounds.n_rows));
   N = arma::join_cols(this->C, -this->getA(true));
+  std::cout << "qp line 150" << std::endl;
   ZEROAssert(N.n_cols == numParams);
   q = arma::join_cols(this->c, this->getb(true));
+  std::cout << "qp line 153" << std::endl;
   ZEROAssert(q.size() == (this->c.size() + this->b.size() + this->b_bounds.size()));
   // q.print();
   return M.n_rows;
@@ -282,7 +285,8 @@ long int MathOpt::QP_Param::load(const std::string &filename, long int pos) {
   pos = Utils::appendRead(c_in, filename, pos, std::string("QP_Param::c"));
   pos = Utils::appendRead(BO, filename, pos, std::string("QP_Param::Bounds"));
   if (BO.n_rows > 0) {
-	 ZEROAssert(BO.n_cols == 2);
+	 std::cout << "qp line 289" << std::endl;
+  	 ZEROAssert(BO.n_cols == 2);
 
 	 for (unsigned int i = 0; i < B_in.n_cols; ++i)
 		this->Bounds.push_back(
