@@ -38,17 +38,13 @@ unsigned int MathOpt::convexHull(const std::vector<arma::sp_mat *> *Ai,
   // Count number of polyhedra and the space we are in!
   const unsigned int nPoly{static_cast<unsigned int>(Ai->size())};
   // Error check
-  std::cout << "mathopt line 41" << std::endl;
   ZEROAssert(nPoly > 0);
   // consider
   const unsigned int nC{static_cast<unsigned int>(Ai->front()->n_cols)};
   const unsigned int nComm{static_cast<unsigned int>(Acom.n_rows)};
 
-  std::cout << "mathopt line 48" << std::endl;
   ZEROAssert(!(nComm > 0 && Acom.n_cols != nC));
-  std::cout << "mathopt line 50" << std::endl;
   ZEROAssert(!(nComm > 0 && nComm != bcom.n_rows));
-  std::cout << "mathopt line 52" << std::endl;
   ZEROAssert(nPoly == bi->size());
 
   // Count the number of variables in the convex hull.
@@ -56,9 +52,7 @@ unsigned int MathOpt::convexHull(const std::vector<arma::sp_mat *> *Ai,
 
   for (unsigned int i = 0; i != nPoly; i++) {
 
-	 std::cout << "mathopt line 60" << std::endl;
   	 ZEROAssert(Ai->at(i)->n_cols == nC);
-	 std::cout << "mathopt line 62" << std::endl;
   	 ZEROAssert(Ai->at(i)->n_rows == bi->at(i)->n_rows);
 	 nFinCons += Ai->at(i)->n_rows;
   }
@@ -215,9 +209,7 @@ void MathOpt::getDualMembershipLP(std::unique_ptr<GRBModel> &convexModel,
 											 bool                       containsOrigin) {
 
 
-  std::cout << "mathopt line 219" << std::endl;
   ZEROAssert(!(V.n_rows < 1 && R.n_rows < 1));
-  std::cout << "mathopt line 221" << std::endl;
   ZEROAssert(V.n_cols == vertex.size());
 
   if (numV == 0 && numR == 0) {
@@ -344,9 +336,7 @@ void MathOpt::getPrimalMembershipLP(std::unique_ptr<GRBModel> &convexModel,
 												const arma::vec &          vertex,
 												bool                       containsOrigin) {
 
-  std::cout << "mathopt line 348" << std::endl;
   ZEROAssert(!(V.n_rows < 1 && R.n_rows < 1));
-  std::cout << "mathopt line 350" << std::endl;
   ZEROAssert(V.n_cols == vertex.size());
 
   if (numV == 0 && numR == 0) {

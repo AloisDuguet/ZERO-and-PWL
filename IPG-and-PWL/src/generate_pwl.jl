@@ -325,6 +325,17 @@ function pwl1d_positive_SOS2_formulation(model, pwl, id_var, id_func, name_var =
     return model
 end
 
+function pwl1d_convex_formulation(model, pwl, id_var, id_func)
+    # add constraints to model to describe the pwl pwl that is 1d and concave (for maximization, convex for minimization)
+    # id_var and id_func describes the name of the variable of the pwl and the evaluation of the pwl
+
+    # one constraint for each piece
+    for piece in pwl
+        @constraint(model, id_func[1] - id_func[2] <= piece.a*id_var + piece.b)
+    end
+    return model
+end
+
 function pwl_formulation_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, pwl1d, pwlbilins, pwlquads, info_pwlquads, C, constant_value, linear_terms_in_spi, filename, fixed_costs = false, fcost = [])
     # write in file filename the matrices of the model Nagurney17 in csv format
 
@@ -369,7 +380,8 @@ function pwl_formulation_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, 
 
          println("func_quads number $(length(func_quads))")
          # create the formulation of the pwl
-         model = pwl1d_positive_SOS2_formulation(model, pwlquads[k], id_var, func_quads[end], "_quad$k")
+         ##model = pwl1d_positive_SOS2_formulation(model, pwlquads[k], id_var, func_quads[end], "_quad$k")
+         model = pwl1d_convex_formulation(model, pwlquads[k], id_var, func_quads[end]) # formulation with only constraints for convex functions
      end
 
      # preparations for two-variable pwl formulations

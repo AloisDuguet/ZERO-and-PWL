@@ -77,7 +77,6 @@ Models::IPG::IPG::IPG(GRBEnv *env, IPGInstance instance) : Game::IPG::IPG(env) {
   this->NumPlayers = this->PlayersIP.size();
 }
 std::shared_ptr<const MathOpt::IP_Param> Models::IPG::IPG::getIPParam(unsigned int player) {
-  std::cout << "ipg_models line 81" << std::endl;
   ZEROAssert(player < this->NumPlayers);
   return this->PlayersIP.at(player);
 }

@@ -1,6 +1,7 @@
 include("parse_instance.jl")
 include("generate_pwl.jl")
-include("../../PWL2D/heuristique_avancee_flex/main.jl")
+include("pwl_refinement.jl")
+include("/home/aduguet/Documents/doctorat/PWL2D/heuristique_avancee_flex/main.jl")
 
 using Dichotomy, LinA
 
@@ -54,7 +55,7 @@ function compute_filename(filename_instance, err1, err2, err3, fixed_cost)
     name = add_string_error(name,err1)
     name = add_string_error(name,err2)
     name = add_string_error(name,err3)
-    name = string(name, "fixedcost$fixed_cost/model.txt")
+    name = string(name, "fixedcost$fixed_cost/model.txt") # do not change "model" again, or change everywhere it will change something
     return name
 end
 
@@ -62,13 +63,15 @@ mutable struct pwl2d
     f
     str_exprf::String
     coef::Float64 # function is coef*x*y
-    err::LinA.ErrorType # error at the start of the algorithm, another error will be the objective if needed
     domain::Vector{Any}
+    err::LinA.ErrorType # error at the start of the algorithm, another error will be the objective if needed
+    name_var1::String
+    name_var2::String
     pwl::Vector{Any}
 end
 
 mutable struct pwlquad
-    expr_quad::Expr
+    expr_f::Expr
     coef::Float64 # function is coef*x^2
     t1::Float64
     t2::Float64
@@ -76,8 +79,8 @@ mutable struct pwlquad
     pwl::Vector{LinA.LinearPiece}
 end
 
-mutable struct pwl1d
-    expr_h::Expr
+mutable struct pwlh
+    expr_f::Expr
     alpha::Float64
     t1::Float64
     t2::Float64
@@ -86,7 +89,7 @@ mutable struct pwl1d
 end
 
 mutable struct cybersecurity_player
-    pwlh::pwl1d
+    pwl_h::pwlh
     pwlbilins::Vector{pwl2d}
     pwlquads::Vector{pwlquad}
     info_pwlquads::Vector{Int64}
@@ -157,14 +160,19 @@ function create_CSV_files(filename_instance, err_pwlh = Absolute(0.05), err_bili
         s = `mkdir ../CSV_files/$folder_save`
         run(s)
     end
+    # create folder "outputs" inside folder_save also
+    if !("outputs" in readdir("../CSV_files/$folder_save"))
+        s = `mkdir ../CSV_files/$folder_save/outputs/`
+        run(s)
+    end
 
     for p in 1:n_players
         # generate approximation of h_i
         err = err0_pwlh # Absolute(0.05)
         t1 = 0
         t2 = max_s_is[p]
-        pwlh = pwl1d(expr_h[p],cs_params.alphas[p],t1,t2,err,LinA.exactLin(expr_h[p],t1,t2,err))
-        println("\nh_$p approximated by $(length(pwlh.pwl)) pieces\n$pwlh\n")
+        pwl_h = pwlh(expr_h[p],cs_params.alphas[p],t1,t2,err,LinA.exactLin(expr_h[p],t1,t2,err))
+        println("\nh_$p approximated by $(length(pwl_h.pwl)) pieces\n$pwl_h\n")
 
         # storage for generated approximation of bilinear terms
         pwlbilins = []
@@ -194,7 +202,9 @@ function create_CSV_files(filename_instance, err_pwlh = Absolute(0.05), err_bili
                     str_exprf = "$coef*X*Y"
                     err = err_bilinear # Absolute(10)
                     domain = [0,upper_bounds[i1],0,upper_bounds[i2]]
-                    temp = pwl2d(fs[cpt_f],str_exprf,coef,err,domain,[])
+                    name_i1 = "Q_$p[$i1]"
+                    name_i2 = "s_$p"
+                    temp = pwl2d(fs[cpt_f],str_exprf,coef,domain,err,name_i1,name_i2,[])
                     println(typeof(temp))
                     println(temp)
                     @time temp.pwl = PWL2D_heuristic(temp.f,temp.str_exprf,temp.err,temp.domain,LP_SOLVER="Gurobi")
@@ -226,10 +236,10 @@ function create_CSV_files(filename_instance, err_pwlh = Absolute(0.05), err_bili
         #pwlquads = [pwlquads[1]] # do not add the quadratic functions
 
         # create cybersecurity_player p
-        push!(list_players, cybersecurity_player(pwlh,pwlbilins,pwlquads,info_pwlquads,max_s_is[p]))
+        push!(list_players, cybersecurity_player(pwl_h,pwlbilins,pwlquads,info_pwlquads,max_s_is[p]))
 
         # launch creation of files with matrices
-        model,IntegerIndexes,l_coefs,r_coefs, ordvar = pwl_formulation_to_csv(p, n_players, n_markets, cs_params.Qbar[p,:], max_s_is[p], cs_params.cs[p], pwlh.pwl, [pwlbilins[i].pwl for i in 1:length(pwlbilins)], [pwlquads[i].pwl for i in 1:length(pwlquads)], info_pwlquads, cs_params.Cs[p], cs_params.constant_values[p], cs_params.linear_terms_in_spi[p,:], "../CSV_files/"*filename_save,fixed_cost,cs_params.fcost)
+        model,IntegerIndexes,l_coefs,r_coefs, ordvar = pwl_formulation_to_csv(p, n_players, n_markets, cs_params.Qbar[p,:], max_s_is[p], cs_params.cs[p], pwl_h.pwl, [pwlbilins[i].pwl for i in 1:length(pwlbilins)], [pwlquads[i].pwl for i in 1:length(pwlquads)], info_pwlquads, cs_params.Cs[p], cs_params.constant_values[p], cs_params.linear_terms_in_spi[p,:], "../CSV_files/"*filename_save,fixed_cost,cs_params.fcost)
         push!(ordvars, ordvar)
         push!(II, IntegerIndexes)
         println("normally written with filename $filename_save")
@@ -243,10 +253,98 @@ end
 function update_CSV_files(cs_instance, num_iter)
     # update the CSV files of instance cs_instance with the refined pwls for iteration num_iter
 
+    # get often used values of cs_instance with shorter access name
+    n_players = cs_instance.cs_params.n_players
+    n_markets = cs_instance.cs_params.n_markets
+    n_var = cs_instance.cs_params.n_var
+    cs_params = cs_instance.cs_params
+
     # read last output in iter_outputs/output_$num_iter.txt to parse the solution of last ZERO optimization sol
+    sol = parse_cs_solution("outputs/output_$num_iter.txt") # sol is a Vector{Vector{Float64}}: one vector per player containing all the variables of its model
 
     # refine all pwls
+    for p in 1:n_players
+        println("\n\nREFINEMENT OF ITERATION $(num_iter)")
+        player = cs_instance.cs_players[p]
 
-    # launches pwl_formulation_to_csv
+        # h_i
+        println("\npwl_h of player $p before refinement around $(sol[p][n_markets+1]):\n$(player.pwlh.pwl)")
+        err = player.pwlh.err
+        if typeof(err) == Absolute
+            new_err = Absolute(max(err.delta/2^num_iter,err_pwlh.delta))
+        elseif typeof(err) == Relative
+            new_err = Relative(max(err.percent/2^num_iter,err_pwlh.percent))
+        end
+        # needs to be done every time even if the error is already at the wanted level because we don't keep the error satisfied by each piece
+        player.pwl_h = refine_pwl1d(player.pwl_h, sol[p][n_markets+1], new_err)
+        println("pwl_h of player $p after refinement around $(sol[p][n_markets+1]):\n$(player.pwlh.pwl)")
 
+        # pwlquads
+        for j in 1:n_markets
+            println("\npwl_quad[$j] of player $p before refinement around $(sol[p][j]):\n$(player.pwlquads[j].pwl)")
+            pwl_struct = player.pwlquads[j]
+            err = pwl_struct.err
+            if typeof(err) == Absolute
+                new_err = Absolute(max(err.delta/2^num_iter,err_quad.delta))
+            elseif typeof(err) == Relative
+                new_err = Relative(max(err.percent/2^num_iter,err_quad.percent))
+            end
+            # needs to be done every time even if the error is already at the wanted level because we don't keep the error satisfied by each piece
+            player.pwlquads[j] = refine_pwl1d(pwl_struct, sol[p][j], new_err)
+            println("pwl_quad[$j] of player $p after refinement around $(sol[p][j]):\n$(player.pwlquads[j].pwl)")
+        end
+
+        # pwlbilins
+        pwlbilins = player.pwlbilins
+        for i in 1:length(pwlbilins)
+            println("pwlbilins[$j] of player $p before refinement:\n$(player.pwlbilins[i].pwl)")
+            pwl_struct = pwlbilins[i]
+            err = pwl_struct.err
+            if typeof(err) == Absolute
+                new_err = Absolute(max(err.delta/2^num_iter,err_bilinear.delta))
+            elseif typeof(err) == Relative
+                new_err = Relative(max(err.percent/2^num_iter,err_bilinear.percent))
+            end
+            # compute pos_bilin, the two values of sol[p] corresponding to the variables of pwlbilins[i]
+            pos_bilin = [sol[p][i],sol[p][n_markets+1]]
+            # needs to be done every time even if the error is already at the wanted level because we don't keep the error satisfied by each piece
+            player.pwlbilins[i] = refine_pwl2d(pwl_struct, pos_bilin, new_err)
+            println("pwlbilins[$j] of player $p after refinement around $(pos_bilin):\n$(player.pwlbilins[i].pwl)")
+        end
+
+        # launches pwl_formulation_to_csv
+        model,IntegerIndexes,l_coefs,r_coefs, ordvar = pwl_formulation_to_csv(p, n_players, n_markets, cs_params.Qbar[p,:], player.max_s_i, cs_params.cs[p], player.pwl_h.pwl, [player.pwlbilins[i].pwl for i in 1:length(player.pwlbilins)], [player.pwlquads[i].pwl for i in 1:length(player.pwlquads)], player.info_pwlquads, cs_params.Cs[p], cs_params.constant_values[p], cs_params.linear_terms_in_spi[p,:], "../CSV_files/"*filename_save,cs_instance.fixed_cost,cs_params.fcost)
+    end
+
+    return cs_instance
+end
+
+function launch_ZERO(filename_save, num_iter)
+    # create the command line to launch ZERO and run it
+    complement_folder = "../CSV_files" # starting from IPG-and-PWL/src I guess if it is launched from a terminal connected in VPN
+    command_line = `./../../bin/test_instance $(complement_folder)/$(cs_instance.filename_save) $(complement_folder)/$(cs_instance.filename_save[1:end-9])/outputs/output_$(num_iter).txt`
+    println("command line launched:\n$command_line")
+    run(command_line)
+end
+
+function refinement_heuristic(filename_instance, errs_wanted, starting_errs = [Absolute(2),Absolute(20),Absolute(10000)], fixed_cost = false)
+    # operates all the refinement heuristic: launches create_CSV_files, solves with ZERO, and iterates on update_CSV_files and solve with ZERO until errs_wanted are obtained
+    # filename_instance is the name of the file with the parameters inside
+    # errs_wanted is a triplet of errors, namely for h, bilinear functions and quadratic functions that I want satisfied at the end of the algorithm
+    # starting_errs is a triplet of errors in the same order as errs_wanted that will be satisfied the first time ZERO solves a model
+    # fixed_cost is an option to add fixed cost to the exchange between players and markets. It adds binary variables to the cybersecurity model
+
+    # create the instance
+    cs_instance = create_CSV_files(filename_instance, errs_wanted[1], errs_wanted[2], errs_wanted[3])
+
+    # solve with ZERO
+    launch_ZERO(cs_instance.filename_save, 1)
+
+    # iterate on the pwl refinement+solve
+    # ADD A PROPER STOP CONDITION
+    for num_iter in 2:20
+        cs_instance = update_CSV_files(cs_instance, num_iter)
+        launch_ZERO(cs_instance.filename_save, num_iter)
+    end
+    return cs_instance
 end

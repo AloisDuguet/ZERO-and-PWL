@@ -146,3 +146,35 @@ function parse_instance_cybersecurity(filename, fixed_cost = false)
     ##return Qs,Cs,cs,constant_values,linear_terms_in_spi,D,alphas,Qbar,B,fcost,n_players,n_markets
     return cs_params
 end
+
+function parse_cs_solution(filename)
+    # read file filename and return a Vector{Vector{Float64}} containing the solution of an optimization of ZERO
+
+    lines = readlines(filename)
+
+    # structure in which the parsed solution is written
+    l = []
+
+    # pop first line which is saying the algorithm that solved the instance
+    line = popfirst!(lines)
+
+    while length(lines) >= 1
+        line = popfirst!(lines)
+        # throw empty lines and the following line
+        if length(line) != 0
+            if line[1] == 'P' # "Player ..." line
+                push!(l,[])
+            else
+                line = replace(line, " "=>"")
+                push!(l[end], parse(Float64,line))
+            end
+        else
+            line = popfirst!(lines) # throw the line following an empty line, because it should be an objective value
+        end
+    end
+
+    return l
+end
+
+#=filename = "../../../../CLionProjects/ZERO-and-PWL/IPG-and-PWL/CSV_files/instance1_Abs2_Abs10_Abs10000_fixedcostfalse/model_output.txt"
+parsed_sol = parse_cs_solution(filename)=#

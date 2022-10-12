@@ -142,7 +142,7 @@ bool Algorithms::IPG::CutAndPlay::addValueCut(unsigned int     player,
 						  this->IPG->PlayersIP.at(player)->getC() * xMinusI);
 
   // Constant!
-  if (Utils::isEqual(arma::max(LHS), 0)) {
+  if (Utils::isEqual(arma::max(arma::abs(LHS)), 0)) {
 	 LOG_S(INFO) << "Algorithms::IPG::CutAndPlay::addValueCut: "
 						 "Constant cut. Discarding. ";
 	 return false;
@@ -487,7 +487,6 @@ int Algorithms::IPG::CutAndPlay::preEquilibriumOracle(const unsigned int player,
 																  arma::vec &        xOfI,
 																  arma::vec &        xMinusI) {
 
-  std::cout << "line 491" << std::endl;
   ZEROAssert(player < this->IPG->NumPlayers);
   LOG_S(2) << "Algorithms::IPG::CutAndPlay::preEquilibriumOracle: (P" << player
 			  << ") The oracle has been called. Preprocessing.";
@@ -625,7 +624,6 @@ int Algorithms::IPG::CutAndPlay::equilibriumOracle(const unsigned int player,
 															  const arma::vec &  xMinusI,
 															  int &              addedCuts) {
 
-  std::cout << "line 629" << std::endl;
   ZEROAssert(player < this->IPG->NumPlayers);
 
   LOG_S(2) << "Algorithms::IPG::CutAndPlay::equilibriumOracle: (P" << player << ") Starting separator";
@@ -834,9 +832,7 @@ int Algorithms::IPG::CutAndPlay::equilibriumOracle(const unsigned int player,
  */
 void Algorithms::IPG::CutAndPlay::updateMembership(const unsigned int &player,
 															  const arma::vec &   vertex) {
-  std::cout << "line 838" << std::endl;
   ZEROAssert(player < this->IPG->NumPlayers);
-  std::cout << "line 840" << std::endl;
   ZEROAssert(vertex.size() == this->IPG->PlayerVariables.at(player));
   MathOpt::getDualMembershipLP(this->Players.at(player)->MembershipLP,
 										 this->Players.at(player)->VertexCounter,
@@ -999,9 +995,7 @@ void Algorithms::IPG::CutAndPlay::initialize() {
  * @return The other players strategies (except @p i)
  */
 arma::vec Algorithms::IPG::CutAndPlay::buildXminusI(const unsigned int i) {
-  std::cout << "line 1003 i " << i << " < this->IPG->NumPlayers " << this->IPG->NumPlayers << std::endl;
   ZEROAssert(i < this->IPG->NumPlayers);
-  std::cout << "after line 1003" << std::endl;
   arma::vec xMinusI(this->IPG->NumVariables - this->IPG->PlayerVariables.at(i), arma::fill::zeros);
   unsigned int counter = 0;
   for (unsigned int j = 0; j < this->IPG->NumPlayers; ++j) {
@@ -1031,7 +1025,6 @@ unsigned int Algorithms::IPG::CutAndPlay::externalCutGenerator(unsigned int play
 																			  bool         rootNode,
 																			  bool         cutOff) {
 
-  std::cout << "line 1034" << std::endl;
   ZEROAssert(player < this->IPG->NumPlayers);
   auto      xOfI     = this->Players.at(player)->Incumbent;
   auto      xOfIDual = this->Players.at(player)->DualIncumbent;
@@ -1344,7 +1337,6 @@ void Algorithms::IPG::CutAndPlay::initializeEducatedGuesses() {
  */
 void Algorithms::IPG::CutAndPlay::initializeCoinModel(const unsigned int player) {
 
-  std::cout << "line 1347" << std::endl;
   ZEROAssert(player < this->IPG->NumPlayers);
   // Source the main ingredients. Avoid getting B with bounds, since we already have the raw bounds.
   auto IP_B          = this->Players.at(player)->ParametrizedIP->getB(false);

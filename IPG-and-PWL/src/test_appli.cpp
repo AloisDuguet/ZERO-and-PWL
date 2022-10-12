@@ -11,10 +11,13 @@ int main(int argc, char *argv[]) {
 
      // parsing here the arguments argc, argv
      string filename_instance;
-     if (argc >= 2) {
+	  string filename_output;
+     if (argc >= 3) {
         filename_instance = argv[1];
+		  filename_output = argv[2];
      } else {
         filename_instance = "test_instance";
+		  filename_output = "outputs/output_0.txt";
      }
      
      arma::vec sizes1 = readIntegerIndexes_CSV(filename_instance+"_sizes1.csv");
@@ -134,7 +137,8 @@ int main(int argc, char *argv[]) {
 
      IPG_Model.getX().at(0).print("Player 1:");
      IPG_Model.getX().at(1).print("\n Player 2:");
-     std::ofstream savefile(filename_instance+"_output.txt",std::ios_base::out);
+	  std::ofstream savefile(filename_output,std::ios_base::out);
+     //std::ofstream savefile(filename_instance+"_output.txt",std::ios_base::out);
      savefile << "optimization with PATH algorithm" << endl;
      savefile << "Player 1:\n" << IPG_Model.getX().at(0) << "\n" << IPG_Model.getSocialWelfare() << endl;
      savefile << "Player 2:\n" << IPG_Model.getX().at(1) << "\n" << IPG_Model.getSocialWelfare() << endl;
@@ -174,7 +178,8 @@ int main(int argc, char *argv[]) {
 	IPG_Model2.findNashEq();
 	IPG_Model2.getX().at(0).print("Player 1:");
 	IPG_Model2.getX().at(1).print("\n Player 2:");
-	std::ofstream savefile(filename_instance+"_output.txt",std::ios_base::out);
+	std::ofstream savefile(filename_output,std::ios_base::out);
+	//std::ofstream savefile(filename_instance+"_output.txt",std::ios_base::out);
      	savefile << "optimization with MIP algorithm because PATH failed" << endl;
 	savefile << "Player 1:\n" << IPG_Model2.getX().at(0) << endl;
      	savefile << "Player 2:\n" << IPG_Model2.getX().at(1) << endl;
