@@ -15,10 +15,14 @@ int main(int argc, char *argv[]) {
      if (argc >= 3) {
         filename_instance = argv[1];
 		  filename_output = argv[2];
+     } else if (argc == 2) {
+		  filename_output = filename_instance.substr(0,filename_instance.length()-9)+"outputs/output.txt";
      } else {
-        filename_instance = "test_instance";
-		  filename_output = "outputs/output_0.txt";
-     }
+		 cout << "at least one argument giving the path to the csv files describing the instance AND 'model' needs to be given.\nExample: path_to_instance/model" << endl;
+		 cout << "the 'model' is because all CSV files starts by 'model', or 'test_csv' for the older ones." << endl;
+		 cout << "a second argument giving the path and name of the file to write the solution is possible." << endl;
+		 return 0;
+	  }
      
      arma::vec sizes1 = readIntegerIndexes_CSV(filename_instance+"_sizes1.csv");
      // declaring sizes of matrices and arrays building the MILP model
@@ -91,9 +95,9 @@ int main(int argc, char *argv[]) {
 
      VariableBounds VarBounds2 = {};
      for (unsigned int i = 0; i < numBaseVars2; ++i)
-        VarBounds2.push_back({0,pow(10.0,50.0)});
+       VarBounds2.push_back({0,pow(10.0,50.0)});
      for (int i = 0; i < IntegerIndexes2.size(); i++)
- 	VarBounds2.at(IntegerIndexes2.at(i)).second = 1;
+		 VarBounds2.at(IntegerIndexes2.at(i)).second = 1;
 
 
      C2.print("C2:\n");
@@ -133,103 +137,87 @@ int main(int argc, char *argv[]) {
      IPG_Model.findNashEq();
      cout << "optimization finished!" << endl;
 
-     // Print the solution
-
-     IPG_Model.getX().at(0).print("Player 1:");
-     IPG_Model.getX().at(1).print("\n Player 2:");
-	  std::ofstream savefile(filename_output,std::ios_base::out);
-     //std::ofstream savefile(filename_instance+"_output.txt",std::ios_base::out);
-     savefile << "optimization with PATH algorithm" << endl;
-     savefile << "Player 1:\n" << IPG_Model.getX().at(0) << "\n" << IPG_Model.getSocialWelfare() << endl;
-     savefile << "Player 2:\n" << IPG_Model.getX().at(1) << "\n" << IPG_Model.getSocialWelfare() << endl;
-
-		 // add here the constant term of the objective function?
-		 /*var_player1 = IPG_Model.getX().at(0);
-		 var_player2 = IPG_Model.getX().at(1);
-
-		 for (int i = 0; i < n_players; i++) {
-			 	for (int j = 0; j < n_players+1; j++) {
-				  	cout << "Q" << i << j << " = " var_player; // change var_player1 and 2 to a vector of var_player for print
-			 	}
-	 	 }*/
-
      bool solved = IPG_Model.isSolved();
      if(!solved) {
-	Models::IPG::IPGInstance IPG_Instance2;
-     	// Add the players to the instance. We also specify a file path to write the instance
-     	IPG_Instance2.addIPParam(PlayerOne, "A_Parametrized_KnapsackProblem1");
-     	IPG_Instance2.addIPParam(PlayerTwo, "A_Parametrized_KnapsackProblem2");
-     	cout << "Players IP_Param added to model" << endl;
-     	// Save the instance with the standardize format
-     	IPG_Instance2.save(filename_instance);
-     	// Create a model from the instance
-     	Models::IPG::IPG IPG_Model2(&GurobiEnv, IPG_Instance2);
-     	cout << "IPG_Model defined" << endl;
-     	// Select the algorithm to compute a Nash Equilibrium
-     	IPG_Model2.setAlgorithm(Data::IPG::Algorithms::CutAndPlay);
-     	// Extra parameters
-     	IPG_Model2.setDeviationTolerance(3e-4);
-     	IPG_Model2.setNumThreads(4);
-	IPG_Model2.setLCPAlgorithm(Data::LCP::Algorithms::MIP);
-	IPG_Model2.setGameObjective(Data::IPG::Objectives::Linear);
-     	IPG_Model2.setTimeLimit(20);
-	IPG_Model2.finalize();
-	cout << "optimization with MIP algorithm starting because PATH could not optimize it" << endl;
-	IPG_Model2.findNashEq();
-	IPG_Model2.getX().at(0).print("Player 1:");
-	IPG_Model2.getX().at(1).print("\n Player 2:");
-	std::ofstream savefile(filename_output,std::ios_base::out);
-	//std::ofstream savefile(filename_instance+"_output.txt",std::ios_base::out);
-     	savefile << "optimization with MIP algorithm because PATH failed" << endl;
-	savefile << "Player 1:\n" << IPG_Model2.getX().at(0) << endl;
-     	savefile << "Player 2:\n" << IPG_Model2.getX().at(1) << endl;
+		 Models::IPG::IPGInstance IPG_Instance2;
+		 // Add the players to the instance. We also specify a file path to write the instance
+		 IPG_Instance2.addIPParam(PlayerOne, "A_Parametrized_KnapsackProblem1");
+		 IPG_Instance2.addIPParam(PlayerTwo, "A_Parametrized_KnapsackProblem2");
+		 cout << "Players IP_Param added to model" << endl;
+		 // Save the instance with the standardize format
+		 IPG_Instance2.save(filename_instance);
+		 // Create a model from the instance
+		 Models::IPG::IPG IPG_Model2(&GurobiEnv, IPG_Instance2);
+		 cout << "IPG_Model defined" << endl;
+		 // Select the algorithm to compute a Nash Equilibrium
+		 IPG_Model2.setAlgorithm(Data::IPG::Algorithms::CutAndPlay);
+		 // Extra parameters
+		 IPG_Model2.setDeviationTolerance(3e-4);
+		 IPG_Model2.setNumThreads(4);
+		 IPG_Model2.setLCPAlgorithm(Data::LCP::Algorithms::MIP);
+		 IPG_Model2.setGameObjective(Data::IPG::Objectives::Linear);
+		 IPG_Model2.setTimeLimit(20);
+		 IPG_Model2.finalize();
+		 cout << "optimization with MIP algorithm starting because PATH could not optimize it" << endl;
+		 IPG_Model2.findNashEq();
+		 IPG_Model2.getX().at(0).print("Player 1:");
+		 IPG_Model2.getX().at(1).print("\n Player 2:");
 
-	// compute the objective function of the players
-     	cout << "compute the objective values for MIP solution" << endl;
-     	arma::vec X1 = IPG_Model2.getX().at(0);
-     	arma::vec X2 = IPG_Model2.getX().at(1);
-     	double obj1 = 0;
-     	double obj2 = 0;
-     	for(int i = 0; i < c1.size(); i++) {
-	   obj1 += c1.at(i)*X1.at(i);
-	   obj2 += c2.at(i)*X2.at(i);
-     	}
-     	for(int i = 0; i < size(C1)[0]; i++) {
-	   for(int j = 0; j < size(C1)[1]; j++) {
-	      obj1 += X2.at(j)*C1.at(j,i)*X1.at(i);
-	      obj2 += X1.at(j)*C2.at(j,i)*X2.at(i);
-	   }
-     	}
-     	// adding the constant term and the spi term
-     	arma::vec constant_vec1 = readVector_CSV(filename_instance+"_constant1.csv",1);
-     	arma::vec spi_vec1 = readVector_CSV(filename_instance+"_spi_terms1.csv",1);
-     	obj1 += constant_vec1.at(0) + spi_vec1.at(0)*X2.at(n_markets);
-     	arma::vec constant_vec2 = readVector_CSV(filename_instance+"_constant2.csv",1);
-     	arma::vec spi_vec2 = readVector_CSV(filename_instance+"_spi_terms2.csv",1);
-     	obj2 += constant_vec2.at(0) + spi_vec2.at(0)*X1.at(n_markets);
-     	//cout << "the bonus value should be " << constant_vec1.at(0) << " + " << spi_vec1.at(0) << " * " <<X2.at(n_markets) << endl;
-     	cout << "objective value of player 1 is " << obj1 << endl;
-     	cout << "objective value of player 2 is " << obj2 << endl;
-     	cout << "social welfare according with constant terms is " << obj1+obj2 << endl;
-     	cout << "social welfare according without them is " << IPG_Model2.getSocialWelfare() << endl;
+		 // compute the objective function of the players
+		 cout << "compute the objective values for MIP solution" << endl;
+		 arma::vec X1 = IPG_Model2.getX().at(0);
+		 arma::vec X2 = IPG_Model2.getX().at(1);
+		 double obj1 = 0;
+		 double obj2 = 0;
+		 for(int i = 0; i < c1.size(); i++) {
+		 	obj1 += c1.at(i)*X1.at(i);
+		 	obj2 += c2.at(i)*X2.at(i);
+		 }
+		 for(int i = 0; i < size(C1)[0]; i++) {
+		 	for(int j = 0; j < size(C1)[1]; j++) {
+			  obj1 += X2.at(j)*C1.at(j,i)*X1.at(i);
+			  obj2 += X1.at(j)*C2.at(j,i)*X2.at(i);
+		   }
+		 }
+     	 // adding the constant term and the spi term
+     	 arma::vec constant_vec1 = readVector_CSV(filename_instance+"_constant1.csv",1);
+     	 arma::vec spi_vec1 = readVector_CSV(filename_instance+"_spi_terms1.csv",1);
+     	 obj1 += constant_vec1.at(0) + spi_vec1.at(0)*X2.at(n_markets);
+     	 arma::vec constant_vec2 = readVector_CSV(filename_instance+"_constant2.csv",1);
+     	 arma::vec spi_vec2 = readVector_CSV(filename_instance+"_spi_terms2.csv",1);
+     	 obj2 += constant_vec2.at(0) + spi_vec2.at(0)*X1.at(n_markets);
+     	 //cout << "the bonus value should be " << constant_vec1.at(0) << " + " << spi_vec1.at(0) << " * " <<X2.at(n_markets) << endl;
+     	 cout << "objective value of player 1 is " << obj1 << endl;
+     	 cout << "objective value of player 2 is " << obj2 << endl;
+     	 cout << "social welfare with constant terms is " << obj1+obj2 << endl;
+     	 cout << "social welfare without them is " << IPG_Model2.getSocialWelfare() << endl;
 
+		 // Print the solution in a file
+		 cout << "printing the solution in file:\n" << filename_output << endl;
+		 std::ofstream savefile(filename_output,std::ios_base::out);
+		 savefile << "optimization with MIP algorithm because PATH failed" << endl;
+		 savefile << "Player 1:\n" << IPG_Model2.getX().at(0) << "\n" << obj1 << endl;
+		 savefile << "Player 2:\n" << IPG_Model2.getX().at(1) << "\n" << obj2 << endl;
 
      } else {
-	 // compute the objective function of the players
+		// compute the objective function of the players
      	cout << "compute the objective values for PATH solution" << endl;
+		IPG_Model.getX().at(0).print("Player 1:");
+		IPG_Model.getX().at(1).print("\n Player 2:");
      	arma::vec X1 = IPG_Model.getX().at(0);
      	arma::vec X2 = IPG_Model.getX().at(1);
+
      	double obj1 = 0;
      	double obj2 = 0;
      	for(int i = 0; i < c1.size(); i++) {
-	   obj1 += c1.at(i)*X1.at(i);
-	   obj2 += c2.at(i)*X2.at(i);
-        }
+		  obj1 += c1.at(i)*X1.at(i);
+		  obj2 += c2.at(i)*X2.at(i);
+		}
      	for(int i = 0; i < size(C1)[0]; i++) {
-	   for(int j = 0; j < size(C1)[1]; j++) {
-	      obj1 += X2.at(j)*C1.at(j,i)*X1.at(i);
-	      obj2 += X1.at(j)*C2.at(j,i)*X2.at(i);
-	   }
+		  for(int j = 0; j < size(C1)[1]; j++) {
+			  obj1 += X2.at(j)*C1.at(j,i)*X1.at(i);
+			  obj2 += X1.at(j)*C2.at(j,i)*X2.at(i);
+		  }
      	}
      	// adding the constant term and the spi term
      	arma::vec constant_vec1 = readVector_CSV(filename_instance+"_constant1.csv",1);
@@ -241,8 +229,15 @@ int main(int argc, char *argv[]) {
      	//cout << "the bonus value should be " << constant_vec1.at(0) << " + " << spi_vec1.at(0) << " * " <<X2.at(n_markets) << endl;
      	cout << "objective value of player 1 is " << obj1 << endl;
      	cout << "objective value of player 2 is " << obj2 << endl;
-     	cout << "social welfare according with constant terms is " << obj1+obj2 << endl;
-     	cout << "social welfare according without them is " << IPG_Model.getSocialWelfare() << endl;
+     	cout << "social welfare with constant terms is " << obj1+obj2 << endl;
+     	cout << "social welfare without them is " << IPG_Model.getSocialWelfare() << endl;
+
+		// Print the solution in a file
+		cout << "printing the solution in file:\n" << filename_output << endl;
+		std::ofstream savefile(filename_output,std::ios_base::out);
+		savefile << "optimization with PATH algorithm" << endl;
+		savefile << "Player 1:\n" << IPG_Model.getX().at(0) << "\n" << obj1 << endl;
+		savefile << "Player 2:\n" << IPG_Model.getX().at(1) << "\n" << obj2 << endl;
      }
 
   } catch (ZEROException &e) {
