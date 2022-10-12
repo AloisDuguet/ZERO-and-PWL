@@ -84,6 +84,3 @@ docs/doxyoutput/*
 .gdbinit
 lib/CustomCoin/CglKnapsackCoverZERO.cpp
 lib/CustomCoin/CglKnapsackCoverZERO.hpp
-
-#old things
-**/old
