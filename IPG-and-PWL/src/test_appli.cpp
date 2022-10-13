@@ -186,7 +186,6 @@ int main(int argc, char *argv[]) {
 			  obj2 += X1.at(j)*C2.at(j,i)*X2.at(i);
 			}
 		 }
-
      	 // adding the constant term and the spi term
      	 arma::vec constant_vec1 = readVector_CSV(filename_instance+"_constant1.csv",1);
      	 arma::vec spi_vec1 = readVector_CSV(filename_instance+"_spi_terms1.csv",1);
@@ -233,6 +232,7 @@ int main(int argc, char *argv[]) {
 			 obj2 += X1.at(j)*C2.at(j,i)*X2.at(i);
 		  }
 		}
+
      	// adding the constant term and the spi term
      	arma::vec constant_vec1 = readVector_CSV(filename_instance+"_constant1.csv",1);
      	arma::vec spi_vec1 = readVector_CSV(filename_instance+"_spi_terms1.csv",1);
