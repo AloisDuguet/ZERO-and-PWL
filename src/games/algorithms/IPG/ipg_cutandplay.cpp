@@ -747,7 +747,7 @@ int Algorithms::IPG::CutAndPlay::equilibriumOracle(const unsigned int player,
 
 	 std::cout << "leaderStatus is " << leaderStatus << "\nwe want 1, 5 or 13 for optimal, unbounded or suboptimal" << std::endl;
 	 ZEROAssert((leaderStatus == GRB_OPTIMAL) || (leaderStatus == GRB_SUBOPTIMAL) ||
-					(leaderStatus == GRB_UNBOUNDED));
+					(leaderStatus == GRB_UNBOUNDED) || (leaderStatus == GRB_INF_OR_UNBD));
 	 if (leaderStatus == GRB_OPTIMAL || (leaderStatus == GRB_SUBOPTIMAL && numSols > 0)) {
 
 		//@todo <numSols or 1?
@@ -808,7 +808,7 @@ int Algorithms::IPG::CutAndPlay::equilibriumOracle(const unsigned int player,
 		}
 
 	 } // status optimal for playerModel
-	 else if (leaderStatus == GRB_UNBOUNDED) {
+	 else if ((leaderStatus == GRB_UNBOUNDED) || (leaderStatus == GRB_INF_OR_UNBD)) {
 		// Get the extreme ray
 		auto relaxed = playerModel->relax();
 		relaxed.optimize();
