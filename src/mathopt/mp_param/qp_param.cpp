@@ -282,7 +282,7 @@ long int MathOpt::QP_Param::load(const std::string &filename, long int pos) {
   pos = Utils::appendRead(c_in, filename, pos, std::string("QP_Param::c"));
   pos = Utils::appendRead(BO, filename, pos, std::string("QP_Param::Bounds"));
   if (BO.n_rows > 0) {
-  	 ZEROAssert(BO.n_cols == 2);
+	 ZEROAssert(BO.n_cols == 2);
 
 	 for (unsigned int i = 0; i < B_in.n_cols; ++i)
 		this->Bounds.push_back(

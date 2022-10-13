@@ -230,7 +230,7 @@ MathOpt::IP_Param &MathOpt::IP_Param::set(arma::sp_mat   &&C_in,
 														arma::vec      &&b_in,
 														arma::vec      &&c_in,
 														arma::vec      &&integers_in,
- 														VariableBounds &&Bounds_in) {
+														VariableBounds &&Bounds_in) {
   ZEROAssert(!integers_in.empty());
   this->Q.zeros(c_in.size(), c_in.size());
   this->A.zeros(b_in.size(), C_in.n_cols);
@@ -257,6 +257,7 @@ double MathOpt::IP_Param::computeObjective(const arma::vec &y,
 														 const arma::vec &x,
 														 bool             checkFeas,
 														 double           tol) const {
+
   ZEROAssert(y.n_rows == this->getNumVars());
   ZEROAssert(x.n_rows == this->getNumParams());
   if (checkFeas)

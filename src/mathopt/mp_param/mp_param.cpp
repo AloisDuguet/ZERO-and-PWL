@@ -173,7 +173,6 @@ MathOpt::MP_Param &MathOpt::MP_Param::addDummy(unsigned int pars, unsigned int v
  */
 void MathOpt::MP_Param::detectBounds() {
 
-
   unsigned int nConstr = this->b.size();
 
   // We claim that any bound is in the form of A_ix+B_iy <= b_i, where B_i contains a single
@@ -206,10 +205,10 @@ void MathOpt::MP_Param::detectBounds() {
 
 				  if (bound < Bounds.at(j).second || Bounds.at(j).second == GRB_INFINITY) {
 					 // If we have an improving UB
-					 /*LOG_S(INFO)
-						  << "MathOpt::MP_Param::detectBounds: Variable " << std::to_string(j)
-						  << " has an upper bound of " << std::to_string(bound);*/
-					 Bounds.at(j).second = bound;
+						/*LOG_S(INFO)
+							 << "MathOpt::MP_Param::detectBounds: Variable " << std::to_string(j)
+							 << " has an upper bound of " << std::to_string(bound);*/
+						Bounds.at(j).second = bound;
 				  }
 				  // In any case, shed the row
 				  shedRows.push_back(i);
@@ -276,7 +275,6 @@ void MathOpt::MP_Param::detectBounds() {
  * @warning The size of Bounds should be the future numVars.
  */
 void MathOpt::MP_Param::rewriteBounds() {
-
 
   LOG_S(2) << "MathOpt::MP_Param::rewriteBounds: Starting.";
   int boundSize = this->Bounds.size();

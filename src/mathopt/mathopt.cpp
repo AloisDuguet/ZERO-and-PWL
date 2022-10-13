@@ -52,8 +52,8 @@ unsigned int MathOpt::convexHull(const std::vector<arma::sp_mat *> *Ai,
 
   for (unsigned int i = 0; i != nPoly; i++) {
 
-  	 ZEROAssert(Ai->at(i)->n_cols == nC);
-  	 ZEROAssert(Ai->at(i)->n_rows == bi->at(i)->n_rows);
+	 ZEROAssert(Ai->at(i)->n_cols == nC);
+	 ZEROAssert(Ai->at(i)->n_rows == bi->at(i)->n_rows);
 	 nFinCons += Ai->at(i)->n_rows;
   }
   // For common constraint copy

@@ -836,6 +836,7 @@ std::unique_ptr<GRBModel> MathOpt::LCP::getMIP(bool indicators) {
 
 		double LB = this->BoundsX.at(p.second).first;
 		double UB = this->BoundsX.at(p.second).second;
+		// std::cout << std::to_string(LB) << " - " << std::to_string(UB) << "\n";
 
 		l[counter]  = model->addVar(0, 1, 0, GRB_BINARY, "l_" + std::to_string(p.second));
 		in[counter] = model->addVar(0, 1, 0, GRB_BINARY, "in_" + std::to_string(p.second));
