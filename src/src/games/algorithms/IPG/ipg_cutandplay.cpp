@@ -745,7 +745,7 @@ int Algorithms::IPG::CutAndPlay::equilibriumOracle(const unsigned int player,
 	 int leaderStatus = playerModel->get(GRB_IntAttr_Status);
 	 int numSols      = playerModel->get(GRB_IntAttr_SolCount);
 
-	 std::cout << "leaderStatus is " << leaderStatus << "\nwe want 1, 5 or 13 for optimal, unbounded or suboptimal" << std::endl;
+
 	 ZEROAssert((leaderStatus == GRB_OPTIMAL) || (leaderStatus == GRB_SUBOPTIMAL) ||
 					(leaderStatus == GRB_UNBOUNDED));
 	 if (leaderStatus == GRB_OPTIMAL || (leaderStatus == GRB_SUBOPTIMAL && numSols > 0)) {
