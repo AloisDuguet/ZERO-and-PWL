@@ -231,8 +231,8 @@ function create_CSV_files(filename_instance, err_pwlh = Absolute(0.05), err_bili
         end
 
         # useful only for debug
-        pwlbilins = [] # do not add the pwlbilins functions
-        pwlquads = [] # do not add the quadratic functions
+        #pwlbilins = [] # do not add the pwlbilins functions
+        #pwlquads = [] # do not add the quadratic functions
         #pwlquads = [pwlquads[1]] # do not add the quadratic functions
 
         # create cybersecurity_player p
