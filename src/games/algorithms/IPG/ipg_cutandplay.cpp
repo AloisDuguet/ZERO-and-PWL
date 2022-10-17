@@ -745,7 +745,7 @@ int Algorithms::IPG::CutAndPlay::equilibriumOracle(const unsigned int player,
 	 int leaderStatus = playerModel->get(GRB_IntAttr_Status);
 	 int numSols      = playerModel->get(GRB_IntAttr_SolCount);
 
-	 std::cout << "leaderStatus is " << leaderStatus << "\nwe want 1, 5 or 13 for optimal, unbounded or suboptimal" << std::endl;
+	 //std::cout << "leaderStatus is " << leaderStatus << "\nwe want 2, 5 or 13 for optimal, unbounded or suboptimal" << std::endl;
 	 ZEROAssert((leaderStatus == GRB_OPTIMAL) || (leaderStatus == GRB_SUBOPTIMAL) ||
 					(leaderStatus == GRB_UNBOUNDED) || (leaderStatus == GRB_INF_OR_UNBD));
 	 if (leaderStatus == GRB_OPTIMAL || (leaderStatus == GRB_SUBOPTIMAL && numSols > 0)) {
@@ -1124,7 +1124,7 @@ unsigned int Algorithms::IPG::CutAndPlay::externalCutGenerator(unsigned int play
 	 MIRGen.setAggressiveness(100);
 	 MIRGen.setDoPreproc(1);
 	 MIRGen.setMAXAGGR_(100);
-	 MIRGen.generateCuts(*CoinModel, *MIRs, info);
+	 MIRGen.generateCuts(*CoinModel, *MIRs, info); // error here?
 
 
 	 for (int(i) = 0; (i) < MIRs->sizeCuts(); ++(i))

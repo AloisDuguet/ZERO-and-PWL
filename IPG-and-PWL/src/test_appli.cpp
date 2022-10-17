@@ -12,12 +12,16 @@ int main(int argc, char *argv[]) {
      // parsing here the arguments argc, argv
      string filename_instance;
 	  string filename_output;
+	  cout << "argc == " << argc << endl;
      if (argc >= 3) {
         filename_instance = argv[1];
 		  filename_output = argv[2];
      } else if (argc == 2) {
+		  cout << "filename_instance = " << argv[1] << endl;
 		  filename_instance = argv[1];
+		  cout << "filename_output = ";
 		  filename_output = filename_instance.substr(0,filename_instance.length()-5)+"outputs/output.txt";
+		  cout << filename_output << endl;
      } else {
 		 cout << "at least one argument giving the path to the csv files describing the instance AND 'model' needs to be given.\nExample: path_to_instance/model" << endl;
 		 cout << "the 'model' is because all CSV files starts by 'model', or 'test_csv' for the older ones." << endl;

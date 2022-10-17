@@ -1,0 +1,3 @@
+Use julia code on a computer from CIRRELT:
+]
+add https://github.com/LICO-labs/LinA.jl StringEncodings JuMP Gurobi Dichotomy TimerOutputs Cbc GLPK LinearAlgebra GR Plots Clipper ForwardDiff IntervalArithmetic AutoGrad PolygonOps AngleBetweenVectors

@@ -336,6 +336,15 @@ function pwl1d_convex_formulation(model, pwl, id_var, id_func)
     return model
 end
 
+function save_ordvar_to_file(ordvar, filename)
+    # print in file filename one variable name per line, without spaces
+    file = open(filename[1:end-4]*"_variable_names.csv", "w")
+    for i in 1:length(ordvar)
+        println(file, ordvar[i])
+    end
+    close(file)
+end
+
 function pwl_formulation_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, pwl1d, pwlbilins, pwlquads, info_pwlquads, C, constant_value, linear_terms_in_spi, filename, fixed_costs = false, fcost = [])
     # write in file filename the matrices of the model Nagurney17 in csv format
 
@@ -366,7 +375,7 @@ function pwl_formulation_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, 
      func_quads = []
      for k in 1:length(pwlquads)
          # define id_var and id_func
-         println("adding square approximation of var $(info_pwlquads[k])")
+         println("adding square approximation of var $(info_pwlquads[k]) that has $(length(pwlquads[k])) pieces")
          if info_pwlquads[k] <= n_j
              id_var = var_Q_i[info_pwlquads[k]]
              println("var_Q_i[$(info_pwlquads[k])] chosen as id_var")
@@ -468,6 +477,7 @@ function pwl_formulation_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, 
      # extract A and b coefficients, and IntegerIndexes
      # find the list of variables
      ordvar = all_variables(model)
+     save_ordvar_to_file(ordvar,filename)
      # define object containing csv_line objects and IntegerIndexes
      l_coefs = []
      r_coefs = []

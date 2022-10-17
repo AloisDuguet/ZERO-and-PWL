@@ -154,6 +154,8 @@ function parse_cs_solution(filename)
 
     # structure in which the parsed solution is written
     l = []
+    # structure in which the objective values are written
+    objs = []
 
     # pop first line which is saying the algorithm that solved the instance
     line = popfirst!(lines)
@@ -169,11 +171,136 @@ function parse_cs_solution(filename)
                 push!(l[end], parse(Float64,line))
             end
         else
-            line = popfirst!(lines) # throw the line following an empty line, because it should be an objective value
+            line = popfirst!(lines) # take the line following an empty line, because it should be an objective value
+            push!(objs, parse(Float64,line))
         end
     end
 
-    return l
+    return l, objs
+end
+
+function output_and_save_recap_model(cs_instance, iteration = 1)
+    # sum up number of pieces (print in terminal and in file)
+
+    if iteration == 1
+        file = open("../CSV_files/"*cs_instance.filename_save[1:end-9]*"pwl_approx_details.info", "w")
+    else
+        file = open("../CSV_files/"*cs_instance.filename_save[1:end-9]*"pwl_approx_details.info", "a")
+    end
+    println("\nITERATION $iteration:")
+    println(file, "\nITERATION $iteration:")
+
+    # save only numbers for a concise output in vals
+    vals = []
+
+    for i in 1:length(cs_instance.cs_players)
+        println("PLAYER $i:")
+        println(file,"PLAYER $i:")
+        player = cs_instance.cs_players[i]
+        # h_i
+        println("h_$i is approximated by $(length(player.pwl_h.pwl)) pieces for a wanted precision of $(player.pwl_h.err)")
+        println(file,"h_$i is approximated by $(length(player.pwl_h.pwl)) pieces for a wanted precision of $(player.pwl_h.err)")
+        push!(vals, length(player.pwl_h.pwl))
+        # quadratics
+        for j in 1:length(player.pwlquads)
+            println("quadratic function $j is approximated by $(length(player.pwlquads[j].pwl)) pieces for a wanted precision of $(player.pwlquads[j].err)")
+            println(file,"quadratic function $j is approximated by $(length(player.pwlquads[j].pwl)) pieces for a wanted precision of $(player.pwlquads[j].err)")
+            push!(vals, length(player.pwlquads[j].pwl))
+        end
+        # bilinear
+        for j in 1:length(player.pwlbilins)
+            println("bilinear function $j is approximated by $(length(player.pwlbilins[j].pwl)) pieces for a wanted precision of $(player.pwlbilins[j].err)")
+            println(file,"bilinear function $j is approximated by $(length(player.pwlbilins[j].pwl)) pieces for a wanted precision of $(player.pwlbilins[j].err)")
+            push!(vals, length(player.pwlbilins[j].pwl))
+        end
+    end
+    close(file)
+
+    # save in another file only the numbers in vals
+    if iteration == 1
+        file = open("../CSV_files/"*cs_instance.filename_save[1:end-9]*"pwl_approx_sum_up.info", "w")
+    else
+        file = open("../CSV_files/"*cs_instance.filename_save[1:end-9]*"pwl_approx_sum_up.info", "a")
+    end
+    for val in vals
+        print(file, "$val\t")
+    end
+    println(file)
+    close(file)
+end
+
+function save_successive_solutions_line(filename, solutions, var_namess)
+    # write in filename_i.csv for each player i one line for each iteration containing the value of each variable
+
+    n_players = length(solutions[1])
+    for p in 1:n_players
+        file = open(filename*"_$p.csv", "w")
+
+        # create first line with variable name
+        var_names = var_namess[p]
+        for k in 1:length(var_names)
+            print(file, "$(string(var_names[k]))\t")
+        end
+        println(file)
+
+        # write the solution for each iteration
+        for j in 1:length(solutions[p])
+            sol = solutions[p][j]
+            for k in 1:length(sol)
+                print(file, "$(round(sol[k], digits=3))\t")
+            end
+            println(file)
+        end
+        close(file)
+    end
+end
+
+function save_successive_solutions(filename, solutions, var_namess, max_length_var_names = 22)
+    # write in filename_i.csv for each player i one line for each iteration containing the value of each variable
+
+    n_players = length(solutions[1])
+    for p in 1:n_players
+        file = open(filename*"_$p.csv", "w")
+
+        for k in 1:length(solutions[1][p]) # for each variable
+            # print variable name
+            length_var_name = length(string(var_namess[p][k]))
+            print(file, "$(string(var_namess[p][k]))"*" "^(max_length_var_names-length_var_name))
+            # print successive values of the variable
+            for j in 1:length(solutions)
+                print(file, "$(round(solutions[j][p][k], digits=3))\t")
+            end
+            println(file)
+        end
+        close(file)
+    end
+end
+
+function add_variable_name(filename, var_namess, max_length_var_name = 22)
+    # add the variable name to the solution written in filename
+    lines = readlines(filename)
+    file = open(filename, "w")
+
+    p = 0 # number of current player's solution
+    k = 0 # number of current variable
+    var_names = []
+    for line in lines
+        if (length(line) != 0)
+            if line[1] == 'P' # new player
+                p += 1 # change player number
+                global var_names = var_namess[p]
+                k = 0 # reset count variable
+            end
+            if line[1] == ' ' # line with a variable value
+                k += 1 # increment count variable
+                s = string(var_names[k])
+                complement = max_length_var_name - length(s)
+                line = string(s, " "^complement, replace(line," "=>""))
+            end
+        end
+        println(file, line)
+    end
+    close(file)
 end
 
 #=filename = "../../../../CLionProjects/ZERO-and-PWL/IPG-and-PWL/CSV_files/instance1_Abs2_Abs10_Abs10000_fixedcostfalse/model_output.txt"
