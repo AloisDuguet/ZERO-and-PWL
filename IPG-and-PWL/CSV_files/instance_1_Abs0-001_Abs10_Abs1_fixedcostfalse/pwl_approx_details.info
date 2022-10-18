@@ -1,0 +1,16 @@
+
+ITERATION 1:
+PLAYER 1:
+h_1 is approximated by 6 pieces for a wanted precision of Absolute(0.02)
+quadratic function 1 is approximated by 5 pieces for a wanted precision of Absolute(100)
+quadratic function 2 is approximated by 4 pieces for a wanted precision of Absolute(100)
+quadratic function 3 is approximated by 1 pieces for a wanted precision of Absolute(100)
+bilinear function 1 is approximated by 2 pieces for a wanted precision of Absolute(20)
+bilinear function 2 is approximated by 2 pieces for a wanted precision of Absolute(20)
+PLAYER 2:
+h_2 is approximated by 6 pieces for a wanted precision of Absolute(0.02)
+quadratic function 1 is approximated by 5 pieces for a wanted precision of Absolute(100)
+quadratic function 2 is approximated by 4 pieces for a wanted precision of Absolute(100)
+quadratic function 3 is approximated by 1 pieces for a wanted precision of Absolute(100)
+bilinear function 1 is approximated by 2 pieces for a wanted precision of Absolute(20)
+bilinear function 2 is approximated by 2 pieces for a wanted precision of Absolute(20)
