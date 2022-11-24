@@ -70,9 +70,8 @@ function print_2dpwl_to_txt(pwl, filename)
     println(pwl)
 end
 
-function pwl2d_formulation(model, pwl, var1, var2, name_f)
-    # add a logarithmic SOS1 formulation of a two-variable pwl in model
-    # var1 and var2 are the two variables involved in the pwl, and name_f is the name
+function pwl2d_SOS1_formulation(model, pwl, id_var, id_func)
+    # formulate with convex combination pwl in model with name of variable for position id_var and for value id_func
 
     # get important values
     n = length(pwl)
@@ -345,6 +344,88 @@ function save_ordvar_to_file(ordvar, filename)
     close(file)
 end
 
+function pwl1d_positive_SOS1_formulation(model, pwl, id_var, id_func, name_var = "")
+    # formulate with convex combination pwl in model with name of variable for position id_var and for value id_func
+
+    # get important values
+    n = length(pwl)
+
+    # parse pwl to get a_jk and f_jk
+    a = zeros(n,2)
+    f = zeros(n,2)
+    for i in 1:n
+        p = pwl[i]
+        a1 = p.xMin
+        a2 = p.xMax
+        f1 = p.a*a1+p.b
+        f2 = p.a*a2+p.b
+        a[i,1] = a1
+        a[i,2] = a2
+        f[i,1] = f1
+        f[i,2] = f2
+    end
+
+    # add variables
+    lambda = @variable(model, base_name = "lambda$name_var", [1:n,1:2], lower_bound = 0)
+    z = @variable(model, base_name = "z$name_var", [1:n], Bin)
+
+    # add constraints
+    @constraint(model, id_var == sum(sum(lambda[i,j]*a[i,j] for j in 1:2) for i in 1:n))
+    @constraint(model, id_func[1] == sum(sum(lambda[i,j]*max(0,f[i,j]) for j in 1:2) for i in 1:n))
+    @constraint(model, id_func[2] == sum(sum(lambda[i,j]*max(0,-f[i,j]) for j in 1:2) for i in 1:n))
+    @constraint(model, sum(sum(lambda[i,j] for j in 1:2) for i in 1:n) == 1)
+    @constraint(model, sum(z[i] for i in 1:n) == 1)
+
+    for i in 1:n
+        @constraint(model, lambda[i,1]+lambda[i,2] <= z[i])
+    end
+    return model
+end
+
+function pwl2d_positive_SOS1_formulation(model, pwl, id_var1, id_var2, id_func, name_var = "")
+    # add a convex combination SOS1 formulation of a two-variable pwl in model with positive values
+
+    # get important values
+    n = length(pwl)
+
+    # parse pwl to get a_jk and f_jk
+    x1 = []
+    x2 = []
+    f = []
+    n_ccs = []
+    for i in 1:n
+        p = pwl[i]
+        push!(n_ccs, length(p))
+        push!(x1,zeros(n_ccs[i]))
+        push!(x2,zeros(n_ccs[i]))
+        push!(f,zeros(n_ccs[i]))
+        for j in 1:n_ccs[i]
+            point = p[j]
+            x1[i][j] = point[1]
+            x2[i][j] = point[2]
+            f[i][j] = point[3]
+        end
+    end
+
+    # add variables
+    lambdas = []
+    for i in 1:n
+        push!(lambdas,@variable(model, base_name="lambdas$(name_var)[$i]", [1:n_ccs[i]], lower_bound = 0))
+    end
+    z = @variable(model, base_name="z$name_var", [1:n], Bin)
+    # add an intermediary variable for the value of the pwl which is id_func, already defined
+
+    # add constraints
+    @constraint(model, id_var1 == sum(sum(lambdas[i][j]*x1[i][j] for j in 1:n_ccs[i]) for i in 1:n))
+    @constraint(model, id_var2 == sum(sum(lambdas[i][j]*x2[i][j] for j in 1:n_ccs[i]) for i in 1:n))
+    @constraint(model, id_func[1] == sum(sum(lambdas[i][j]*max(0,f[i][j]) for j in 1:n_ccs[i]) for i in 1:n))
+    @constraint(model, id_func[2] == sum(sum(lambdas[i][j]*max(0,-f[i][j]) for j in 1:n_ccs[i]) for i in 1:n))
+    @constraint(model, sum(sum(lambdas[i][j] for j in 1:n_ccs[i]) for i in 1:n) == 1)
+
+    @constraint(model, [i=1:n], sum(lambdas[i][j] for j in 1:n_ccs[i]) <= z[i])
+    return model
+end
+
 function pwl_formulation_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, pwl1d, pwlbilins, pwlquads, info_pwlquads, C, constant_value, linear_terms_in_spi, filename, fixed_costs = false, fcost = [])
     # write in file filename the matrices of the model Nagurney17 in csv format
 
@@ -547,7 +628,8 @@ function pwl_formulation_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, 
          end
      end
 
-     # test rounding to m digits to diminish PATH numerical issues. l_coefs,r_coefs to round
+     #=# test rounding to m digits to diminish PATH numerical issues. l_coefs,r_coefs to round
+     # USELESS, NUMERICAL ISSUES HAPPEN STILL
      nd = 2
      for i in 1:length(l_coefs)
          el = l_coefs[i]
@@ -556,7 +638,7 @@ function pwl_formulation_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, 
      for i in 1:length(r_coefs)
          el = r_coefs[i]
          r_coefs[i] = csv_vector_line(el.row,round(el.value, digits=nd))
-     end
+     end=#
 
      # extract the objective function
      obj_coefs = []
@@ -640,7 +722,7 @@ function pwl_formulation_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, 
      end
 
      return model, IntegerIndexes, l_coefs, r_coefs, ordvar
- end
+end
 
 function find_VariableIndex(var, ordvar)
     # find the VariableIndex of var according to ordvar a list of variables

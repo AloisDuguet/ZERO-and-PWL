@@ -266,6 +266,8 @@ MathOpt::LCP::LCP(GRBEnv *env, const Game::NashGame &N) : RelaxedModel(*env) {
 	 }
   }
   this->defConst(env);
+  //this->defConst(env); // changed here: added a call to defConst because according to the description of processBounds, defConst should be
+  // called again if at least one row is shedded but I can't see where
 }
 /**
  * @brief Makes a Gurobi object that relaxes complementarity constraints in the

@@ -1,15 +1,15 @@
 struct cybersecurity_params
     n_players::Int64
     n_markets::Int64
-    n_var::Int64
-    Qs::Vector{Matrix{Float64}}
-    Cs::Vector{Matrix{Float64}}
-    cs::Vector{Vector{Float64}}
+    n_var::Int64 # number of variables for one player (n_markets+1)
+    Qs::Vector{Matrix{Float64}} # quadratic terms (bilinear and square terms)
+    Cs::Vector{Matrix{Float64}} # mixed terms
+    cs::Vector{Vector{Float64}} # linear terms
     constant_values::Vector{Float64}
     linear_terms_in_spi::Matrix{Float64}
     D::Vector{Float64}
-    alphas::Vector{Float64}
-    Qbar::Matrix{Float64}
+    alphas::Vector{Float64} # coefficient to the function giving the budget to reach a level of cybersecurity
+    Qbar::Matrix{Float64} # upper bounds of the number of traded goods
     B::Vector{Float64}
     fcost::Vector{Any}
 end
@@ -17,10 +17,10 @@ end
 function instanciate_cybersecurity_params(n_players,n_markets,fixed_cost)
     # return an instanciation of cybersecurity_params with only n_players and n_markets known
     if fixed_cost
-        return cybersecurity_params(n_players,n_markets,n_players+1,[],[],[],zeros(n_players),zeros(n_players,n_players-1),zeros(n_players),zeros(n_players),zeros(n_players,n_markets),zeros(n_players),zeros(n_markets))
+        return cybersecurity_params(n_players,n_markets,n_markets+1,[],[],[],zeros(n_players),zeros(n_players,n_players-1),zeros(n_players),zeros(n_players),zeros(n_players,n_markets),zeros(n_players),zeros(n_markets))
         # price of fcost in thousands to start making business between current player and market j
     else
-        return cybersecurity_params(n_players,n_markets,n_players+1,[],[],[],zeros(n_players),zeros(n_players,n_players-1),zeros(n_players),zeros(n_players),zeros(n_players,n_markets),zeros(n_players),[])
+        return cybersecurity_params(n_players,n_markets,n_markets+1,[],[],[],zeros(n_players),zeros(n_players,n_players-1),zeros(n_players),zeros(n_players),zeros(n_players,n_markets),zeros(n_players),[])
     end
 end
 
@@ -39,24 +39,6 @@ function parse_instance_cybersecurity(filename, fixed_cost = false)
 
     # create cybersecurity_params
     cs_params = instanciate_cybersecurity_params(n_players,n_markets,fixed_cost)
-
-    ##cs_params.n_var = n_players+1
-
-    #=# define data to fill
-    Qs = [] # list of Q of each player i
-    Cs = [] # list of C for each player i
-    cs = [] # list of c for each player i
-    constant_values = zeros(n_players) # constant part of the objective
-    linear_terms_in_spi = zeros(n_players,n_players-1) # linear terms on the other players' variables
-    D = zeros(n_players)
-    alphas = zeros(n_players) # coefficient of function
-    Qbar = zeros(n_players,n_markets) # upper bound on Qij
-    B = zeros(n_players) # maximum cybersecurity budget
-    if fixed_cost
-        cs_params.fcost = zeros(n_markets) # price in thousands to start making business between current player and market j
-    else
-        cs_params.fcost = []
-    end=#
 
     # fill the data
     # ci
@@ -179,13 +161,13 @@ function parse_cs_solution(filename)
     return l, objs
 end
 
-function output_and_save_recap_model(cs_instance, iteration = 1)
+function output_and_save_recap_model(cs_instance, iteration = 1; foldername = "../CSV_files/")
     # sum up number of pieces (print in terminal and in file)
 
     if iteration == 1
-        file = open("../CSV_files/"*cs_instance.filename_save[1:end-9]*"pwl_approx_details.info", "w")
+        file = open(foldername*cs_instance.filename_save[1:end-9]*"pwl_approx_details.info", "w")
     else
-        file = open("../CSV_files/"*cs_instance.filename_save[1:end-9]*"pwl_approx_details.info", "a")
+        file = open(foldername*cs_instance.filename_save[1:end-9]*"pwl_approx_details.info", "a")
     end
     println("\nITERATION $iteration:")
     println(file, "\nITERATION $iteration:")
@@ -218,9 +200,9 @@ function output_and_save_recap_model(cs_instance, iteration = 1)
 
     # save in another file only the numbers in vals
     if iteration == 1
-        file = open("../CSV_files/"*cs_instance.filename_save[1:end-9]*"pwl_approx_sum_up.info", "w")
+        file = open(foldername*cs_instance.filename_save[1:end-9]*"pwl_approx_sum_up.info", "w")
     else
-        file = open("../CSV_files/"*cs_instance.filename_save[1:end-9]*"pwl_approx_sum_up.info", "a")
+        file = open(foldername*cs_instance.filename_save[1:end-9]*"pwl_approx_sum_up.info", "a")
     end
     for val in vals
         print(file, "$val\t")

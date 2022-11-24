@@ -2,6 +2,7 @@ include("parse_instance.jl")
 include("generate_pwl.jl")
 include("pwl_refinement.jl")
 include("PWL2D/heuristique_avancee_flex/main.jl")
+include("separable_functions_heuristic/separable_heuristic.jl")
 
 
 using Dichotomy, LinA
@@ -13,7 +14,7 @@ function parametrized_expressions(alphas)
     println(file, "expr_h = []")
     for i in 1:length(alphas)
         alpha = alphas[i]
-        println(file, "push!(expr_h, :($(alpha)*(1/(sqrt(1-x))-1)))")
+        println(file, "push!(expr_h, :($(alpha)*(1/sqrt(1-x)-1)))")
     end
     close(file)
     return 0
@@ -21,7 +22,7 @@ end
 
 function parametrized_quadratic_expression(coef)
     # return an expression with alpha as parameter by writing it in a file and reading
-    # because it raises an error to write simply expr = :(alpha*(1/sqrt(1-x))-1)
+    # because it raises an error to write simply expr = :($coef*x^2)
     file = open("quadratic_expression.jl", "w")
     println(file, "expr_quad = :($coef*x^2)")
     close(file)
@@ -96,11 +97,14 @@ mutable struct cybersecurity_player
     info_pwlquads::Vector{Int64}
     max_s_i::Float64
     variable_names::Vector{Vector{VariableRef}}
+    objective_value_function # function that gives the value of the original problem for the player (not the one approximated by PWL), 4 variables: x, parameters, p, params
 end
 
 mutable struct cybersecurity_solution
     solution::Vector{Vector{Float64}} # [p][k] one for each player p and one for each variable k
-    objective_value::Vector{Float64} # [p] one for each player p
+    objective_value::Vector{Float64} # [p] one for each player p, evaluation of the pwl objective value
+    real_objective_value::Vector{Float64} # [p] one for each player p, evaluation of the nonlinear objective value
+    nonlinear_best_response::Vector{Float64} # [p] one for each player p, evaluation of the nonlinear best response by Ipopt, local solver only because everything is convex (concave and MAX)
 end
 
 mutable struct cybersecurity_instance
@@ -153,7 +157,7 @@ function create_CSV_files(filename_instance, err_pwlh = Absolute(0.05), err_bili
     parametrized_expressions(params.alphas)
     include("expressions.jl")
 
-    # declare a list containing all cybersecurity_players until cybersecurity_instance is instanciated
+    # declare a list containing all cybersecurity_players until cybersecurity_instance is instantiated
     list_players = []
 
     # create folder if it does not exist (WARNING: CSV_files in filename_save is not needed)
@@ -218,10 +222,10 @@ function create_CSV_files(filename_instance, err_pwlh = Absolute(0.05), err_bili
                     #@time temp.pwl = PWL2D_heuristic(temp.f,temp.str_exprf,temp.err,temp.domain,LP_SOLVER="Gurobi")
                     # two pieces with interpolation for each bilinear function for now:
                     A,B,C,D = domain
-                    s1 = [A,C,A*C]
-                    s2 = [B,C,B*C]
-                    s3 = [B,D,B*D]
-                    s4 = [A,D,A*D]
+                    s1 = [A,C,-coef*A*C]
+                    s2 = [B,C,-coef*B*C]
+                    s3 = [B,D,-coef*B*D]
+                    s4 = [A,D,-coef*A*D]
                     temp.pwl = [[s1,s2,s4],[s2,s3,s4]]
                     push!(pwlbilins, temp)
                     ##@time push!(pwlbilins, PWL2D_heuristic(fs[cpt_f],str_exprf,err,domain,LP_SOLVER="Gurobi"))
@@ -261,7 +265,7 @@ function create_CSV_files(filename_instance, err_pwlh = Absolute(0.05), err_bili
         println("normally written with filename $filename_save")
     end
 
-    solution = cybersecurity_solution([[],[]],[]) # create a fake solution to be able to declare cs_instance. It will be erased later.
+    solution = cybersecurity_solution([[] for i in 1:n_players],[],[],[]) # create a fake solution to be able to declare cs_instance. It will be erased later.
     cs_instance = cybersecurity_instance(filename_instance,filename_save,params,err_pwlh,err_bilinear,err_quad,err0_pwlh,err0_bilinear,err0_quad,fixed_cost,list_players,[solution])
 
     output_and_save_recap_model(cs_instance)
@@ -312,24 +316,6 @@ function update_CSV_files(cs_instance, num_iter)
             println("pwl_quad[$j] of player $p after refinement around $(sol[p][j]):\n$(player.pwlquads[j].pwl)")
         end
 
-        #=# pwlbilins
-        pwlbilins = player.pwlbilins
-        for i in 1:length(pwlbilins)
-            println("pwlbilins[$i] of player $p before refinement:\n$(player.pwlbilins[i].pwl)")
-            pwl_struct = pwlbilins[i]
-            err = pwl_struct.err
-            if typeof(err) == Absolute
-                new_err = Absolute(max(err.delta/2^num_iter,cs_instance.err_bilinear.delta))
-            elseif typeof(err) == Relative
-                new_err = Relative(max(err.percent/2^num_iter,cs_instance.err_bilinear.percent))
-            end
-            # compute pos_bilin, the two values of sol[p] corresponding to the variables of pwlbilins[i]
-            pos_bilin = [sol[p][i],sol[p][n_markets+1]]
-            # needs to be done every time even if the error is already at the wanted level because we don't keep the error satisfied by each piece
-            player.pwlbilins[i] = refine_pwl2d(pwl_struct, pos_bilin, new_err)
-            println("pwlbilins[$i] of player $p after refinement around $(pos_bilin):\n$(player.pwlbilins[i].pwl)")
-        end=#
-
         # print and save number of pieces
         output_and_save_recap_model(cs_instance, num_iter)
 
@@ -359,7 +345,7 @@ function retrieve_solution(cs_instance, num_iter)
     # read last output in iter_outputs/output_$num_iter.txt to parse the solution of last ZERO optimization sol
     filename_sol = "../CSV_files/$(cs_instance.filename_save[1:end-9])outputs/output_$num_iter.txt"
     sol,objs = parse_cs_solution(filename_sol) # sol is a Vector{Vector{Float64}}: one vector per player containing all the variables of its model
-    push!(cs_instance.cs_solutions, cybersecurity_solution(sol,objs))
+    push!(cs_instance.cs_solutions, cybersecurity_solution(sol,objs,[],[]))
 
     # add variable names to the solution
     var_namess = [cs_instance.cs_players[p].variable_names[end] for p in 1:n_players]

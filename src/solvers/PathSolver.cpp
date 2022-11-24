@@ -170,7 +170,7 @@ int Solvers::PATH::CreateLMCP(int    n,
 
   this->Problem.n       = n;
   this->Problem.nnz     = m_nnz;
-  this->Problem.x       = x;
+  this->Problem.x       = x; // look at its value when everything is fine, equal to O one time it is not fine
   this->Problem.q       = q;
   this->Problem.lb      = lb;
   this->Problem.ub      = ub;
@@ -241,7 +241,7 @@ int Solvers::PATH::CreateLMCP(int    n,
   case MCP_Infeasible:
 	 this->status = ZEROStatus::NotSolved;
   default:
-	 this->status = ZEROStatus::Numerical;
+	 this->status = ZEROStatus::Numerical; // why does it stop here after stopping at MCP_Infeasible?? because it is a switch and there is no break...
   }
 
 
@@ -322,7 +322,7 @@ Solvers::PATH::PATH(const arma::sp_mat   &M,
 		} // end bounds
 	 }   // end empty row
   }     // end while
-
+ // check if row=n+1
 
   // Sparse iterator for M
   for (arma::sp_mat::const_iterator it = M.begin(); it != M.end(); ++it) {
@@ -343,7 +343,8 @@ Solvers::PATH::PATH(const arma::sp_mat   &M,
 	*/
 
   try {
-	 stat = this->CreateLMCP(n,
+	 stat = this->CreateLMCP(n, // take a look at the number of cols and rows of M, if different, then it seems not fine to just give n the number of rows
+	 //stat = this->CreateLMCP((M.n_rows<M.n_cols)?M.n_cols:M.n_rows,
 									 nnz,
 									 &_Mi[0],
 									 &_Mj[0],

@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
      IPG_Model.setNumThreads(4);
      IPG_Model.setLCPAlgorithm(Data::LCP::Algorithms::PATH);
      IPG_Model.setGameObjective(Data::IPG::Objectives::Feasibility);
-     IPG_Model.setTimeLimit(60);
+     IPG_Model.setTimeLimit(600);
      cout << "before finalizing the model" << endl;
      // Lock the model
      IPG_Model.finalize();
@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
 		 IPG_Model2.setNumThreads(4);
 		 IPG_Model2.setLCPAlgorithm(Data::LCP::Algorithms::MIP);
 		 IPG_Model2.setGameObjective(Data::IPG::Objectives::Linear);
-		 IPG_Model2.setTimeLimit(20);
+		 IPG_Model2.setTimeLimit(600);
 		 IPG_Model2.finalize();
 		 cout << "optimization with MIP algorithm starting because PATH could not optimize it" << endl;
 		 IPG_Model2.findNashEq();
