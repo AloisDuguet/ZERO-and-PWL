@@ -17,7 +17,7 @@ end
 function instanciate_cybersecurity_params(n_players,n_markets,fixed_cost)
     # return an instanciation of cybersecurity_params with only n_players and n_markets known
     if fixed_cost
-        return cybersecurity_params(n_players,n_markets,n_markets+1,[],[],[],zeros(n_players),zeros(n_players,n_players-1),zeros(n_players),zeros(n_players),zeros(n_players,n_markets),zeros(n_players),zeros(n_markets))
+        return cybersecurity_params(n_players,n_markets,n_markets+1,[],[],[],zeros(n_players),zeros(n_players,n_players-1),zeros(n_players),zeros(n_players),zeros(n_players,n_markets),zeros(n_players),zeros(n_players))
         # price of fcost in thousands to start making business between current player and market j
     else
         return cybersecurity_params(n_players,n_markets,n_markets+1,[],[],[],zeros(n_players),zeros(n_players,n_players-1),zeros(n_players),zeros(n_players),zeros(n_players,n_markets),zeros(n_players),[])
@@ -60,26 +60,79 @@ function parse_instance_cybersecurity(filename, fixed_cost = false)
             cs_params.constant_values[i] += -parse(Float64, popfirst!(splitted))
         end
     end
-    # rho_j
-    for j in 1:n_markets
+
+    new_parsing_method = true # false will use a faulty code
+    if new_parsing_method
+        # m_j
         splitted = popfirst!(splitteds)
-        for i in 1:n_players
-            for k in 1:cs_params.n_var
-                # quadratic terms
-                cs_params.Qs[i][k,j] += parse(Float64, splitted[k+cs_params.n_var*(i-1)])
-                # mixed terms
-                for l in 1:n_players
-                    if l > i
-                        cs_params.Cs[i][k+cs_params.n_var*(l-2),j] += parse(Float64, splitted[k+cs_params.n_var*(l-1)])
-                    elseif l < i
-                        cs_params.Cs[i][k+cs_params.n_var*(l-1),j] += parse(Float64, splitted[k+cs_params.n_var*(l-1)])
+        m = zeros(n_markets)
+        for j in 1:n_markets
+            m[j] = parse(Float64, splitted[j])
+            if m[j] < 0
+                error("all m_j should be positive, change instance txt file because m_$j = $(m[j])")
+            end
+        end
+        # r_jfcost
+        splitted = popfirst!(splitteds)
+        r = zeros(n_markets)
+        for j in 1:n_markets
+            r[j] = parse(Float64, splitted[j])
+        end
+        # q_j
+        splitted = popfirst!(splitteds)
+        q = zeros(n_markets)
+        for j in 1:n_markets
+            q[j] = parse(Float64, splitted[j])
+        end
+        # rebuild rho_j in format:
+        # rho1 _Q11 + ... + _Q1n + _s1 + ... + _Qm1 + ... + _Qmn + _sm + _
+        # or not, let's do the following finally: modify Qs, Cs and cs
+        # size of Cs:
+        # zeros(cs_params.n_var*(cs_params.n_players-1), cs_params.n_var))
+        for I in 1:n_players # for each f_I term of player I
+            for j in 1:n_markets # for each market j
+                for i in 1:n_players # for each player i
+                    if i == I
+                        # quadratic terms
+                        cs_params.Qs[I][j,j] += -m[j] # add on Qij, j-th variable of player I (i==I)
+                        cs_params.Qs[I][cs_params.n_var,j] += r[j]/n_players # add on s_i, last variable of player I (i==I)
                     end
                 end
+                # mixed terms
+                for i in 1:n_players-1 # for all player different from player I
+                    cs_params.Cs[I][(i-1)*cs_params.n_var+j,j] += -m[j] # add on Qij, j-th variable of player i
+                    cs_params.Cs[I][i*cs_params.n_var,j] += r[j]/n_players # add on s_i, last variable of player i
+                end
+                # linear terms
+                cs_params.cs[I][j] += q[j]
             end
-            # linear term
-            cs_params.cs[i][j] += parse(Float64, splitted[end])
         end
+    else
+        error("faulty code")
+        # rho_j
+        # ARGH it is false : the total number of terms given to Cs, Qs and cs is more than should be
+        # 28 instead of 20 for 2 players and 2 markets
+        #=for j in 1:n_markets
+            splitted = popfirst!(splitteds)
+            for i in 1:n_players
+                for k in 1:cs_params.n_var
+                    # quadratic terms
+                    cs_params.Qs[i][k,j] += parse(Float64, splitted[k+cs_params.n_var*(i-1)])
+                    # mixed terms
+                    for l in 1:n_players
+                        if l > i
+                            cs_params.Cs[i][k+cs_params.n_var*(l-2),j] += parse(Float64, splitted[k+cs_params.n_var*(l-1)])
+                        elseif l < i
+                            cs_params.Cs[i][k+cs_params.n_var*(l-1),j] += parse(Float64, splitted[k+cs_params.n_var*(l-1)])
+                        end
+                    end
+                end
+                # linear term
+                cs_params.cs[i][j] += parse(Float64, splitted[end])
+            end
+        end=#
     end
+
     # Di
     splitted = popfirst!(splitteds)
     for i in 1:n_players
@@ -104,24 +157,31 @@ function parse_instance_cybersecurity(filename, fixed_cost = false)
     end
 
     # add -piDi term
-    # -piDi = (1-si)(1-sbar)Di = (1-1.5si-0.5spi+0.5si^2+0.5sispi)Di
+    # n_p = n_players
+    # -piDi = (1-si)(1-sbar)Di = -Di*(1 - (1+1/n_p)*si - sum_spi of 1/n_p*spi + 1/n_p*si^2 + sum_spi of 1/n_p*si*spi)
     for i in 1:n_players
         cs_params.constant_values[i] += -cs_params.D[i]
-        cs_params.cs[i][n_players+1] += 1.5*cs_params.D[i]
+        cs_params.cs[i][n_markets+1] += (1+1/n_players)*cs_params.D[i]
         # the term in spi is not a linear term but a constant term, that is not included in an RBG, so we add it to vector linear_terms_in_spi
         # it contains only one value for each other player because the only term in this case is D[i]*spi/n_players
-        for j in 1:n_players-1
-            cs_params.linear_terms_in_spi[i,j] += cs_params.D[i]/n_players
+        for k in 1:n_players-1
+            cs_params.linear_terms_in_spi[i,k] += cs_params.D[i]/n_players
+            cs_params.Cs[i][(n_markets+1)*k,n_markets+1] += -cs_params.D[i]/n_players
         end
-        cs_params.Qs[i][n_players+1,n_players+1] += -0.5*cs_params.D[i]
-        cs_params.Cs[i][n_players+1,n_players+1] += -0.5*cs_params.D[i]
+        cs_params.Qs[i][n_markets+1,n_markets+1] += -cs_params.D[i]/n_players
     end
 
     # fixed costs terms
     if fixed_cost
         splitted = popfirst!(splitteds)
-        for j in 1:n_markets
-            cs_params.fcost[j] = parse(Float64, splitted[j])
+        if length(splitted) == n_players
+            for i in 1:n_players # BAD CHOICE, the best would be a cost for each pair (player,market) but for now it is one cost per player
+                cs_params.fcost[i,j] = [parse(Float64, splitted[i]) for j in 1:n_markets]
+            end
+        elseif length(splitted) == n_players*n_markets
+
+        else
+            error("size problem with fixed_costs which should be either $n_players or $(n_players*n_markets) but which are $(length(splitted))")
         end
     end
 
@@ -287,3 +347,14 @@ end
 
 #=filename = "../../../../CLionProjects/ZERO-and-PWL/IPG-and-PWL/CSV_files/instance1_Abs2_Abs10_Abs10000_fixedcostfalse/model_output.txt"
 parsed_sol = parse_cs_solution(filename)=#
+
+#=
+for field in fieldnames(cybersecurity_params)
+   println(field)
+   println(getfield(params,field))
+   println(getfield(adap,field))
+   if getfield(params,field) != getfield(adap,field)
+      error()
+   end
+end
+=#

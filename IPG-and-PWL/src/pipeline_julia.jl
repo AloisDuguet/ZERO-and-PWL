@@ -3,63 +3,12 @@ include("generate_pwl.jl")
 include("pwl_refinement.jl")
 include("PWL2D/heuristique_avancee_flex/main.jl")
 include("separable_functions_heuristic/separable_heuristic.jl")
-
+include("other_functions.jl")
 
 using Dichotomy, LinA
-
-function parametrized_expressions(alphas)
-    # return an expression with alpha as parameter by writing it in a file and reading
-    # because it raises an error to write simply expr = :(alpha*(1/sqrt(1-x))-1)
-    file = open("expressions.jl", "w")
-    println(file, "expr_h = []")
-    for i in 1:length(alphas)
-        alpha = alphas[i]
-        println(file, "push!(expr_h, :($(alpha)*(1/sqrt(1-x)-1)))")
-    end
-    close(file)
-    return 0
-end
-
-function parametrized_quadratic_expression(coef)
-    # return an expression with alpha as parameter by writing it in a file and reading
-    # because it raises an error to write simply expr = :($coef*x^2)
-    file = open("quadratic_expression.jl", "w")
-    println(file, "expr_quad = :($coef*x^2)")
-    close(file)
-    return 0
-end
-
-function add_string_error(name,err)
-    # add to the string name an information on err: "Abs" or "Rel" followed by "{integer_part}-{floating_part}"
-    # add type of error
-    if typeof(err) == Absolute
-        name = string(name, "Abs")
-        val = err.delta
-    elseif typeof(err) == Relative
-        name = string(name, "Rel")
-        val = err.percent
-    else
-        error("unknown type of error: $(typeof(err))")
-    end
-    # remove a null decimal part for unicity reasons
-    if val == floor(val)
-        val = Int(floor(val))
-    end
-    # add value of error
-    name = string(name,"$(replace(string(val), "."=>"-"))")
-    return string(name, "_")
-end
-
-function compute_filename(filename_instance, err1, err2, err3, fixed_cost)
-    # return the name of the instance according to the parameters
-    name = ""
-    name = string(name, filename_instance[1:end-4], "_") # removing .txt
-    name = add_string_error(name,err1)
-    name = add_string_error(name,err2)
-    name = add_string_error(name,err3)
-    name = string(name, "fixedcost$fixed_cost/model.txt") # do not change "model" again, or change everywhere it will change something
-    return name
-end
+# instead of using LinA, use a pull of the github because tol is modified to 1e-13 (previously 1e-5) in ConvexCorridor.jl, which changes HeuristicLin()
+# so that one additional piece is computed even if less than 1e-5 in the abscisse is missing in the domain.
+#include("/home/aduguet/Documents/doctorat/2dpwlb/codes/julia/LinA.jl-master/src/LinA.jl")
 
 mutable struct pwl2d
     f
@@ -183,7 +132,7 @@ function create_CSV_files(filename_instance, err_pwlh = Absolute(0.05), err_bili
         err = err0_pwlh # Absolute(0.05)
         t1 = 0
         t2 = max_s_is[p]
-        pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,LinA.exactLin(expr_h[p],t1,t2,err))
+        pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,LinA.Linearize(expr_h[p],t1,t2,err))
         println("\nh_$p approximated by $(length(pwl_h.pwl)) pieces\n$pwl_h\n")
 
         # storage for generated approximation of bilinear terms
@@ -241,8 +190,8 @@ function create_CSV_files(filename_instance, err_pwlh = Absolute(0.05), err_bili
                     t1 = 0
                     t2 = upper_bounds[i1]
                     err = err0_quad # Absolute(300)
-                    push!(pwlquads, pwlquad(expr_quad,params.Qs[p][i1,i1],t1,t2,err,LinA.exactLin(expr_quad,t1,t2,err)))
-                    ##push!(pwlquads, LinA.exactLin(expr_quad,t1,t2,err))
+                    push!(pwlquads, pwlquad(expr_quad,params.Qs[p][i1,i1],t1,t2,err,LinA.Linearize(expr_quad,t1,t2,err)))
+                    ##push!(pwlquads, LinA.Linearize(expr_quad,t1,t2,err))
                     println("\nquadratic pwl $(length(pwlquads)) with $(length(pwlquads[end].pwl)) pieces and coef $(params.Qs[p][i1,i1])")
                     println(pwlquads[end])
                 end

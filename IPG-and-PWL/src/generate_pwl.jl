@@ -215,8 +215,8 @@ function pwl1d_formulation(model, pwl, id_var, id_func, name_var = "")
     # add variables
     lambda = @variable(model, base_name = "lambda$name_var", [1:n,1:2], lower_bound = 0)
     z = @variable(model, base_name = "z$name_var", [1:l], Bin)
-    println("$(2*n) continuous variables (and $n pieces)")
-    println("$l binary variables")
+    #println("$(2*n) continuous variables (and $n pieces)")
+    #println("$l binary variables")
 
     # add constraints
     @constraint(model, id_var == sum(sum(lambda[i,j]*a[i,j] for j in 1:2) for i in 1:n))
@@ -258,8 +258,8 @@ function pwl1d_positive_formulation(model, pwl, id_var, id_func, name_var = "")
     # add variables
     lambda = @variable(model, base_name = "lambda$name_var", [1:n,1:2], lower_bound = 0)
     z = @variable(model, base_name = "z$name_var", [1:l], Bin)
-    println("$(2*n) continuous variables (and $n pieces)")
-    println("$l binary variables")
+    #println("$(2*n) continuous variables (and $n pieces)")
+    #println("$l binary variables")
 
     # add constraints
     @constraint(model, id_var == sum(sum(lambda[i,j]*a[i,j] for j in 1:2) for i in 1:n))
@@ -305,8 +305,8 @@ function pwl1d_positive_SOS2_formulation(model, pwl, id_var, id_func, name_var =
     # add variables
     lambda = @variable(model, base_name = "lambda$name_var", [1:n+1], lower_bound = 0)
     z = @variable(model, base_name = "z$name_var", [1:l], Bin)
-    println("$(2*n) continuous variables (and $n pieces)")
-    println("$l binary variables")
+    #println("$(2*n) continuous variables (and $n pieces)")
+    #println("$l binary variables")
 
     # add constraints
     @constraint(model, id_var == sum(lambda[i]*a[i] for i in 1:n+1))

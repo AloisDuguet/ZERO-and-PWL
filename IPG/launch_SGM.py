@@ -7,17 +7,16 @@ Created on Tue Nov  8 15:35:36 2022
 """
 # don't change the line number of the following line : it should be line 10
 # (cf write_SGM_instance_filename in ../IPG-and-PWL/src/SGM_solver.jl)
-filename = "../IPG-and-PWL/SGM_files/instance_2_Abs0-0005_fixedcostfalse"
+filename = "../IPG-and-PWL/SGM_files/instance_1_Abs0-05_fixedcosttrue"
 
 # workaround to have numpy found by the import method:
-path_list = ['/home/aduguet/anaconda3/lib/python3.8','/home/aduguet/anaconda3/lib/python3.8/lib-dynload',
-             '/home/aduguet/.local/lib/python3.8/site-packages','/home/aduguet/anaconda3/lib/python3.8/site-packages',
-             '/home/aduguet/anaconda3/lib/python3.8/site-packages/IPython/extensions','/home/aduguet/.ipython',
-             '/home/aduguet/.ipython']
-import sys
-for path in path_list:
-    sys.path.append(path)
-
+##path_list = ['/home/aduguet/anaconda3/lib/python3.8','/home/aduguet/anaconda3/lib/python3.8/lib-dynload',
+##             '/home/aduguet/.local/lib/python3.8/site-packages','/home/aduguet/anaconda3/lib/python3.8/site-packages',
+##             '/home/aduguet/anaconda3/lib/python3.8/site-packages/IPython/extensions','/home/aduguet/.ipython',
+##             '/home/aduguet/.ipython']
+##import sys
+##for path in path_list:
+##    sys.path.append(path)
 
 import Instances
 import Compute_NE
@@ -64,6 +63,7 @@ def save_results_SGM(filename, ne, profits, S, n_iter, cpu_time):
 G = Instances.Game('CyberSecurity',2,2, filename)
 
 max_iter = 100
+print("launching IterativeSG_NOT_DFS")
 ne, Profits_SGM,S,num_iter_done,cpu_time_not_dfs = Compute_NE.IterativeSG_NOT_DFS(G,max_iter)
 filename = "output_SGM.txt"
 save_results_SGM(filename, ne, Profits_SGM, S, num_iter_done, cpu_time_not_dfs)

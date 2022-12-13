@@ -185,7 +185,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
         #S, U_p, Best_m = InitialStrategiesII(G,opt_solver)
     else:
         U_p, S = IndUtilities(G.m(), G.c(), G.Q(), [[] for _ in range(G.m())], [[] for _ in range(G.m())], S)
-        Best_m = CreateModels(G.m(), G.n_I(), G.n_C(), G.n_constr(), G.c(), G.Q(), G.A(), G.b())
+        Best_m = CreateModels(G.m(), G.n_I(), G.n_C(), G.n_constr(), G.c(), G.Q(), G.A(), G.b(), G.type(), G)
     S_new = [[] for p in range(G.m())]
     if [[]] in S:
         print("ERROR: There is a player without feasible strategies")

@@ -220,7 +220,7 @@ function best_response_one_iteration(filename_instance, parameters, num_iter, er
         err = err_pwlh # Absolute(0.05)
         t1 = 0
         t2 = max_s_is[p]
-        pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,LinA.exactLin(expr_h[p],t1,t2,err))
+        pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,LinA.Linearize(expr_h[p],t1,t2,err))
         print("number of pieces: $(length(pwl_h.pwl)) / ")
         #println("\nh_$p approximated by $(length(pwl_h.pwl)) pieces\n$pwl_h\n")
 
@@ -283,9 +283,9 @@ function best_response_one_iteration(filename_instance, parameters, num_iter, er
                     t1 = 0
                     t2 = upper_bounds[i1]
                     err = err_quad # Absolute(300)
-                    push!(pwlquads, pwlquad(expr_quad,params.Qs[p][i1,i1],t1,t2,err,LinA.exactLin(expr_quad,t1,t2,err)))
+                    push!(pwlquads, pwlquad(expr_quad,params.Qs[p][i1,i1],t1,t2,err,LinA.Linearize(expr_quad,t1,t2,err)))
                     print("$(length(pwlquads[end].pwl)) ")
-                    ##push!(pwlquads, LinA.exactLin(expr_quad,t1,t2,err))
+                    ##push!(pwlquads, LinA.Linearize(expr_quad,t1,t2,err))
                     #println("\nquadratic pwl $(length(pwlquads)) with $(length(pwlquads[end].pwl)) pieces and coef $(params.Qs[p][i1,i1])")
                     #println(pwlquads[end])
                 end

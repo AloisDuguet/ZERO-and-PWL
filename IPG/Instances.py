@@ -376,6 +376,7 @@ def read_numbers_cybersecurity(foldername):
         _ = int(f.readline())
         _ = int(f.readline())
         f.close()
+    print("end of read_numbers_cybersecurity with the list of number of variables:")
     print(n_var)
     return n_var,n_constr,n_I,n_C,n_players,n_markets
 
@@ -394,22 +395,89 @@ def CyberSecurityGame(ins):
     for i in range(1,n_players+1):
         print(n_var[i-1])
         c.append(read_vector(ins+"/model_c%i.csv"%i, n_var[i-1]))
-        Q.append(read_matrix(ins+"/model_Q%i.csv"%i, n_var[i-1], n_var[i-1]))
-        C.append(read_matrix(ins+"/model_C%i.csv"%i, sum(n_var[i] for i in range(n_players)) - n_var[i-1], n_var[i-1]))
+        Q.append(read_matrix(ins+"/model_Q%i.csv"%i, n_var[i-1], n_var[i-1])) # WARNING: the matrices Q in files are adapted to a model without the pwl function
+        C.append(read_matrix(ins+"/model_C%i.csv"%i, (n_markets+1)*(n_players-1), n_markets+1))
+        #C.append(read_matrix(ins+"/model_C%i.csv"%i, sum(n_var[i] for i in range(n_players)) - n_var[i-1], n_var[i-1])) # WARNING: the matrices C in files are adapted to a model without the pwl function, we need to readapt them after parsing them
         A.append(read_matrix(ins+"/model_A%i.csv"%i, n_constr[i-1], n_var[i-1]))
         b.append(read_vector(ins+"/model_b%i.csv"%i, n_constr[i-1]))
+        C[len(C)-1] = adapt_C(i-1,n_players,n_markets,n_var,C[len(C)-1])
 
     # merge Q and C in Q because C is not used
-    if n_players != 2:
-        Raise("error not coded for more than two players")
+    if n_players >= 4:
+        print("not coded right now because of a shape problem that causes an error at the start of BestReactionGurobiCyberSecurity.")
+        print("for two players, np.shape(Q) is (2,2), but for what is built right here, np.shape(Q) is (m,) and thus in BestReactionGurobiCyberSecurity, Q_p[k] is of shape (1,x) instead of (len(profile[k],x))")
+        print("to correct this problem, just copy the case n_players=3, with the right position of lines and columns per bloc")
+        error()
+        QQ = []
+        for i in range(n_players):
+            mat = [[]]
+            QQ.append([])
+            for j in range(n_players):
+                if j == i:
+                    print("i %i j %i with Q[%i]"%(i,j,i))
+                    print(np.shape(Q[i]))
+                    QQ[i].append(Q[i])
+                elif j > i:
+                    print("i %i j %i with C[%i][%i]"%(i,j,i,j-1))
+                    print(np.shape(C[i][n_var[i]*(j-1):n_var[i]*j,:]))
+                    QQ[i].append(C[i][n_var[i]*(j-1):n_var[i]*j,:])
+                else:
+                    print("i %i j %i with C[%i][%i]"%(i,j,i,j))
+                    print(np.shape(C[i][n_var[i]*j:n_var[i]*(j+1),:]))
+                    QQ[i].append(C[i][n_var[i]*j:n_var[i]*(j+1),:])
+            print(np.shape(Q))
+
+        #RaiseError("error not coded for more than two players")
+    elif n_players == 3:
+        n0 = n_var[0]
+        n1 = n_var[1]
+        n2 = n_var[2]
+        print("shape of Q[1] before building it: ", np.shape(Q[1]))
+        print("shape of C[0] before building Q: ", np.shape(C[0]))
+        print("shape of C[1] before building Q: ", np.shape(C[1]))
+        print("shape of C[2] before building Q: ", np.shape(C[2]))
+        Q = [[Q[0],C[0][0:n1,:],C[0][n1:n1+n2,:]],[C[1][0:n0,:],Q[1],C[1][n0:n0+n2,:]],[C[2][0:n0,:],C[2][n0:n0+n1,:],Q[2]]]
+        print(np.shape(Q))
     else:
         print(np.shape(Q[0]))
         print(np.shape(C[0]))
-        print(np.shape(Q[1]))
         print(np.shape(C[1]))
-        Q = [[Q[0],C[0]],[C[1],Q[1]]] # 8143.306158386399, 7297.113564998809 without transpositions and without constant terms
+        print(np.shape(Q[1]))
+        Q = [[Q[0],C[0]],[C[1],Q[1]]]
+        print(np.shape(Q))
+        print(np.shape(np.array(Q)))
 
     return n_players, n_I, n_C, n_constr, c, Q, C, A, b
+
+def adapt_C(p, n_players, n_markets, n_var, C):
+    # C was parsed from files, but is adapted to a model without pwl function h_i (there are indices problems)
+    # this function adapt C to the model with the continuous and binary variables introduced by the pwl function h_i
+
+    n_real_var = n_markets+1
+    new_C = np.zeros((np.sum(n_var[i] for i in range(n_players) if i != p), n_var[p]))
+    print("C[%i]:\n"%p, C)
+    for i in range(n_players):
+        print("\ni: %i"%i)
+        if i < p:
+            start_pos1 = np.sum(n_var[j] for j in range(i))
+            end_pos1 = start_pos1 + n_real_var
+            start_pos2 = 0
+            end_pos2 = start_pos2 + n_real_var
+            print("(%i:%i,%i:%i)"%(start_pos1,end_pos1,start_pos2,end_pos2))
+            print(C[n_real_var*i:n_real_var*(i+1),:])
+            print(new_C[start_pos1:end_pos1, start_pos2:end_pos2])
+            new_C[start_pos1:end_pos1, start_pos2:end_pos2] = C[n_real_var*i:n_real_var*(i+1),:]
+        elif i > p:
+            start_pos1 = np.sum(n_var[j] for j in range(i) if j != p)
+            end_pos1 = start_pos1 + n_real_var
+            start_pos2 = 0
+            end_pos2 = start_pos2 + n_real_var
+            print("(%i:%i,%i:%i)"%(start_pos1,end_pos1,start_pos2,end_pos2))
+            print(C[n_real_var*(i-1):n_real_var*i,:])
+            print(new_C[start_pos1:end_pos1, start_pos2:end_pos2])
+            new_C[start_pos1:end_pos1, start_pos2:end_pos2] = C[n_real_var*(i-1):n_real_var*i,:]
+    print("new_C[%i]:\n"%p, new_C)
+    return new_C
 
 def read_vector(filename, n):
     # read a vector in csv in format "pos value" or "value"

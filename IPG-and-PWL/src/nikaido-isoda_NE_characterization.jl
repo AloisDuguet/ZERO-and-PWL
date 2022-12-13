@@ -1,6 +1,6 @@
 using Roots, AmplNLWriter, JuMP, Ipopt_jll
 
-function evaluate_cybersecurity_objective_value(x, parameters, p, params)
+function evaluate_cybersecurity_objective_value(x, parameters, p, params, fixed_costs)
     # the only PWL function here is h_i (no quadratic and bilinear functions)
     # return the evaluation on x (x^p) of the objective value of player p for the original game, with instance described in params
     # parameters are the values of the variables of the other players (x^-p)
@@ -16,6 +16,15 @@ function evaluate_cybersecurity_objective_value(x, parameters, p, params)
 
     # linear terms
     val += sum(c[i]*x[i] for i in 1:n_var)
+
+    # fixed cost terms
+    if fixed_costs
+        println("size of variables x $x: $(length(x))")
+        println("n_var = $n_var and $n_markets markets")
+        println("player $p")
+        println("params.fcost = $(params.fcost)")
+        val -= params.fcost[p]*sum(x[i] for i in n_var+1:n_var+n_markets)
+    end
 
     # order two terms
     val += sum(sum(x[i]*Q[i,j]*x[j] for j in 1:n_var) for i in 1:n_var)
@@ -33,10 +42,10 @@ function evaluate_cybersecurity_objective_value(x, parameters, p, params)
     # cybersecurity budget
     val += -(params.alphas[p]*(1/sqrt(1-x[n_markets+1])-1))
 
-    println("evaluation of the objective function of player $p:")
-    println("x = $x")
-    println("parameters = $parameters")
-    println("objective value = $val")
+    #println("evaluation of the objective function of player $p:")
+    #println("x = $x")
+    #println("parameters = $parameters")
+    #println("objective value = $val")
     return val
 end
 
@@ -46,31 +55,31 @@ function compute_profit_linear_game(profits, sol, constant_values, linear_terms_
 
     n_players = length(profits)
     vals = zeros(n_players)
-    println(constant_values)
-    println(linear_terms_in_spi)
-    println(sol)
-    println(profits)
+    #println(constant_values)
+    #println(linear_terms_in_spi)
+    #println(sol)
+    #println(profits)
     for p in 1:n_players
         vals[p] = profits[p]+constant_values[p]
         for i in 1:n_players-1
             sp = i + (i >= p)
-            println("p $p i $i sp $sp")
+            #println("p $p i $i sp $sp")
             vals[p] += linear_terms_in_spi[p,i]*sol[sp][3]
         end
     end
-    println(vals)
+    #println(vals)
     return vals
 end
 
-function compute_cybersecurity_nonlinear_best_response(player_index, n_players, n_j, Qb_i, max_s_i, c, alpha, Q, C, constant_value, linear_terms_in_spi, filename, parameters, fixed_costs = false, fcost = [])
+function compute_cybersecurity_nonlinear_best_response(player_index, n_players, n_markets, Qb_i, max_s_i, c, alpha, Q, C, constant_value, linear_terms_in_spi, filename, parameters, fixed_costs = false, fcost = [])
      # solve nonlinear best response of cybersecurity model
 
      # declare model and common variables and constraints
-     #model = Model(() -> AmplNLWriter.Optimizer(Couenne_jll.amplexe))
-     model = Model(() -> AmplNLWriter.Optimizer(Ipopt_jll.amplexe))
+     model = Model(() -> AmplNLWriter.Optimizer(Couenne_jll.amplexe))
+     # does not manage binary variables: model = Model(() -> AmplNLWriter.Optimizer(Ipopt_jll.amplexe))
      set_optimizer_attribute(model, "print_level", 0)
 
-     var_Q_i = @variable(model, Q_i[1:n_j] >= 0)
+     var_Q_i = @variable(model, Q_i[1:n_markets] >= 0)
      var_s_i = @variable(model, s_i >= 0)
      @constraint(model, s_i <= max_s_i)
 
@@ -80,32 +89,33 @@ function compute_cybersecurity_nonlinear_best_response(player_index, n_players, 
 
      # fixed costs to make business with markets or not depending on the value of parameter fixed_costs
      if fixed_costs
-         activate_fixed_cost = @variable(model, base_name = "activate_fixed_cost", [j=1:n_j], Bin)
-         @constraint(model, [j=1:n_j], Q_i[j] <= Qb_i[j]*activate_fixed_cost[j])
+         activate_fixed_cost = @variable(model, base_name = "activate_fixed_cost", [j=1:n_markets], Bin)
+         @constraint(model, [j=1:n_markets], Q_i[j] <= Qb_i[j]*activate_fixed_cost[j])
+         [push!(vars_player, activate_fixed_cost[i]) for i in 1:length(activate_fixed_cost)]
      else
-         @constraint(model, [j=1:n_j], Q_i[j] <= Qb_i[j])
+         @constraint(model, [j=1:n_markets], Q_i[j] <= Qb_i[j])
      end
 
      # add the NL expression h_i(s_i)
      @NLexpression(model, h_i, alpha*(1/sqrt(1-s_i)-1))
 
      # add order two terms in an NLexpression
-     @NLexpression(model, order_two_terms, sum(sum(vars_player[i]*Q[i,j]*vars_player[j] for j in 1:length(vars_player)) for i in 1:length(vars_player)))
+     @NLexpression(model, order_two_terms, sum(sum(vars_player[i]*Q[i,j]*vars_player[j] for j in 1:n_markets+1) for i in 1:n_markets+1))
 
      # prepare expression with the terms of the objective function involving parameters
      # j is the index for another player's variables
      # i is the index of the other player currently considered
      # k is the index for the player's variables
-     @expression(model, param_terms, sum(sum(sum(parameters[i][j]*C[(i-1)*length(vars_player)+j,k]*vars_player[k] for j in 1:length(vars_player)) for i in 1:n_players-1) for k in 1:length(vars_player))
-     + sum(linear_terms_in_spi[i]*parameters[i][n_j+1] for i in 1:n_players-1) + constant_value)
+     @expression(model, param_terms, sum(sum(sum(parameters[i][j]*C[(i-1)*(n_markets+1)+j,k]*vars_player[k] for j in 1:n_markets+1) for i in 1:n_players-1) for k in 1:n_markets+1)
+     + sum(linear_terms_in_spi[i]*parameters[i][n_markets+1] for i in 1:n_players-1) + constant_value)
      #println("expression:\n$param_terms")
 
      # add the objective function
      if fixed_costs
-         @NLobjective(model, Max, -1*h_i + order_two_terms + sum(c[k]*Q_i[k] for k in 1:n_j)
-         + c[end]*s_i - sum(fcost[j]*activate_fixed_cost[j] for j in 1:n_j) + param_terms)
+         @NLobjective(model, Max, -1*h_i + order_two_terms + sum(c[k]*Q_i[k] for k in 1:n_markets)
+         + c[end]*s_i - sum(fcost[j]*activate_fixed_cost[j] for j in 1:n_markets) + param_terms)
      else
-         @NLobjective(model, Max, -1*h_i + order_two_terms + sum(c[k]*Q_i[k] for k in 1:n_j) + c[end]*s_i + param_terms)
+         @NLobjective(model, Max, -1*h_i + order_two_terms + sum(c[k]*Q_i[k] for k in 1:n_markets) + c[end]*s_i + param_terms)
      end
 
      # check validity of model by printing it
@@ -162,7 +172,7 @@ function compute_max_s_i_for_all_players(n_players, params)
     return max_s_is
 end
 
-function cybersecurity_NE_characterization_function(x, params, fixed_cost)
+function cybersecurity_NE_characterization_function(x, params, fixed_costs)
     # compute \hat{V}(x) cf theorem 1 Harks and Shwarz's arxiv paper from 2022 "Generalized Nash Equilibrium Problems with Mixed-Integer Variables∗"
     # using the Nikaido-Isoda function for the specific case of the cybersecurity (nonlinear) model
     # this function is not generic because the parameters of the evaluation function and the resolution of the best response have non generic arguments
@@ -183,17 +193,19 @@ function cybersecurity_NE_characterization_function(x, params, fixed_cost)
     for p in 1:n_players
         # evaluate the NL objective function of player p
         parameters = [x[i] for i in 1:n_players if i != p]
-        obj_p = evaluate_cybersecurity_objective_value(x[p], parameters, p, params)
+        obj_p = evaluate_cybersecurity_objective_value(x[p], parameters, p, params, fixed_costs)
 
-        # compute the inf in y_i (because it is a maximization problem)
+        # compute the inf in y_i (because it is a maximization problem), NBR = Non-linear Best Response
         model_NBR, sol_NBR, obj_NBR, ordvar_NBR = compute_cybersecurity_nonlinear_best_response(p, n_players
         , n_markets, params.Qbar[p,:], max_s_is[p], params.cs[p], params.alphas[p], params.Qs[p]
         , params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:], filename
-        , parameters, fixed_cost, params.fcost)
+        , parameters, fixed_costs, params.fcost)
 
-        recompute_obj_NBR = evaluate_cybersecurity_objective_value(sol_NBR, parameters, p, params)
-        println("-----> diff of $(abs(recompute_obj_NBR-obj_NBR)) for the evaluation of the NL best response")
+        println("eval NL = $obj_p with solution $(x[p])\nBR NL = $obj_NBR with solution $sol_NBR")
+
+        recompute_obj_NBR = evaluate_cybersecurity_objective_value(sol_NBR, parameters, p, params, fixed_costs)
         if abs(recompute_obj_NBR-obj_NBR) > 1e-9
+            println("")
             error("problem with the evaluation of the NL best response: diff of $(abs(recompute_obj_NBR-obj_NBR))")
         end
 

@@ -32,6 +32,13 @@ def InitialStrategies(G,opt_solver=1):
             except:
                 print("Player ", p+1, " has no feasible solution or the problem is unbounded")
         elif G.type() == "CyberSecurity":
+            print("shape of Q: ", np.shape(G.Q()))
+            print("shape of Q[p]: ", np.shape(G.Q()[p]))
+            for l in range(np.shape(G.Q()[p])[0]):
+                print("shape of the %i-th bloc of Q[p] = "%l, np.shape(G.Q()[p][l]))
+                #print(G.Q()[p][l][:3,:3])
+                print(G.Q()[p][l])
+            print("just before bestreactiongurobicybersecurity")
             S[p][0], U_p[p][0], Model_p = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins())
         Best_m.append(Model_p)
     return S, U_p, Best_m
@@ -119,11 +126,15 @@ def SocialOptimumGurobi(m, n_I, n_C, n_constr, c, Q, A, b):
 ######################################################
 
 
-def CreateModels(m, n_I, n_C, n_constr, c, Q, A, b):
+def CreateModels(m, n_I, n_C, n_constr, c, Q, A, b, problem_type = "UNK", G = None):
     Profile = [np.array([0 for k in range(n_I[p]+n_C[p])]) for p in range(m)]
     Best_m = []
     for p in range(m):
-        _,_,Model_p = BestReactionGurobi(m,n_I[p],n_C[p],n_constr[p],c[p],Q[p],A[p],b[p],Profile,p,True)
+        if problem_type != "CyberSecurity":
+            return "andouille"
+            _,_,Model_p = BestReactionGurobi(m,n_I[p],n_C[p],n_constr[p],c[p],Q[p],A[p],b[p],Profile,p,True)
+        else:
+            _,_,Model_p = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p])
         Best_m.append(Model_p)
     return Best_m
 
@@ -259,7 +270,18 @@ def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Pro
     if CE_verify:
         xk_Qkp = sum(Q_p[k] for k in range(m) if k!=p)
     else:
-        xk_Qkp = sum(np.dot(Profile[k], Q_p[k]) for k in range(m) if k!=p) # np.array
+        """print("shape of Q: ", np.shape(Q_p))
+        for k in range(m):
+            if k != p:
+                print(k)
+                print("profile: ", np.shape(Profile[k]))
+                print(Profile[k])
+                print("Q_p: ", np.shape(Q_p[k]))
+                print(Q_p[k])
+                print("number of variables: %i"%(n_I_p+n_C_p))
+                print(n_C_p, " continues et %i entières"%n_I_p)"""
+        #Raise()
+        xk_Qkp = sum(np.dot(Profile[k], Q_p[k]) for k in range(m) if k!=p) # Q_p[k] == Q[p][k] which are the mixed terms between player p and player k
     if m_p == None:
         # retrieve binary variable indices
         binary_indices = read_list(ins+"/model_IntegerIndexes%i.csv"%(p+1)) # CHANGED HERE
