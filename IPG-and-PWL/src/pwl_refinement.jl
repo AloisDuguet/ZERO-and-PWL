@@ -1,5 +1,6 @@
 using Roots, AutoGrad, Couenne_jll, AmplNLWriter
-#using LinA # CHANGED HERE
+
+include("correct_heuristicLin_lina.jl")
 
 function check_pwl_1d_pieces_in_order(pwl, eps=1e-12)
     # return true if pwl[i].xMax == pwl[i+1].xMin and return an error if not
@@ -40,7 +41,8 @@ function refine_pwl1d(pwl_struct, pos, err)
 	#println("pwl\n$(pwl_struct.pwl)")
 
     # compute the refined pieces into one pwl
-    pwl = LinA.HeuristicLin(pwl_struct.expr_f,t1,t2,err)
+    pwl = corrected_heuristicLin(pwl_struct.expr_f,t1,t2,err)
+	#pwl = LinA.HeuristicLin(pwl_struct.expr_f,t1,t2,err)
 
     # incorporate the refined pwl into the old
     #println(length(pwl_struct.pwl))
@@ -190,7 +192,8 @@ function refine_longest_piece(pwl_struct, pieces_number, iter, max_iter, new_del
 	# approximate piece num_piece
 	t1 = pwl_struct.pwl[num_piece].xMin
 	t2 = pwl_struct.pwl[num_piece].xMax
-	pwl = LinA.HeuristicLin(pwl_struct.expr_f, t1, t2, Absolute(new_delta))
+	pwl = corrected_heuristicLin(pwl_struct.expr_f, t1, t2, Absolute(new_delta))
+	#pwl = LinA.HeuristicLin(pwl_struct.expr_f, t1, t2, Absolute(new_delta))
 	println(file, "pwl replacing piece $num_piece is:\n$pwl")
 
 	# put it inside pwl_struct.pwl
@@ -228,132 +231,116 @@ function add_order_1_taylor_piece(pwl_struct, f, pos, err, iter, max_iter, new_d
 		new_delta = err.delta
 	end=#
 	#new_delta = min(err.delta, abs_gap/2)
-	if length(pieces_number) == 1 && piece.a == a && piece.b == b # if not, it can't be a Taylor approx at pos
-		# if the piece to change is already an order 1 Taylor approx:
-		# select the longest piece different from the one that is a Taylor approx at pos
-		# and approximate it with error err.delta*(abs_gap/err.delta)^(iter/max_iter)
-		# (relative error according to the starting error and abs_gap)
-		pwl_struct = refine_longest_piece(pwl_struct, pieces_number, iter, max_iter, new_delta)
-	else
-		# save the old piece because it will be used later for the extreme parts
-	    old_pieces = deepcopy(pwl_struct.pwl[pieces_number[1]:pieces_number[end]])
 
-	    # find the domain of validity of the approx with error err with find_zeros from Roots package
-	    fp,fm = get_corridor_functions(f, Absolute(new_delta)) # new_delta and not delta
-	    fp_zeros = find_zeros(x -> fp(x)-a*x-b, t1, t2)
-	    fm_zeros = find_zeros(x -> fm(x)-a*x-b, t1, t2)
-	    # select the zeros closest to pos
-	    pushfirst!(fp_zeros, t1)
-	    push!(fp_zeros, t2)
-	    pushfirst!(fm_zeros, t1)
-	    push!(fm_zeros, t2)
-		println("pos $pos")
-		println("fp_zeros $fp_zeros")
-		println("fm_zeros $fm_zeros")
-	    fp_inf_zero = maximum([fp_zero for fp_zero in fp_zeros if fp_zero <= pos])
-	    fp_sup_zero = minimum([fp_zero for fp_zero in fp_zeros if fp_zero >= pos])
-	    fm_inf_zero = maximum([fm_zero for fm_zero in fm_zeros if fm_zero <= pos])
-	    fm_sup_zero = minimum([fm_zero for fm_zero in fm_zeros if fm_zero >= pos])
-	    new_t1 = max(fp_inf_zero,fm_inf_zero)
-	    new_t2 = min(fp_sup_zero,fm_sup_zero)
-	    println("new_t1 $new_t1\nnew_t2 $new_t2")
+	# save the old piece because it will be used later for the extreme parts
+    old_pieces = deepcopy(pwl_struct.pwl[pieces_number[1]:pieces_number[end]])
+
+    # find the domain of validity of the approx with error err with find_zeros from Roots package
+    fp,fm = get_corridor_functions(f, Absolute(new_delta)) # new_delta and not delta
+    fp_zeros = find_zeros(x -> fp(x)-a*x-b, t1, t2)
+    fm_zeros = find_zeros(x -> fm(x)-a*x-b, t1, t2)
+    # select the zeros closest to pos
+    pushfirst!(fp_zeros, t1)
+    push!(fp_zeros, t2)
+    pushfirst!(fm_zeros, t1)
+    push!(fm_zeros, t2)
+	println("pos $pos")
+	println("fp_zeros $fp_zeros")
+	println("fm_zeros $fm_zeros")
+    fp_inf_zero = maximum([fp_zero for fp_zero in fp_zeros if fp_zero <= pos])
+    fp_sup_zero = minimum([fp_zero for fp_zero in fp_zeros if fp_zero >= pos])
+    fm_inf_zero = maximum([fm_zero for fm_zero in fm_zeros if fm_zero <= pos])
+    fm_sup_zero = minimum([fm_zero for fm_zero in fm_zeros if fm_zero >= pos])
+    new_t1 = max(fp_inf_zero,fm_inf_zero)
+    new_t2 = min(fp_sup_zero,fm_sup_zero)
+    println("new_t1 $new_t1\nnew_t2 $new_t2")
+	if new_t1 == new_t2
+		# pos is on either t1 or t2
+		if pos == t2
+			fp_inf_zero = maximum([fp_zero for fp_zero in fp_zeros if fp_zero < pos])
+		    fm_inf_zero = maximum([fm_zero for fm_zero in fm_zeros if fm_zero < pos])
+		    new_t1 = max(fp_inf_zero,fm_inf_zero)
+		    new_t2 = t2
+		elseif pos == t1
+		    fp_sup_zero = minimum([fp_zero for fp_zero in fp_zeros if fp_zero > pos])
+		    fm_sup_zero = minimum([fm_zero for fm_zero in fm_zeros if fm_zero > pos])
+		    new_t1 = t1
+		    new_t2 = min(fp_sup_zero,fm_sup_zero)
+		else
+			error("pos is neither t1 and t2\nt1 $t1 t2 $t2 pos $pos")
+		end
 		if new_t1 == new_t2
-			# pos is on either t1 or t2
-			if pos == t2
-				fp_inf_zero = maximum([fp_zero for fp_zero in fp_zeros if fp_zero < pos])
-			    fm_inf_zero = maximum([fm_zero for fm_zero in fm_zeros if fm_zero < pos])
-			    new_t1 = max(fp_inf_zero,fm_inf_zero)
-			    new_t2 = t2
-			elseif pos == t1
-			    fp_sup_zero = minimum([fp_zero for fp_zero in fp_zeros if fp_zero > pos])
-			    fm_sup_zero = minimum([fm_zero for fm_zero in fm_zeros if fm_zero > pos])
-			    new_t1 = t1
-			    new_t2 = min(fp_sup_zero,fm_sup_zero)
-			else
-				error("pos is neither t1 and t2\nt1 $t1 t2 $t2 pos $pos")
-			end
-			if new_t1 == new_t2
-				error("even after exception, new_t1 == new_t2")
-			end
+			error("even after exception, new_t1 == new_t2")
 		end
-
-	    # compute the three replacing pieces
-	    p1 = LinA.LinearPiece(old_pieces[1].xMin, new_t1, old_pieces[1].a, old_pieces[1].b, old_pieces[1].fct)
-	    p2 = LinA.LinearPiece(new_t2, old_pieces[end].xMax, old_pieces[end].a, old_pieces[end].b, old_pieces[end].fct)
-	    order_one_piece = LinA.LinearPiece(new_t1, new_t2, der_val, b, x -> a*x + b)
-
-		# look for an order 1 Taylor piece with xMin and xMax not intersecting the two (one is ok) pieces in pieces_number
-		# because in this case, the computation of p1 and p2 is wrong (it assumed one piece in pieces_number or that the order 1 piece intersected the domain of the two pieces)
-		if p1.xMax > pwl_struct.pwl[pieces_number[1]].xMax || p2.xMin < pwl_struct.pwl[pieces_number[end]].xMin
-			error("the order 1 Taylor piece has a domain that does not intersect the extreme pieces in pieces_number\nposition of NE $pos\n$p1\n$order_one_piece\n$p2")
-		end
-
-		# delete replaced pieces
-		println("pieces deleted:\n$(pwl_struct.pwl[pieces_number]) for err $err")
-	    deleteat!(pwl_struct.pwl, pieces_number[1]:pieces_number[end])
-
-	    #=# incorporate the three (or less) pieces in the place of the old one
-	    pieces_to_add = [p2,order_one_piece,p1]
-	    if new_t1 == t1
-	        pop!(pieces_to_add)
-	    end
-	    if new_t2 == t2
-	        popfirst!(pieces_to_add)
-	    end
-	    [insert!(pwl_struct.pwl, pieces_number[1], p) for p in pieces_to_add]
-		[println(i, "\t", pwl_struct.pwl[i]) for i in pieces_number[1]:pieces_number[1]+length(pieces_to_add)-1]=#
-
-		# compute the refined pieces into one pwl
-		file = open("check_useless_pieces.txt", "a")
-		println(file, "iteration $iter: t1 $t1 new_t1 $new_t1 t2 $t2 new_t2 $new_t2\norder_one_piece\n$order_one_piece")
-		close(file)
-		if t1 < new_t1
-			println("building pwl1 from $t1 to $new_t1")
-	    	pwl1 = LinA.HeuristicLin(pwl_struct.expr_f,t1,new_t1,Absolute(new_delta))
-			if abs(pwl1[end].xMax-new_t1) > 1e-12
-				println(pwl1)
-				pwl = LinA.HeuristicLin(pwl_struct.expr_f,pwl1[end].xMax,new_t1+1e-5,Absolute(new_delta))
-				if pwl[1].xMax < new_t1
-					error("pwl[1].xMax is $(pwl[1].xMax) instead of new_t1 $new_t1")
-				end
-				push!(pwl1, LinA.LinearPiece(pwl[1].xMin,new_t1,pwl[1].a,pwl[1].b,pwl[1].fct))
-				println("piece(s) added:\n$pwl")
-			end
-		else
-			pwl1 = []
-		end
-		if t2 > new_t2
-			println("building pwl1 from $new_t2 to $t2")
-	    	pwl2 = LinA.HeuristicLin(pwl_struct.expr_f,new_t2,t2,Absolute(new_delta))
-			if abs(pwl2[end].xMax-t2) > 1e-12
-				pwl = LinA.HeuristicLin(pwl_struct.expr_f,pwl2[end].xMax,t2+1e-5,Absolute(new_delta))
-				if pwl[1].xMax < t2
-					error("pwl[1].xMax is $(pwl[1].xMax) instead of t2 $t2")
-				end
-				push!(pwl2, LinA.LinearPiece(pwl[1].xMin,t2,pwl[1].a,pwl[1].b,pwl[1].fct))
-			end
-		else
-			pwl2 = []
-		end
-
-		# create pieces_to_add adapted to refined p1 and p2 (with possibly more than one piece in them)
-		for i in length(pwl2):-1:1
-			insert!(pwl_struct.pwl, pieces_number[1], pwl2[i])
-			println("pwl2[$i]:\n",pwl2[i])
-		end
-		insert!(pwl_struct.pwl, pieces_number[1], order_one_piece)
-		println("taylor:\n",order_one_piece)
-		for i in length(pwl1):-1:1
-			insert!(pwl_struct.pwl, pieces_number[1], pwl1[i])
-			println("pwl1[$i]:\n",pwl1[i])
-		end
-
-
-	    check_pwl_1d_pieces_in_order(pwl_struct.pwl)
 	end
+
+	# create taylor piece
+	order_one_piece = LinA.LinearPiece(new_t1, new_t2, der_val, b, x -> a*x + b)
+
+	# delete replaced pieces
+	println("pieces deleted:\n$(pwl_struct.pwl[pieces_number]) for err $err")
+    deleteat!(pwl_struct.pwl, pieces_number[1]:pieces_number[end])
+
+	# compute the refined pieces into one pwl
+	file = open("check_useless_pieces.txt", "a")
+	println(file, "iteration $iter: t1 $t1 new_t1 $new_t1 t2 $t2 new_t2 $new_t2\norder_one_piece\n$order_one_piece")
+	close(file)
+	if t1 < new_t1
+		println("building pwl1 from $t1 to $new_t1")
+    	#=pwl1 = LinA.HeuristicLin(pwl_struct.expr_f,t1,new_t1,Absolute(new_delta))
+		if abs(pwl1[end].xMax-new_t1) > 1e-12
+			println(pwl1)
+			pwl = LinA.HeuristicLin(pwl_struct.expr_f,pwl1[end].xMax,new_t1+1e-5,Absolute(new_delta))
+			if pwl[1].xMax < new_t1
+				error("pwl[1].xMax is $(pwl[1].xMax) instead of new_t1 $new_t1")
+			end
+			push!(pwl1, LinA.LinearPiece(pwl[1].xMin,new_t1,pwl[1].a,pwl[1].b,pwl[1].fct))
+			println("piece(s) added:\n$pwl")
+		end=#
+		pwl1 = corrected_heuristicLin(pwl_struct.expr_f,t1,new_t1,Absolute(new_delta), 1e-15)
+	else
+		pwl1 = []
+	end
+	if t2 > new_t2
+		println("building pwl1 from $new_t2 to $t2")
+    	#=pwl2 = LinA.HeuristicLin(pwl_struct.expr_f,new_t2,t2,Absolute(new_delta))
+		if abs(pwl2[end].xMax-t2) > 1e-12
+			pwl = LinA.HeuristicLin(pwl_struct.expr_f,pwl2[end].xMax,t2+1e-5,Absolute(new_delta))
+			if pwl[1].xMax < t2
+				error("pwl[1].xMax is $(pwl[1].xMax) instead of t2 $t2")
+			end
+			push!(pwl2, LinA.LinearPiece(pwl[1].xMin,t2,pwl[1].a,pwl[1].b,pwl[1].fct))
+		end=#
+		pwl2 = corrected_heuristicLin(pwl_struct.expr_f,new_t2,t2,Absolute(new_delta))
+	else
+		pwl2 = []
+	end
+
+	# create pieces_to_add adapted to refined p1 and p2 (with possibly more than one piece in them)
+	for i in length(pwl2):-1:1
+		insert!(pwl_struct.pwl, pieces_number[1], pwl2[i])
+		println("pwl2[$i]:\n",pwl2[i])
+	end
+	insert!(pwl_struct.pwl, pieces_number[1], order_one_piece)
+	println("taylor:\n",order_one_piece)
+	for i in length(pwl1):-1:1
+		insert!(pwl_struct.pwl, pieces_number[1], pwl1[i])
+		println("pwl1[$i]:\n",pwl1[i])
+	end
+
+
+    check_pwl_1d_pieces_in_order(pwl_struct.pwl)
 
     return pwl_struct
 end
+
+#= old part of add_order_1_taylor_piece that was used to refine another piece if there already exists a taylor piece at the pure strat:
+if length(pieces_number) == 1 && piece.a == a && piece.b == b # if not, it can't be a Taylor approx at pos
+	# if the piece to change is already an order 1 Taylor approx:
+	# select the longest piece different from the one that is a Taylor approx at pos
+	# and approximate it with error err.delta*(abs_gap/err.delta)^(iter/max_iter)
+	# (relative error according to the starting error and abs_gap)
+	pwl_struct = refine_longest_piece(pwl_struct, pieces_number, iter, max_iter, new_delta)=#
 
 function check_delta_approx(pwl_struct, eps = 1e-6)
 	# WARNING this works only for the h_i function!!

@@ -204,7 +204,10 @@ function create_CSV_files(filename_instance, err_pwlh = Absolute(0.05), err_bili
         #pwlquads = [pwlquads[1]] # do not add the quadratic functions
 
         # launch creation of files with matrices
-        model,IntegerIndexes,l_coefs,r_coefs, ordvar = pwl_formulation_to_csv(p, n_players, n_markets, params.Qbar[p,:], max_s_is[p], params.cs[p], pwl_h.pwl, [pwlbilins[i].pwl for i in 1:length(pwlbilins)], [pwlquads[i].pwl for i in 1:length(pwlquads)], info_pwlquads, params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:], "../CSV_files/"*filename_save,fixed_cost,params.fcost)
+        model,IntegerIndexes,l_coefs,r_coefs, ordvar = pwl_formulation_to_csv(p, n_players, n_markets, params.Qbar[p,:],
+        max_s_is[p], params.cs[p], pwl_h.pwl, [pwlbilins[i].pwl for i in 1:length(pwlbilins)],
+        [pwlquads[i].pwl for i in 1:length(pwlquads)], info_pwlquads, params.Cs[p], params.constant_values[p],
+        params.linear_terms_in_spi[p,:], "../CSV_files/"*filename_save,fixed_cost,params.fcost[p,:])
 
          # create cybersecurity_player p
         push!(list_players, cybersecurity_player(pwl_h,pwlbilins,pwlquads,info_pwlquads,max_s_is[p], [ordvar]))
@@ -269,7 +272,11 @@ function update_CSV_files(cs_instance, num_iter)
         output_and_save_recap_model(cs_instance, num_iter)
 
         # launches pwl_formulation_to_csv
-        model,IntegerIndexes,l_coefs,r_coefs, ordvar = pwl_formulation_to_csv(p, n_players, n_markets, params.Qbar[p,:], player.max_s_i, params.cs[p], player.pwl_h.pwl, [player.pwlbilins[i].pwl for i in 1:length(player.pwlbilins)], [player.pwlquads[i].pwl for i in 1:length(player.pwlquads)], player.info_pwlquads, params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:], "../CSV_files/"*cs_instance.filename_save,cs_instance.fixed_cost,params.fcost)
+        model,IntegerIndexes,l_coefs,r_coefs, ordvar = pwl_formulation_to_csv(p, n_players, n_markets, params.Qbar[p,:],
+        player.max_s_i, params.cs[p], player.pwl_h.pwl, [player.pwlbilins[i].pwl for i in 1:length(player.pwlbilins)],
+        [player.pwlquads[i].pwl for i in 1:length(player.pwlquads)], player.info_pwlquads, params.Cs[p],
+        params.constant_values[p], params.linear_terms_in_spi[p,:], "../CSV_files/"*cs_instance.filename_save,
+        cs_instance.fixed_cost,params.fcost[p,:])
 
         # add new variables names which are in ordvar
         push!(cs_instance.cs_players[p].variable_names, ordvar)

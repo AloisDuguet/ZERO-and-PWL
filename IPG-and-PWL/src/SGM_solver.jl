@@ -7,7 +7,9 @@ include("other_functions.jl")
 include("pwl_refinement.jl")
 include("nikaido-isoda_NE_characterization.jl")
 include("generate_cybersecurity_instance.jl")
+include("analyse_experiences.jl")
 
+using LinearAlgebra
 #using TimerOutputs
 
 mutable struct option_cs_instance
@@ -27,6 +29,7 @@ mutable struct output_cs_instance
     iter::Int64
     delta_eq
     length_pwls
+    variation_MNE
 end
 
 mutable struct cs_experience
@@ -306,7 +309,62 @@ function display_pieces_neighborhood(pure_strat, pwl, pieces_number, iter, playe
     close(file_closeness)=#
 end
 
-function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_costs = false, refinement_method = "taylor", max_iter = 6, rel_gap = 1e-6)
+function correct_rounding_problem_SGM(S, cs_instance, params)
+    # correct rounding problem on variable s: it is the upper bound of its domain but the rounding is above this limit
+    # in this case, write the upper bound of the domain instead of the rounding to avoid problems later
+
+    n_players = params.n_players
+    n_markets = params.n_markets
+    for p in 1:n_players
+        for j in 1:length(S[p])
+            if S[p][j][n_markets+1] > cs_instance.cs_players[p].pwl_h.t2
+                if S[p][j][n_markets+1] - cs_instance.cs_players[p].pwl_h.t2 <= 1e-6/2
+                    S[p][j][n_markets+1] = round(cs_instance.cs_players[p].pwl_h.t2, digits=12)
+                end
+            end
+        end
+    end
+
+    return S
+end
+
+function dist2_for_MNE(u,v)
+    # return the l2 distance between two MNE (of type Vector{Vector{Float64}})
+    diffs = 0
+    for i in 1:length(u)
+        for j in 1:length(u[i])
+            diffs += abs(u[i][j]-v[i][j])^2
+        end
+    end
+    return sqrt(diffs)
+end
+
+function compute_MNE_distance_variation(sols)
+    # return a Vector{Float64} containing the l2 distance between the consecutive MNE
+    variations = []
+    for i in 1:length(sols)-1
+        sol1 = sols[i]
+        sol2 = sols[i+1]
+        push!(variations, dist2_for_MNE(sol1,sol2))
+    end
+    return variations
+end
+
+function save_MNE_distance_variation(sols, option, output, filename = "MNE_distance_variation.txt")
+    # save in filename the variations of distance between consecutive MNE for an SGM_PWL_solver run
+
+    # compute variations
+    variations = compute_MNE_distance_variation(sols)
+
+    # write in file filename
+    file = open(filename, "a")
+    write_output_instance(file, option, output)
+    println(file, "variations: ", write_vector(variations))
+    close(file)
+    return variations
+end
+
+function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_costs = false, refinement_method = "max_precision", max_iter = 6, rel_gap = 1e-6)
     # prepare the instance of PWL approximation of a cybersecurity instance and launch the SGM solver
     # refinement_method is the method used to refine the PWL. It can be "taylor" for the order 1 taylor piece, and "max_precision" to refine the piece(s) containing the pure strategy to rel_gap
 
@@ -356,12 +414,16 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
         err = err_pwlh
         t1 = 0
         t2 = max_s_is[p]
-        pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,LinA.exactLin(expr_h[p],t1,t2,err))
-        pwl_h.pwl = special_rounding_pwl(pwl_h.pwl) # round the extremes xMin and xMax to 12 decimals to avoid problems later
+        #pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,LinA.exactLin(expr_h[p],t1,t2,err))
+        pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,corrected_heuristicLin(expr_h[p],t1,t2,err))
+        pwl_h.pwl = special_rounding_pwl(pwl_h.pwl) # round the extremes xMin and xMax to 12 decimals to avoid some problems later
         println("\nh_$p approximated by $(length(pwl_h.pwl)) pieces\n$pwl_h\n")
 
         # launch creation of files with matrices
-        model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_model_to_csv(p, n_players, n_markets, params.Qbar[p,:], max_s_is[p], params.cs[p], pwl_h.pwl, params.Qs[p], params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:], "../SGM_files/"*filename_save,fixed_costs,params.fcost)
+        println("player $p and fixed costs:\n$(params.fcost)")
+        model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_model_to_csv(p, n_players, n_markets, params.Qbar[p,:], max_s_is[p],
+        params.cs[p], pwl_h.pwl, params.Qs[p], params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:],
+        "../SGM_files/"*filename_save,fixed_costs,params.fcost[p,:])
 
          # create cybersecurity_player p
         push!(list_players, cybersecurity_player(pwl_h,[],[],[],max_s_is[p], [ordvar], -Inf))
@@ -373,6 +435,18 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
     # create cybersecurity instance
     solution = cybersecurity_solution([[] for i in 1:n_players],[],[],[]) # create a fake solution to be able to declare cs_instance. It will be erased later.
     cs_instance = cybersecurity_instance(filename_instance,filename_save,params,err_pwlh,Absolute(0),Absolute(0),Absolute(0),Absolute(0),Absolute(0),fixed_costs,list_players,[solution])
+
+    # write additional_info_for_NL_model.txt for NL solve in python
+    file = open("../../IPG/additional_info_for_NL_model.txt", "w")
+    # write alphas
+    for p in 1:n_players
+        println(file, cs_instance.cs_players[p].pwl_h.alpha)
+    end
+    # write nRealVars
+    for p in 1:n_players
+        println(file, n_markets+1+n_markets*fixed_costs)
+    end
+    close(file)
 
     #output_and_save_recap_model(cs_instance, foldername = "../SGM_files/")
 
@@ -411,6 +485,10 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
 
         # read solution
         ne, profits, S, num_iter_done, cpu_time = parser_SGM_solution("../../IPG/output_SGM.txt")
+        # correct rounding problem on variable s: it is the upper bound of its domain but the rounding is above this limit
+        # in this case, write the upper bound of the domain instead of the rounding
+        S = correct_rounding_problem_SGM(S, cs_instance, params)
+
         push!(outputs_SGM["ne"],deepcopy(ne))
         push!(outputs_SGM["profits"],deepcopy(profits))
         push!(outputs_SGM["S"],deepcopy(S))
@@ -458,6 +536,26 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
 
         # compute the sup of the Nikaido-Isoda function in y
         V,Vps,all_vals = cybersecurity_NE_characterization_function(sol, params, fixed_costs)
+
+        #=# problem MOI.INFEASIBLE
+        # 0.19 :  Qs[3]:
+        #[-2.16 0.0 0.0 0.0; 0.0 -2.32 0.0 0.0; 0.0 0.0 -2.15 0.0; 0.05666666666666667 0.06333333333333334 0.13333333333333333 -26.333333333333332]
+        #[-26.333333333333332, -2.32, -2.16, -2.15]
+
+                # 0.195 : Qs[3]:
+        #[-2.16 0.0 0.0 0.0; 0.0 -2.32 0.0 0.0; 0.0 0.0 -2.15 0.0; 0.05666666666666667 0.065 0.13333333333333333 -26.333333333333332]
+        #[-26.333333333333332, -2.32, -2.16, -2.15]
+        for i in 1:n_players
+            if Vps[i] == -1e12
+                println("Qs[$i]:\n", params.Qs[i])
+                println(eigvals(params.Qs[i]))
+            else
+                println("Qs[$i]:\n", params.Qs[i])
+                println(eigvals(params.Qs[i]))
+            end
+        end
+        #error()=#
+
         println("sup of NI function = $V\tmax of values $Vps")
         for p in 1:n_players
             insert!(all_vals, 3*p-2, real_profit_linear_game[p])
@@ -515,7 +613,11 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
                         pwl = cs_instance.cs_players[p].pwl_h.pwl
                         pure_strat = S[p][i-cpt_ne+1][(n_markets+1)]
                         t1,t2,pieces_number = find_1d_domain_to_refine(pwl, pure_strat)
-                        display_pieces_neighborhood(pure_strat, pwl, pieces_number, iter, p)
+                        try
+                            display_pieces_neighborhood(pure_strat, pwl, pieces_number, iter, p)
+                        catch e
+                            println("could not run display_pieces_neighborhood properly for player $p and strategy $pure_strat")
+                        end
                     end
                 end
                 println("player $p has a pwl with $(length(cs_instance.cs_players[p].pwl_h.pwl)) pieces")
@@ -528,7 +630,9 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
             profits = [outputs_SGM["all_vals"][end][3*p-1] for p in 1:n_players]
             println("profits:\n$profits\nall_vals:\n$(outputs_SGM["all_vals"])")
             length_pwls = [length(cs_instance.cs_players[p].pwl_h.pwl) for p in 1:n_players]
-            output = output_cs_instance(true, outputs_SGM["sol"][end], profits, -1, iter, max_delta, length_pwls)
+            output = output_cs_instance(true, outputs_SGM["sol"][end], profits, -1, iter, max_delta, length_pwls,[])
+            options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap)
+            save_MNE_distance_variation(outputs_SGM["sol"], options, output)
             return cs_instance, Vs, iter, outputs_SGM, output
         else
             println("current delta of delta-NE is $max_delta")
@@ -574,23 +678,27 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
                     # refine up to asked precision the piece containing the pure strategy
                     if refinement_method == "max_precision"
                         # WARNING: the following function does not use the eps to refine a piece less than eps away from the solution but not containing it
-                        delta = min(cs_instance.cs_players[p].pwl_h.err.delta, abs_gap/n_players)
+                        delta = min(cs_instance.cs_players[p].pwl_h.err.delta, abs_gap/2)
                         cs_instance.cs_players[p].pwl_h = refine_pwl1d(cs_instance.cs_players[p].pwl_h, S[p][i-cpt_ne+1][(n_markets+1)], Absolute(delta))
                         #check_delta_approx(cs_instance.cs_players[p].pwl_h)
                     elseif refinement_method == "taylor"
                         # add an order 1 taylor approximation on the pure strategy as well as refine with max_precision the bits of pieces around taylor
                         # if a taylor piece is already exactly in pos, refine the longest (different) piece
-                        new_delta = min(cs_instance.cs_players[p].pwl_h.err.delta, abs_gap/n_players)
+                        new_delta = min(cs_instance.cs_players[p].pwl_h.err.delta, abs_gap/2)
                         cs_instance.cs_players[p].pwl_h = add_order_1_taylor_piece(cs_instance.cs_players[p].pwl_h,
                         f, S[p][i-cpt_ne+1][(n_markets+1)], cs_instance.err_pwlh, iter, max_iter, new_delta, eps)
                     elseif refinement_method == "progressive_taylor"
-                        if abs_gap < cs_instance.cs_players[p].pwl_h.err.delta
-                        	new_delta = cs_instance.cs_players[p].pwl_h.err.delta*(abs_gap/n_players/cs_instance.cs_players[p].pwl_h.err.delta)^(iter/max_iter)
+                        if abs_gap/2 < cs_instance.cs_players[p].pwl_h.err.delta
+                        	new_delta = cs_instance.cs_players[p].pwl_h.err.delta*(abs_gap/2/cs_instance.cs_players[p].pwl_h.err.delta)^(iter/max_iter)
                     	else
                     		new_delta = cs_instance.cs_players[p].pwl_h.err.delta
                     	end
                         cs_instance.cs_players[p].pwl_h = add_order_1_taylor_piece(cs_instance.cs_players[p].pwl_h,
                         f, S[p][i-cpt_ne+1][(n_markets+1)], cs_instance.err_pwlh, iter, max_iter, new_delta, eps)
+                    elseif refinement_method == "full_refinement" # refine the whole PWL function up to rel_gap/2 (in theory it will find the rel_gap-NE in the next iteration)
+                        pwl_h = cs_instance.cs_players[p].pwl_h
+                        pwl_h.pwl = corrected_heuristicLin(pwl_h.expr_f, pwl_h.t1, pwl_h.t2, Absolute(abs_gap/2))
+                        cs_instance.cs_players[p].pwl_h.pwl = special_rounding_pwl(pwl_h.pwl) # round the extremes xMin and xMax to 12 decimals to avoid some problems later
                     end
                     outputs_SGM["length_pwl"][iter+1][p] = length(cs_instance.cs_players[p].pwl_h.pwl)
 
@@ -600,7 +708,10 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
             end
 
             # launch again the creation of files with matrices with the new pwl
-            model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_model_to_csv(p, n_players, n_markets, params.Qbar[p,:], max_s_is[p], params.cs[p], cs_instance.cs_players[p].pwl_h.pwl, params.Qs[p], params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:], "../SGM_files/"*filename_save,fixed_costs,params.fcost)
+            model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_model_to_csv(p, n_players, n_markets, params.Qbar[p,:],
+            max_s_is[p], params.cs[p], cs_instance.cs_players[p].pwl_h.pwl, params.Qs[p], params.Cs[p],
+            params.constant_values[p], params.linear_terms_in_spi[p,:], "../SGM_files/"*filename_save,fixed_costs,
+            params.fcost[p,:])
         end
 
     end
@@ -631,7 +742,10 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
     println("profits:\n$profits\nall_vals:\n$(outputs_SGM["all_vals"])")
     length_pwls = [length(cs_instance.cs_players[p].pwl_h.pwl) for p in 1:n_players]
     max_delta = maximum([abs(Vs[end][2][i]) for i in 1:n_players])
-    output = output_cs_instance(false, outputs_SGM["sol"][end], profits, -1, max_iter, max_delta, length_pwls)
+    options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap)
+    output = output_cs_instance(false, outputs_SGM["sol"][end], profits, -1, max_iter, max_delta, length_pwls,[])
+    variations = save_MNE_distance_variation(outputs_SGM["sol"], options, output)
+    output = output_cs_instance(false, outputs_SGM["sol"][end], profits, -1, max_iter, max_delta, length_pwls,variations)
     return cs_instance, Vs, max_iter, outputs_SGM, output
 end
 
@@ -659,118 +773,81 @@ function benchmark_SGM_PWL_solver(; filename_instances, err_pwlhs, fixed_costss 
     # false experience to compile everything
     SGM_PWL_solver("instance_1.txt", err_pwlh = Absolute(0.05), fixed_costs = false, refinement_method = "taylor", max_iter = 2)
     for inst in instance_queue
-        t = @elapsed cs_instance, Vs, iter, outputs_SGM, output = SGM_PWL_solver(inst.filename_instance, err_pwlh = inst.err_pwlh,
-        fixed_costs = inst.fixed_costs, refinement_method = inst.refinement_method, max_iter = inst.max_iter,
-        rel_gap = inst.rel_gap)
-        # store output and options
-        output.cpu_time = t
-        push!(experiences, cs_experience(inst, output))
+        # detect MOI.INFEASIBLE because max_delta == 1e12
+        try
+            t = @elapsed cs_instance, Vs, iter, outputs_SGM, output = SGM_PWL_solver(inst.filename_instance, err_pwlh = inst.err_pwlh,
+            fixed_costs = inst.fixed_costs, refinement_method = inst.refinement_method, max_iter = inst.max_iter,
+            rel_gap = inst.rel_gap)
+            # store output and options
+            output.cpu_time = t
+            push!(experiences, cs_experience(inst, output))
+            file = open(filename_save[1:end-4]*"_intermediary.txt", "a")
+            write_output_instance(file, inst, output)
+            close(file)
+        catch e
+            output = output_cs_instance(false, e, [[]], [], 0, -1, [], [])
+            push!(experiences, cs_experience(inst, output))
+            file = open(filename_save[1:end-4]*"_intermediary.txt", "a")
+            write_output_instance(file, inst, output)
+            close(file)
+            file = open("errors_during_benchmark.txt", "a")
+            write_output_instance(file, inst, output)
+            println(file, "with error:\n$e\n")
+            close(file)
+        end
     end
 
     # write experiences in filename_instance
-    write_all_outputs(filename_save, experiences)
+    try
+        write_all_outputs(filename_save, experiences)
+    catch e
+        println("error preventing from writing results in $filename_save:\n$e")
+    end
 
     return experiences
 end
 
-function find_comparable_experiences(i, experiences, option, option_values)
-    # find the set of indices of experiences which have the same setting than experiences[i] except for option which is in option_values
-    # those indices corresponds to the order of option_values
+#=mutable struct output_cs_instance
+    solved::Bool
+    solution
+    profits
+    cpu_time
+    iter::Int64
+    delta_eq
+    length_pwls
+end=#
 
-    list_of_options = fieldnames(option_cs_instance)
-    comparable_instances = Any["UNK" for i in 1:length(option_values)]
-    comparable_instances[1] = i
-    #println("starting find_comparable_experiences with index $i and exp:\n$(experiences[i].options) ")
-
-    for ind in 1:length(experiences)
-        exp = experiences[ind]
-        #println("currently examining index $ind with options $(exp.options)")
-        is_comparable = true
-        for field in list_of_options
-            if field == option
-                if !(getfield(exp.options, field) in option_values) || getfield(exp.options, field) == option_values[1]
-                    #println("index $ind is false with field = $field: first test $(!(getfield(exp.options, field) in option_values)), second test $(getfield(exp.options, field) == option_values[1])")
-                    is_comparable = false
-                    break
-                end
-            else
-                if getfield(exp.options, field) != getfield(experiences[i].options, field)
-                    #println("index $ind is false with field = $field: it needs $(getfield(experiences[i].options, field)) and it has $(getfield(exp.options, field))")
-                    is_comparable = false
-                    break
-                end
-            end
-        end
-        if is_comparable
-            pos = findall(x->x==getfield(exp.options, option), option_values)[1]
-            comparable_instances[pos] = ind
-        end
-    end
-
-    println(option_values)
-    [println(i," ",experiences[comparable_instances[i]].options) for i in 1:length(comparable_instances)]
-
-    return comparable_instances
-end
-
-function compare_cs_experience(experiences, option, option_values)
-    # compute statistics on experiences separately for option_values of option
-    # experiences is a list of cs_experience
-    # option is a symbol (example: :filename_instance) in the fields of option_cs_instance
-    # option_values is a list in the values of field option used in experiences
-
-    n = length(option_values)
-
-    statistics = []
-    solveds = [0 for i in 1:n] # count the number of instances solved by option_value
-    count = [0 for i in 1:n] # count the number of instances comparable by option_value
-    cpu_times = [[] for i in 1:n] # list the cpu_time by option_value
-    iters = [[] for i in 1:n] # list the iteration needed by option_value
-
-    for i in 1:length(experiences)
-        exp = experiences[i]
-        if getfield(exp.options, option) == option_values[1]
-            # indices is a set of indices corresponding to experiences comparable to exp, of size length(option_values) because all comparable experiences are found
-            indices = find_comparable_experiences(i, experiences, option, option_values)
-
-            if length(indices) != length(option_values)
-                error("indices $indices has a length different from option_values")
-            end
-
-            # add stats
-            for i in 1:length(indices)
-                index = indices[i]
-                solveds[i] += experiences[index].outputs.solved
-                count[i] += 1
-                push!(cpu_times[i], experiences[index].outputs.cpu_time)
-                push!(iters[i], experiences[index].outputs.iter)
+#=
+file = open("save_filename_benchmark.txt", "w")
+filename_instances = []
+for i in 2:10
+    for j in 2:10
+        for k in 1:10
+            filename = generate_cybersecurity_instance(i,j)
+            println(file, filename)
+            if i <= 5 && j <= 5 && k <= 1
+                push!(filename_instances, filename)
             end
         end
     end
+end
+=#
 
-    # print important informations
-    println()
-    s = string("\t\t\t",option_values[1])
-    [s = string(s, " ", option_values[i]) for i in 2:length(option_values)]
-    println(s)
-    #println("instances solved:\t$solveds for $count instances comparable")
-    print("instances solved:\t")
-    [print(solveds[i], "\t") for i in 1:n]
-    println()
-    print("instances comparable:\t")
-    [print(count[i], "\t") for i in 1:n]
-    println()
-    print("average cpu times:\t")
-    [print(round(sum(cpu_times[i][j] for j in 1:length(cpu_times[i]))/length(cpu_times[i]), digits=2), "\t") for i in 1:n]
-    println()
-    print("average iterations:\t")
-    [print(sum(iters[i][j] for j in 1:length(iters[i]))/length(iters[i]), "\t") for i in 1:n]
-    println("\n")
-
-    return solveds, cpu_times, iters
+filename_instances2 = []
+for i in 2:4
+    for j in 2:10
+        push!(filename_instances2, "instance_$(i)_$(j)_1.txt")
+    end
 end
 
-errs = [Absolute(0.5),Absolute(0.4),Absolute(0.3),Absolute(0.2),Absolute(0.1),Absolute(0.075),Absolute(0.05),Absolute(0.025),Absolute(0.1),Absolute(0.0075),Absolute(0.005),Absolute(0.0025),Absolute(0.001),Absolute(0.0005)];
+#errs = [Absolute(0.5),Absolute(0.4),Absolute(0.3),Absolute(0.2),Absolute(0.1),Absolute(0.075),Absolute(0.05),Absolute(0.025),Absolute(0.1),Absolute(0.0075),Absolute(0.005),Absolute(0.0025),Absolute(0.001),Absolute(0.0005)];
+errs2 = [Absolute(0.5),Absolute(0.05),Absolute(0.005),Absolute(0.0005)]
+refinement_methods2 = ["max_precision","taylor","full_refinement","progressive_taylor","no_refinement"]
+max_iters=[5]
+filename_save = "bench_scaling_up_small.txt"
+# experiences_med = benchmark_SGM_PWL_solver(filename_instances=filename_instances[1:end-2], err_pwlhs=errs2, refinement_methods = refinement_methods2, max_iters = max_iters, filename_save = "medium_benchmark.txt")
+
+# experiences_big = benchmark_SGM_PWL_solver(filename_instances=["instance_5_4_1.txt","instance_4_5_1.txt","instance_5_5_1.txt","instance_6_6_1.txt","instance_7_7_1.txt"], err_pwlhs=[Absolute(0.05)], fixed_costss = [true, false], refinement_methods = ["max_precision"], max_iters = [5], filename_save = "big_instances.txt")
 
 #=
 old_exps = deepcopy(experiences)
@@ -812,3 +889,19 @@ solution found: [[0.0, 98.340249, 0.899786, 0.0, 1.0], [30.030196, 93.341601, 0.
 =#
 
 # experiences = benchmark_SGM_PWL_solver(filename_instances=["instance_1.txt","instance_2.txt"],err_pwlhs=[Absolute(0.5),Absolute(0.4)],filename_save="first_saved_experience.txt")
+
+
+#=
+outputs = []
+for i in 1:1
+    filename = generate_cybersecurity_instance(5,5)
+    @time _,_,_,_,output = SGM_PWL_solver(filename)
+    push!(outputs, output)
+end
+for i in 1:length(outputs)
+    println("output $i: ", outputs[i])
+end
+for i in 1:length(outputs)
+    println("output $i: $(outputs[i].solved) in $(outputs[i].cpu_time)")
+end
+=#

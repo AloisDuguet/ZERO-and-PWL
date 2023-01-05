@@ -7,7 +7,7 @@ Created on Tue Nov  8 15:35:36 2022
 """
 # don't change the line number of the following line : it should be line 10
 # (cf write_SGM_instance_filename in ../IPG-and-PWL/src/SGM_solver.jl)
-filename = "../IPG-and-PWL/SGM_files/instance_1_Abs0-05_fixedcosttrue"
+filename = "../IPG-and-PWL/SGM_files/instance_2_2_1_Abs0-005_fixedcosttrue"
 
 # workaround to have numpy found by the import method:
 ##path_list = ['/home/aduguet/anaconda3/lib/python3.8','/home/aduguet/anaconda3/lib/python3.8/lib-dynload',
@@ -60,7 +60,7 @@ def save_results_SGM(filename, ne, profits, S, n_iter, cpu_time):
 #G = Instances.Game('CyberSecurity',2,2,"../IPG-and-PWL/SGM_files/instance_1_Abs0-001_fixedcostfalse")
 #G = Instances.Game('CyberSecurity',2,2,"../IPG-and-PWL/SGM_files/instance_1_Abs1-0e-5_fixedcostfalse")
 #G = Instances.Game('CyberSecurity',2,2,"../IPG-and-PWL/SGM_files/instance_2_Abs1-0e-5_fixedcostfalse")
-G = Instances.Game('CyberSecurity',2,2, filename)
+G = Instances.Game('CyberSecurity',2,2, filename) # 2,2 is not important because it is not used for cybersecurity games
 
 max_iter = 100
 print("launching IterativeSG_NOT_DFS")

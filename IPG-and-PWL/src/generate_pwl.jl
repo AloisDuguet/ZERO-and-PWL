@@ -545,9 +545,11 @@ function pwl_formulation_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, 
      # change for having only positive parts
      #@objective(model, Max, -h_s_i + sum(val_pwlbilins[k] for k in 1:length(pwlbilins)) + sum(c[k]*Q_i[k] for k in 1:n_j) + c[end]*s_i + sum(func_quads[k] for k in 1:length(func_quads)))
      if fixed_costs
-         @objective(model, Max, -(h_s_i[1]-h_s_i[2]) + sum(val_pwlbilins[k][1]-val_pwlbilins[k][2] for k in 1:length(pwlbilins)) + sum(c[k]*Q_i[k] for k in 1:n_j) + c[end]*s_i + sum(func_quads[k][1]-func_quads[k][2] for k in 1:length(func_quads)) - sum(fcost[j]*activate_fixed_cost[j] for j in 1:n_j))
+         @objective(model, Max, -(h_s_i[1]-h_s_i[2]) + sum(val_pwlbilins[k][1]-val_pwlbilins[k][2] for k in 1:length(pwlbilins)) + sum(c[k]*Q_i[k] for k in 1:n_j) + c[end]*s_i
+          + sum(func_quads[k][1]-func_quads[k][2] for k in 1:length(func_quads)) - sum(fcost[j]*activate_fixed_cost[j] for j in 1:n_j))
      else
-         @objective(model, Max, -(h_s_i[1]-h_s_i[2]) + sum(val_pwlbilins[k][1]-val_pwlbilins[k][2] for k in 1:length(pwlbilins)) + sum(c[k]*Q_i[k] for k in 1:n_j) + c[end]*s_i + sum(func_quads[k][1]-func_quads[k][2] for k in 1:length(func_quads)))
+         @objective(model, Max, -(h_s_i[1]-h_s_i[2]) + sum(val_pwlbilins[k][1]-val_pwlbilins[k][2] for k in 1:length(pwlbilins)) + sum(c[k]*Q_i[k] for k in 1:n_j) + c[end]*s_i
+          + sum(func_quads[k][1]-func_quads[k][2] for k in 1:length(func_quads)))
      end
 
      # check validity of model by printing it

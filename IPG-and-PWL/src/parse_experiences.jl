@@ -115,9 +115,13 @@ function write_output_instance(file, option, output)
     delta, eps = get_infos_err(option.err_pwlh)
     s_option = "$(option.filename_instance)$(SEP1)delta$(Float64(delta))$(SEP2)epsilon$(Float64(eps))$(SEP1)"
     s_option = string(s_option, option.fixed_costs, SEP1, option.refinement_method, SEP1, option.max_iter, SEP1, option.rel_gap, SEP1)
-    s_output = string(output.solved, SEP1, write_matrix(output.solution), SEP1, write_vector(output.profits), SEP1, output.cpu_time, SEP2, "secondes")
-    s_output = string(s_output, SEP1, output.iter, SEP2, "iterations", SEP1, output.delta_eq, SEP2, "observed", SEP2, "delta", SEP1, write_vector(output.length_pwls))
-    println(file, string(s_option, s_output))
+    if typeof(output.solution) != ErrorException && typeof(output.solution) != MethodError
+        s_output = string(output.solved, SEP1, write_matrix(output.solution), SEP1, write_vector(output.profits), SEP1, output.cpu_time, SEP2, "secondes")
+        s_output = string(s_output, SEP1, output.iter, SEP2, "iterations", SEP1, output.delta_eq, SEP2, "observed", SEP2, "delta", SEP1, write_vector(output.length_pwls), SEP1, write_vector(output.variation_MNE))
+        println(file, string(s_option, s_output))
+    else
+        println(file, string(s_option, "ERROR: $(output.solution)"))
+    end
 end
 
 function load_output_instance(line)
@@ -132,16 +136,21 @@ function load_output_instance(line)
     options = option_cs_instance(filename_instance, err_pwlh, fixed_costs,
     refinement_method, max_iter, rel_gap)
 
-    solved = parse(Bool, infos[7])
-    solution = parse_matrix(infos[8])
-    println(solution)
-    profits = parse_vector(infos[9], Float64, SEP_MAT[3])
-    cpu_time = parse(Float64, split(infos[10])[1])
-    iter = parse(Int64, split(infos[11])[1])
-    delta_eq = parse(Float64, split(infos[12])[1])
-    length_pwls = parse_vector(infos[13], Int64, SEP_MAT[3])
-    outputs = output_cs_instance(solved, solution, profits, cpu_time,
-    iter, delta_eq, length_pwls)
+    if !occursin("ERROR", line)
+        solved = parse(Bool, infos[7])
+        solution = parse_matrix(infos[8])
+        println(solution)
+        profits = parse_vector(infos[9], Float64, SEP_MAT[3])
+        cpu_time = parse(Float64, split(infos[10])[1])
+        iter = parse(Int64, split(infos[11])[1])
+        delta_eq = parse(Float64, split(infos[12])[1])
+        length_pwls = parse_vector(infos[13], Int64, SEP_MAT[3])
+        variations = parse_vector(infos[14], Float64, SEP_MAT[3])
+        outputs = output_cs_instance(solved, solution, profits, cpu_time,
+        iter, delta_eq, length_pwls, variations)
+    else
+        outputs = output_cs_instance(false, infos[7], [[]], [], 0, -1, [], [])
+    end
 
     return cs_experience(options, outputs)
 end

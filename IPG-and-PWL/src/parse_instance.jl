@@ -5,22 +5,22 @@ struct cybersecurity_params
     Qs::Vector{Matrix{Float64}} # quadratic terms (bilinear and square terms)
     Cs::Vector{Matrix{Float64}} # mixed terms
     cs::Vector{Vector{Float64}} # linear terms
-    constant_values::Vector{Float64}
-    linear_terms_in_spi::Matrix{Float64}
-    D::Vector{Float64}
+    constant_values::Vector{Float64} # constant terms in the objective value
+    linear_terms_in_spi::Matrix{Float64} # linear terms in the parameters (variables of other players)
+    D::Vector{Float64} # penality in millions of dollars if a cyberattack is successful
     alphas::Vector{Float64} # coefficient to the function giving the budget to reach a level of cybersecurity
     Qbar::Matrix{Float64} # upper bounds of the number of traded goods
-    B::Vector{Float64}
-    fcost::Vector{Any}
+    B::Vector{Float64} # cybersecurity budget in millions of dollars
+    fcost::Matrix{Float64} # costs for establishing business between retailer i and market j
 end
 
 function instanciate_cybersecurity_params(n_players,n_markets,fixed_cost)
     # return an instanciation of cybersecurity_params with only n_players and n_markets known
     if fixed_cost
-        return cybersecurity_params(n_players,n_markets,n_markets+1,[],[],[],zeros(n_players),zeros(n_players,n_players-1),zeros(n_players),zeros(n_players),zeros(n_players,n_markets),zeros(n_players),zeros(n_players))
+        return cybersecurity_params(n_players,n_markets,n_markets+1,[],[],[],zeros(n_players),zeros(n_players,n_players-1),zeros(n_players),zeros(n_players),zeros(n_players,n_markets),zeros(n_players),zeros(n_players,n_markets))
         # price of fcost in thousands to start making business between current player and market j
     else
-        return cybersecurity_params(n_players,n_markets,n_markets+1,[],[],[],zeros(n_players),zeros(n_players,n_players-1),zeros(n_players),zeros(n_players),zeros(n_players,n_markets),zeros(n_players),[])
+        return cybersecurity_params(n_players,n_markets,n_markets+1,[],[],[],zeros(n_players),zeros(n_players,n_players-1),zeros(n_players),zeros(n_players),zeros(n_players,n_markets),zeros(n_players),zeros(n_players,n_markets))
     end
 end
 
@@ -72,7 +72,7 @@ function parse_instance_cybersecurity(filename, fixed_cost = false)
                 error("all m_j should be positive, change instance txt file because m_$j = $(m[j])")
             end
         end
-        # r_jfcost
+        # r_j
         splitted = popfirst!(splitteds)
         r = zeros(n_markets)
         for j in 1:n_markets
@@ -176,16 +176,22 @@ function parse_instance_cybersecurity(filename, fixed_cost = false)
         splitted = popfirst!(splitteds)
         if length(splitted) == n_players
             for i in 1:n_players # BAD CHOICE, the best would be a cost for each pair (player,market) but for now it is one cost per player
-                cs_params.fcost[i,j] = [parse(Float64, splitted[i]) for j in 1:n_markets]
+                for j in 1:n_markets
+                    cs_params.fcost[i,j] = parse(Float64, splitted[i])
+                end
             end
         elseif length(splitted) == n_players*n_markets
+            for i in 1:n_players
+                for j in 1:n_markets
+                    cs_params.fcost[i,j] = parse(Float64, splitted[(i-1)*n_markets+j])
+                end
+            end
 
         else
             error("size problem with fixed_costs which should be either $n_players or $(n_players*n_markets) but which are $(length(splitted))")
         end
     end
 
-    ##return Qs,Cs,cs,constant_values,linear_terms_in_spi,D,alphas,Qbar,B,fcost,n_players,n_markets
     return cs_params
 end
 
@@ -343,6 +349,34 @@ function add_variable_name(filename, var_namess, max_length_var_name = 22)
         println(file, line)
     end
     close(file)
+end
+
+function vector_to_string(v, sep = " ")
+    # return a string with all values of v separated by sep
+    s = ""
+    for i in 1:length(v)
+        val = v[i]
+        s = string(s, val)
+        if i != length(v)
+            s = s*sep
+        end
+    end
+    return s
+end
+
+function matrix_to_string(mat, sep = " ")
+    # return a string with all values of v separated by sep
+    s = ""
+    for i in 1:size(mat)[1]
+        for j in 1:size(mat)[2]
+            val = mat[i,j]
+            s = string(s, val)
+            if !(i == size(mat)[1] && j == size(mat)[2])
+                s = s*sep
+            end
+        end
+    end
+    return s
 end
 
 #=filename = "../../../../CLionProjects/ZERO-and-PWL/IPG-and-PWL/CSV_files/instance1_Abs2_Abs10_Abs10000_fixedcostfalse/model_output.txt"

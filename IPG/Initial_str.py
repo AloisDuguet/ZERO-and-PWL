@@ -32,13 +32,13 @@ def InitialStrategies(G,opt_solver=1):
             except:
                 print("Player ", p+1, " has no feasible solution or the problem is unbounded")
         elif G.type() == "CyberSecurity":
-            print("shape of Q: ", np.shape(G.Q()))
-            print("shape of Q[p]: ", np.shape(G.Q()[p]))
-            for l in range(np.shape(G.Q()[p])[0]):
-                print("shape of the %i-th bloc of Q[p] = "%l, np.shape(G.Q()[p][l]))
+            #print("shape of Q: ", np.shape(G.Q()))
+            #print("shape of Q[p]: ", np.shape(G.Q()[p]))
+            #for l in range(np.shape(G.Q()[p])[0]):
+                #print("shape of the %i-th bloc of Q[p] = "%l, np.shape(G.Q()[p][l]))
                 #print(G.Q()[p][l][:3,:3])
-                print(G.Q()[p][l])
-            print("just before bestreactiongurobicybersecurity")
+                #print(G.Q()[p][l])
+            #print("just before bestreactiongurobicybersecurity")
             S[p][0], U_p[p][0], Model_p = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins())
         Best_m.append(Model_p)
     return S, U_p, Best_m
@@ -320,7 +320,7 @@ def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Pro
             QuadPart = grb.QuadExpr(np.dot(c_p,x)-0.5*(np.dot(np.dot(x.T,Q_p[p]),x)))
         m_p.setObjective(QuadPart)
         m_p.update()
-    if n_I_p+n_C_p ==1 and type(xk_Qkp) is not np.ndarray:
+    if n_I_p+n_C_p == 1 and type(xk_Qkp) is not np.ndarray:
         if CE_verify and m_p!=None:
             # when we use CE, we change objective function in the indepedent part
             #QuadPart = grb.QuadExpr(x[0]*c_p[0]-0.5*x[0]*Q_p[p]*x[0])

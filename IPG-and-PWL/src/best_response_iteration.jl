@@ -3,23 +3,23 @@ include("nikaido-isoda_NE_characterization.jl")
 
 using AmplNLWriter, Couenne_jll, Ipopt_jll, Ipopt
 
-function generate_and_solve_best_response_model(player_index, n_players, n_j, Qb_i, max_s_i, c, pwl1d, pwlbilins, pwlquads
+function generate_and_solve_best_response_model(player_index, n_players, n_markets, Qb_i, max_s_i, c, pwl1d, pwlbilins, pwlquads
     , info_pwlquads, C, constant_value, linear_terms_in_spi, filename, parameters, fixed_costs = false, fcost = [])
     # solve cybersecurity linearized best response
 
     # declare model and common variables and constraints
      model = Model(Gurobi.Optimizer)
 
-     var_Q_i = @variable(model, Q_i[1:n_j] >= 0)
+     var_Q_i = @variable(model, Q_i[1:n_markets] >= 0)
      var_s_i = @variable(model, s_i >= 0)
      @constraint(model, s_i <= max_s_i)
 
      # fixed costs to make business with markets or not depending on the value of parameter fixed_costs
      if fixed_costs
-         activate_fixed_cost = @variable(model, base_name = "activate_fixed_cost", [j=1:n_j], Bin)
-         @constraint(model, [j=1:n_j], Q_i[j] <= Qb_i[j]*activate_fixed_cost[j])
+         activate_fixed_cost = @variable(model, base_name = "activate_fixed_cost", [j=1:n_markets], Bin)
+         @constraint(model, [j=1:n_markets], Q_i[j] <= Qb_i[j]*activate_fixed_cost[j])
      else
-         @constraint(model, [j=1:n_j], Q_i[j] <= Qb_i[j])
+         @constraint(model, [j=1:n_markets], Q_i[j] <= Qb_i[j])
      end
 
      # add variables for approximated terms
@@ -35,7 +35,7 @@ function generate_and_solve_best_response_model(player_index, n_players, n_j, Qb
      for k in 1:length(pwlquads)
          # define id_var and id_func
          #println("adding square approximation of var $(info_pwlquads[k]) that has $(length(pwlquads[k])) pieces")
-         if info_pwlquads[k] <= n_j
+         if info_pwlquads[k] <= n_markets
              id_var = var_Q_i[info_pwlquads[k]]
              #println("var_Q_i[$(info_pwlquads[k])] chosen as id_var")
          else
@@ -85,15 +85,15 @@ function generate_and_solve_best_response_model(player_index, n_players, n_j, Qb
      # i is the index of the other player currently considered
      # k is the index for the player's variables
      @expression(model, param_terms, sum(sum(sum(parameters[i][j]*C[(i-1)*length(vars_player)+j,k]*vars_player[k] for j in 1:length(vars_player)) for i in 1:n_players-1) for k in 1:length(vars_player))
-     + sum(linear_terms_in_spi[i]*parameters[i][n_j+1] for i in 1:n_players-1) + constant_value)
+     + sum(linear_terms_in_spi[i]*parameters[i][n_markets+1] for i in 1:n_players-1) + constant_value)
      #println("expression:\n$param_terms")
 
      # add the objective function
      if fixed_costs
-         @objective(model, Max, -(h_s_i[1]-h_s_i[2]) + sum(val_pwlbilins[k][1]-val_pwlbilins[k][2] for k in 1:length(pwlbilins)) + sum(c[k]*Q_i[k] for k in 1:n_j)
-         + c[end]*s_i + sum(func_quads[k][1]-func_quads[k][2] for k in 1:length(func_quads)) - sum(fcost[j]*activate_fixed_cost[j] for j in 1:n_j) + param_terms)
+         @objective(model, Max, -(h_s_i[1]-h_s_i[2]) + sum(val_pwlbilins[k][1]-val_pwlbilins[k][2] for k in 1:length(pwlbilins)) + sum(c[k]*Q_i[k] for k in 1:n_markets)
+         + c[end]*s_i + sum(func_quads[k][1]-func_quads[k][2] for k in 1:length(func_quads)) - sum(fcost[j]*activate_fixed_cost[j] for j in 1:n_markets) + param_terms)
      else
-         @objective(model, Max, -(h_s_i[1]-h_s_i[2]) + sum(val_pwlbilins[k][1]-val_pwlbilins[k][2] for k in 1:length(pwlbilins)) + sum(c[k]*Q_i[k] for k in 1:n_j)
+         @objective(model, Max, -(h_s_i[1]-h_s_i[2]) + sum(val_pwlbilins[k][1]-val_pwlbilins[k][2] for k in 1:length(pwlbilins)) + sum(c[k]*Q_i[k] for k in 1:n_markets)
          + c[end]*s_i + sum(func_quads[k][1]-func_quads[k][2] for k in 1:length(func_quads)) + param_terms)
      end
      #println(objective_function(model))
@@ -303,13 +303,13 @@ function best_response_one_iteration(filename_instance, parameters, num_iter, er
         useful_parameters = [parameters[i] for i in 1:n_players if i != p]
         model, sol, obj, ordvar = generate_and_solve_best_response_model(p, n_players, n_markets, params.Qbar[p,:], max_s_is[p], params.cs[p], pwl_h.pwl,
         [pwlbilins[i].pwl for i in 1:length(pwlbilins)], [pwlquads[i].pwl for i in 1:length(pwlquads)], info_pwlquads, params.Cs[p], params.constant_values[p],
-        params.linear_terms_in_spi[p,:],filename_save_BRI,useful_parameters,fixed_cost,params.fcost)
+        params.linear_terms_in_spi[p,:],filename_save_BRI,useful_parameters,fixed_cost,params.fcost[i,:])
 
         # call to the non linear best response
         model_NBR, sol_NBR, obj_NBR, ordvar_NBR = compute_cybersecurity_nonlinear_best_response(p, n_players
         , n_markets, params.Qbar[p,:], max_s_is[p], params.cs[p], params.alphas[p],
         params.Qs[p], params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:],
-        filename_save_BRI,useful_parameters,fixed_cost,params.fcost)
+        filename_save_BRI,useful_parameters,fixed_cost,params.fcost[i,:])
         println("solution to the nonlinear best response: $sol_NBR\nwith value $obj_NBR")
 
         ## compute the objective value of the player for the original nonlinear game and check if the approximation error is satisfied at this point

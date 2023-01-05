@@ -22,8 +22,8 @@ function evaluate_cybersecurity_objective_value(x, parameters, p, params, fixed_
         println("size of variables x $x: $(length(x))")
         println("n_var = $n_var and $n_markets markets")
         println("player $p")
-        println("params.fcost = $(params.fcost)")
-        val -= params.fcost[p]*sum(x[i] for i in n_var+1:n_var+n_markets)
+        println("params.fcost[$p,:] = $(params.fcost[p,:])")
+        val -= sum(params.fcost[p,j-n_var]*x[j] for j in n_var+1:n_var+n_markets)
     end
 
     # order two terms
@@ -131,6 +131,9 @@ function compute_cybersecurity_nonlinear_best_response(player_index, n_players, 
      println(file, term_status)
      close(file)
      if term_status == MOI.INFEASIBLE
+         file = open("save_infeasible_couenne_models.txt", "a")
+         println(file, model)
+         close(file)
          try
              compute_conflict!(model)
              if MOI.get(model, MOI.ConflictStatus()) == MOI.CONFLICT_FOUND
@@ -140,6 +143,7 @@ function compute_cybersecurity_nonlinear_best_response(player_index, n_players, 
              end
          catch e
              println("\t\t\t$e\t\t\t")
+             println(model)
          end
          error("status MOI.INFEASIBLE detected for player $player_index")
      elseif term_status == MOI.OPTIMAL || term_status == MOI.LOCALLY_SOLVED
@@ -195,19 +199,29 @@ function cybersecurity_NE_characterization_function(x, params, fixed_costs)
         parameters = [x[i] for i in 1:n_players if i != p]
         obj_p = evaluate_cybersecurity_objective_value(x[p], parameters, p, params, fixed_costs)
 
-        # compute the inf in y_i (because it is a maximization problem), NBR = Non-linear Best Response
-        model_NBR, sol_NBR, obj_NBR, ordvar_NBR = compute_cybersecurity_nonlinear_best_response(p, n_players
-        , n_markets, params.Qbar[p,:], max_s_is[p], params.cs[p], params.alphas[p], params.Qs[p]
-        , params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:], filename
-        , parameters, fixed_costs, params.fcost)
+        global model_NBR, sol_NBR, obj_NBR, ordvar_NBR
 
-        println("eval NL = $obj_p with solution $(x[p])\nBR NL = $obj_NBR with solution $sol_NBR")
+        try
+            # compute the inf in y_i (because it is a maximization problem), NBR = Non-linear Best Response
+            global model_NBR, sol_NBR, obj_NBR, ordvar_NBR = compute_cybersecurity_nonlinear_best_response(p, n_players
+            , n_markets, params.Qbar[p,:], max_s_is[p], params.cs[p], params.alphas[p], params.Qs[p]
+            , params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:], filename
+            , parameters, fixed_costs, params.fcost[p,:])
 
-        recompute_obj_NBR = evaluate_cybersecurity_objective_value(sol_NBR, parameters, p, params, fixed_costs)
-        if abs(recompute_obj_NBR-obj_NBR) > 1e-9
-            println("")
-            error("problem with the evaluation of the NL best response: diff of $(abs(recompute_obj_NBR-obj_NBR))")
+            println("eval NL = $obj_p with solution $(x[p])\nBR NL = $obj_NBR with solution $sol_NBR")
+
+            #=recompute_obj_NBR = evaluate_cybersecurity_objective_value(sol_NBR, parameters, p, params, fixed_costs)
+            if abs(recompute_obj_NBR-obj_NBR) > 1e-9
+                println("")
+                error("problem with the evaluation of the NL best response: diff of $(abs(recompute_obj_NBR-obj_NBR))")
+            end=#
+        catch e
+            println("\n\n\nerror while computing cybersecurity nonlinear best response for nikaido-isoda function:")
+            println("continue with 1e12 to not stop the algorithm (does not work if abs_gap > 1e12) with player $p")
+            global obj_NBR = obj_p + 1e12
         end
+
+
 
         # add the computed things to the sum
         push!(Vps, obj_p - obj_NBR)

@@ -1,5 +1,6 @@
 from Instances import *
 from Initial_str import *
+from nonlinear_best_response_cybersecurity import *
 # control time
 from time import time
 from copy import deepcopy
@@ -231,6 +232,10 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
             else:
                 print("using best response for CyberSecurity model")
                 s_p, u_max, _ = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p])
+                solNL, valueNL, _ = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
+                f = open("save_NL_and_L_results.txt", "a")
+                f.write("%f\t%f\t%f\n"%(u_max,valueNL,u_max-valueNL))
+                f.close()
             if Profits[p] +10**-6 <= u_max: # don't change it ()
                 aux = False
                 S_new[p].append(s_p)
