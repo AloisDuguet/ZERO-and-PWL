@@ -2,6 +2,11 @@ from __future__ import division
 import pyomo.environ as pyo
 import numpy as np
 import Initial_str
+import sys
+import copy
+
+from tools_parse import *
+from cyipopt import *
 
 # probably useful lines:
 # model.OBJ = pyo.Objective(expr=1/pyo.sqrt(1-model.x[1])-1,sense=pyo.maximize)
@@ -16,7 +21,9 @@ def get_additional_info_for_NL_model(p, n_players):
     f = open("additional_info_for_NL_model.txt")
     alphas = [float(f.readline()) for i in range(n_players)]
     nRealVarss = [int(f.readline()) for i in range(n_players)]
-    return alphas[p], nRealVarss[p], sum(nRealVarss[i] for i in range(n_players)) - nRealVarss[p]
+    Ds = [float(f.readline()) for i in range(n_players)]
+    n_markets = int(f.readline())
+    return alphas[p], nRealVarss[p], sum(nRealVarss[i] for i in range(n_players)) - nRealVarss[p], Ds, n_markets
 
 def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_p, Profile, p, create, ins, model = None,CE_verify = False):
     if CE_verify:
@@ -27,8 +34,7 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
         xk_Qkp = sum(np.dot(Profile[k], Q_p[k]) for k in range(m) if k!=p) # np.array
     if model == None:
         # retrieve alpha, nRealVars and n_markets for later
-        alpha,nRealVars,nOtherRealVars = get_additional_info_for_NL_model(p, m)
-        _,_,_,_,_,n_markets = Initial_str.read_numbers_cybersecurity(ins)
+        alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
 
         # retrieve binary variable indices
         binary_indices = Initial_str.read_list(ins+"/model_IntegerIndexes%i.csv"%(p+1))
@@ -118,6 +124,16 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
             expr += -alpha*(1/pyo.sqrt(1-model.x[n_markets])-1)
             # mixed terms with xk_Qkp
             expr += pyo.summation(xk_Qkp,model.x)
+            # constant terms (-D_i) and spi terms (D_i/n_players*s_pi)
+            if False:
+                f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
+                f.write("value of s_pi: ")
+                [f.write(list_to_string([Profile[k][n_markets] for k in range(m) if k != p]))]
+                f.write("\nthe addition of constant and spi terms makes a change of ")
+                f.write("%f"%(-Ds[p] + Ds[p]/m*sum(Profile[k][n_markets] for k in range(m) if k != p)))
+                f.write("\n\n")
+                f.close()
+            #expr += -Ds[p] + Ds[p]/m*sum(Profile[k][n_markets] for k in range(m) if k != p)
             return expr
 
         model.OBJ = pyo.Objective(rule=obj_expression,sense=pyo.maximize)
@@ -131,12 +147,23 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
         print("create is not false, the function does not know what to do")
         exit(1)
 
-    model.pprint()
+    #model.pprint()
+
+    # write model to check it later
+    #f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
+    #f.write("python model for player %i:\n"%(p+1))
+    #save_stdout = sys.stdout
+    #sys.stdout = f
+    #model.pprint()
+    #sys.stdout = save_stdout
+    #f.close()
 
     # give warm start with Profile => COUENNE DOES NOT SUPPORT WARMSTART
     #for i in range(nRealVars):
     #    model.x[i] = Profile[p][i]
     opt = pyo.SolverFactory('couenne')
+    #####opt = pyo.SolverFactory('ipopt') # ipopt can not handle integer variables
+    #opt = pyo.SolverFactory('bonmin')
     opt.solve(model)
 
     try:
@@ -144,7 +171,17 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
         value = pyo.value(model.OBJ)
         print("solution:\n", sol)
         print("optimal value:\n", value)
+        if False:
+            f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
+            f.write("solution for player %i:\n"%(p+1))
+            [f.write("%f\n"%(sol[i])) for i in range(nRealVars)]
+            f.write("optimal value: ")
+            f.write("%f\n\n"%value)
+            f.write("with parameters:\n")
+            [f.write("%s "%(list_to_string(Profile[k]))) for k in range(m) if k!=p]
+            f.write("\n")
+            f.close()
         return sol, value, model
-    except:
-        print("problem after solve when getting back values")
+    except Exception as e:
+        print("problem after solve when getting back values:\n", e)
         exit(2)

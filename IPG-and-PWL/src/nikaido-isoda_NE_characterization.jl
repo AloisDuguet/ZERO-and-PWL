@@ -46,6 +46,13 @@ function evaluate_cybersecurity_objective_value(x, parameters, p, params, fixed_
     #println("x = $x")
     #println("parameters = $parameters")
     #println("objective value = $val")
+
+    # write sol in file
+    if false
+        file = open("algo_NL_model.txt", "a")
+        println(file, "evaluation of $x returns $val with parameters $parameters\n")
+        close(file)
+    end
     return val
 end
 
@@ -75,7 +82,7 @@ function compute_cybersecurity_nonlinear_best_response(player_index, n_players, 
      # solve nonlinear best response of cybersecurity model
 
      # declare model and common variables and constraints
-     model = Model(() -> AmplNLWriter.Optimizer(Couenne_jll.amplexe))
+     model = Model(() -> AmplNLWriter.Optimizer(Couenne_jll.amplexe)) # Ipopt can not handle integer variables
      # does not manage binary variables: model = Model(() -> AmplNLWriter.Optimizer(Ipopt_jll.amplexe))
      set_optimizer_attribute(model, "print_level", 0)
 
@@ -119,9 +126,13 @@ function compute_cybersecurity_nonlinear_best_response(player_index, n_players, 
      end
 
      # check validity of model by printing it
-     file = open(filename[1:end-4]*"_$(player_index)_NBR.txt", "w")
-     println(file, model)
-     close(file)
+     if false
+         file = open("algo_NL_model.txt", "a")
+         #file = open(filename[1:end-4]*"_$(player_index)_NBR.txt", "w")
+         println(file, "julia model for player $player_index:")
+         println(file, model)
+         close(file)
+     end
 
      # resolution of the model
      status = JuMP.optimize!(model)
@@ -154,6 +165,17 @@ function compute_cybersecurity_nonlinear_best_response(player_index, n_players, 
 
          solution = [JuMP.value(vars_player[i]) for i in 1:length(vars_player)]
          obj = objective_value(model)
+
+         if false
+             file = open("algo_NL_model.txt", "a")
+             println(file, "solution:")
+             println(file, solution)
+             println(file, "objective value:")
+             println(file, obj)
+             println(file)
+             close(file)
+         end
+
          return model, solution, obj, all_variables(model)
      else
          error("unknown status $term_status, maybe add a case in the code for it")
@@ -207,6 +229,13 @@ function cybersecurity_NE_characterization_function(x, params, fixed_costs)
             , n_markets, params.Qbar[p,:], max_s_is[p], params.cs[p], params.alphas[p], params.Qs[p]
             , params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:], filename
             , parameters, fixed_costs, params.fcost[p,:])
+
+            obj_p_check = evaluate_cybersecurity_objective_value(sol_NBR, parameters, p, params, fixed_costs)
+            if false
+                file = open("algo_NL_model.txt", "a")
+                println(file, "objective value with NL BR is $obj_p_check\nwith parameters : $parameters\n")
+                close(file)
+            end
 
             println("eval NL = $obj_p with solution $(x[p])\nBR NL = $obj_NBR with solution $sol_NBR")
 

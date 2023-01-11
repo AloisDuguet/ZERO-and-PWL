@@ -44,6 +44,8 @@ class Game(object):
             m, n_I, n_C, n_constr, c, Q, A, b = Two_KEG_RandomGame(n,ins,K)
         elif type == 'CyberSecurity':
             m, n_I, n_C, n_constr, c, Q, C, A, b = CyberSecurityGame(ins)
+        elif type == 'CyberSecurityNL':
+            m, n_I, n_C, n_constr, c, Q, C, A, b = CyberSecurityGame(ins)
         elif type == "empty":
             m = 0
             n_I = []

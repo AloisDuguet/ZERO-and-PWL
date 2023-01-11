@@ -204,7 +204,7 @@ function refine_longest_piece(pwl_struct, pieces_number, iter, max_iter, new_del
 	return pwl_struct
 end
 
-function add_order_1_taylor_piece(pwl_struct, f, pos, err, iter, max_iter, new_delta, eps = 0)
+function add_order_1_taylor_piece(pwl_struct, f, pos, err, iter, max_iter, new_delta, eps = 0; outer_refinement = false)
     # WARNING: works only if pwl_struct is of type pwlh for now
     # replace the piece defined in pos in the pwl in pwl_struct by a piece
     # which is a first order taylor approximation with approx error of err,
@@ -277,44 +277,28 @@ function add_order_1_taylor_piece(pwl_struct, f, pos, err, iter, max_iter, new_d
 	# create taylor piece
 	order_one_piece = LinA.LinearPiece(new_t1, new_t2, der_val, b, x -> a*x + b)
 
-	# delete replaced pieces
-	println("pieces deleted:\n$(pwl_struct.pwl[pieces_number]) for err $err")
-    deleteat!(pwl_struct.pwl, pieces_number[1]:pieces_number[end])
-
 	# compute the refined pieces into one pwl
 	file = open("check_useless_pieces.txt", "a")
 	println(file, "iteration $iter: t1 $t1 new_t1 $new_t1 t2 $t2 new_t2 $new_t2\norder_one_piece\n$order_one_piece")
 	close(file)
 	if t1 < new_t1
 		println("building pwl1 from $t1 to $new_t1")
-    	#=pwl1 = LinA.HeuristicLin(pwl_struct.expr_f,t1,new_t1,Absolute(new_delta))
-		if abs(pwl1[end].xMax-new_t1) > 1e-12
-			println(pwl1)
-			pwl = LinA.HeuristicLin(pwl_struct.expr_f,pwl1[end].xMax,new_t1+1e-5,Absolute(new_delta))
-			if pwl[1].xMax < new_t1
-				error("pwl[1].xMax is $(pwl[1].xMax) instead of new_t1 $new_t1")
-			end
-			push!(pwl1, LinA.LinearPiece(pwl[1].xMin,new_t1,pwl[1].a,pwl[1].b,pwl[1].fct))
-			println("piece(s) added:\n$pwl")
-		end=#
+
 		pwl1 = corrected_heuristicLin(pwl_struct.expr_f,t1,new_t1,Absolute(new_delta), 1e-15)
 	else
 		pwl1 = []
 	end
 	if t2 > new_t2
 		println("building pwl1 from $new_t2 to $t2")
-    	#=pwl2 = LinA.HeuristicLin(pwl_struct.expr_f,new_t2,t2,Absolute(new_delta))
-		if abs(pwl2[end].xMax-t2) > 1e-12
-			pwl = LinA.HeuristicLin(pwl_struct.expr_f,pwl2[end].xMax,t2+1e-5,Absolute(new_delta))
-			if pwl[1].xMax < t2
-				error("pwl[1].xMax is $(pwl[1].xMax) instead of t2 $t2")
-			end
-			push!(pwl2, LinA.LinearPiece(pwl[1].xMin,t2,pwl[1].a,pwl[1].b,pwl[1].fct))
-		end=#
+    	
 		pwl2 = corrected_heuristicLin(pwl_struct.expr_f,new_t2,t2,Absolute(new_delta))
 	else
 		pwl2 = []
 	end
+
+	# delete replaced pieces
+	println("pieces deleted:\n$(pwl_struct.pwl[pieces_number]) for err $err")
+    deleteat!(pwl_struct.pwl, pieces_number[1]:pieces_number[end])
 
 	# create pieces_to_add adapted to refined p1 and p2 (with possibly more than one piece in them)
 	for i in length(pwl2):-1:1

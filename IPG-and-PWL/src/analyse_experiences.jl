@@ -135,6 +135,7 @@ end
 
 function check_error(experiences)
     # count types and numbers of different errors in experiences
+    # WARNING: does not work with 1e12 diff (use count_NL_BR_failed for that)
     error_types = []
     count_error = 0
     counts = []
@@ -207,4 +208,33 @@ function relaunch_exp(experiences, number, complete_output = false)
     else
         return cs_instance, Vs, iter, outputs_SGM, cs_experience(options,output)
     end
+end
+
+function preliminary_analysis(exps, err_pwlhs, fixed_costss, refinement_methods)
+    # uses a number of functions to analyse the data in exps
+
+    error_types, count_error = check_error(exps)
+    count_failed, l_failed = count_NL_BR_failed(exps)
+    println("\nTotal number of experiences: $(length(exps))\n")
+    options = [:err_pwlh, :fixed_costs, :refinement_method]
+    options_values = [err_pwlhs, fixed_costss, refinement_methods]
+    solvedss = []
+    cpu_timess = []
+    iterss = []
+    for i in 1:length(options)
+        solveds, cpu_times, iters = compare_cs_experience(exps, options[i], options_values[i])
+        push!(solvedss, solveds)
+        push!(cpu_timess, cpu_times)
+        push!(iterss, iters)
+    end
+
+    println("$count_error occured, with errors :")
+    [println(error_types[i]) for i in 1:length(error_types)]
+    if length(error_types) == 0
+        println("no errors")
+    end
+    println("$count_failed experiences stopped because of a failed resolution of Couenne in julia")
+    println("the indices of those experiences are in l_failed:\n$l_failed")
+
+    return error_types, count_error, count_failed, l_failed, options, solvedss, cpu_timess, iterss
 end

@@ -8,6 +8,7 @@ include("pwl_refinement.jl")
 include("nikaido-isoda_NE_characterization.jl")
 include("generate_cybersecurity_instance.jl")
 include("analyse_experiences.jl")
+include("cybersecurity_NL_model.jl")
 
 using LinearAlgebra
 #using TimerOutputs
@@ -421,9 +422,15 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
 
         # launch creation of files with matrices
         println("player $p and fixed costs:\n$(params.fcost)")
-        model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_model_to_csv(p, n_players, n_markets, params.Qbar[p,:], max_s_is[p],
-        params.cs[p], pwl_h.pwl, params.Qs[p], params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:],
-        "../SGM_files/"*filename_save,fixed_costs,params.fcost[p,:])
+        if refinement_method != "SGM_NL_model"
+            model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_model_to_csv(p, n_players, n_markets, params.Qbar[p,:], max_s_is[p],
+            params.cs[p], pwl_h.pwl, params.Qs[p], params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:],
+            "../SGM_files/"*filename_save,fixed_costs,params.fcost[p,:])
+        else
+            model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_NL_model_to_csv(p, n_players, n_markets, params.Qbar[p,:], max_s_is[p],
+            params.cs[p], pwl_h.pwl, params.Qs[p], params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:],
+            "../SGM_files/"*filename_save,fixed_costs,params.fcost[p,:])
+        end
 
          # create cybersecurity_player p
         push!(list_players, cybersecurity_player(pwl_h,[],[],[],max_s_is[p], [ordvar], -Inf))
@@ -446,6 +453,11 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
     for p in 1:n_players
         println(file, n_markets+1+n_markets*fixed_costs)
     end
+    # write D for constant and spi terms
+    for p in 1:n_players
+        println(file, params.D[p])
+    end
+    println(file, n_markets)
     close(file)
 
     #output_and_save_recap_model(cs_instance, foldername = "../SGM_files/")
@@ -477,7 +489,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
         # solve current model with SGM
         #run(first_cd)
         cd("../../IPG")
-        write_SGM_instance_filename(cs_instance.filename_save)
+        write_SGM_instance_last_informations(cs_instance.filename_save, refinement_method)
         println("launch cmd:")
         @time run(launch_cmd)
         #run(second_cd)
@@ -488,6 +500,14 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
         # correct rounding problem on variable s: it is the upper bound of its domain but the rounding is above this limit
         # in this case, write the upper bound of the domain instead of the rounding
         S = correct_rounding_problem_SGM(S, cs_instance, params)
+
+        if false
+            file = open("algo_NL_model.txt", "a")
+            println(file, ne)
+            println(file, profits)
+            println(file, S)
+            close(file)
+        end
 
         push!(outputs_SGM["ne"],deepcopy(ne))
         push!(outputs_SGM["profits"],deepcopy(profits))
@@ -537,24 +557,21 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
         # compute the sup of the Nikaido-Isoda function in y
         V,Vps,all_vals = cybersecurity_NE_characterization_function(sol, params, fixed_costs)
 
-        #=# problem MOI.INFEASIBLE
-        # 0.19 :  Qs[3]:
-        #[-2.16 0.0 0.0 0.0; 0.0 -2.32 0.0 0.0; 0.0 0.0 -2.15 0.0; 0.05666666666666667 0.06333333333333334 0.13333333333333333 -26.333333333333332]
-        #[-26.333333333333332, -2.32, -2.16, -2.15]
-
-                # 0.195 : Qs[3]:
-        #[-2.16 0.0 0.0 0.0; 0.0 -2.32 0.0 0.0; 0.0 0.0 -2.15 0.0; 0.05666666666666667 0.065 0.13333333333333333 -26.333333333333332]
-        #[-26.333333333333332, -2.32, -2.16, -2.15]
-        for i in 1:n_players
-            if Vps[i] == -1e12
-                println("Qs[$i]:\n", params.Qs[i])
-                println(eigvals(params.Qs[i]))
-            else
-                println("Qs[$i]:\n", params.Qs[i])
-                println(eigvals(params.Qs[i]))
+        # check that the NL model in python finds the same as here
+        if false
+            if refinement_method == "SGM_NL_model"
+                file = open("algo_NL_model.txt", "a")
+                println(file, "differences between NL evaluation and NL resolution:")
+                println(file, Vps)
+                println(file, all_vals[end-2*n_players+1:end])
+                if abs(V) > 1e-4
+                    println(file, "with refinement_method SGM_NL_model, the evaluation of the SGM solution and the NL model resolution is different:\nV = $V\nVps = $Vps")
+                    close(file)
+                    error("with refinement_method SGM_NL_model, the evaluation of the SGM solution and the NL model resolution is different:\nV = $V\nVps = $Vps")
+                end
+                close(file)
             end
         end
-        #error()=#
 
         println("sup of NI function = $V\tmax of values $Vps")
         for p in 1:n_players
@@ -562,7 +579,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
         end
 
         # check errors are less than proved theoretically
-        # abs_gap is computed at each iteration as a function of rel_gap because when we need an absolute value to compare with the observed delta
+        # abs_gap is computed at each iteration as a function of rel_gap because we need an absolute value to compare with the observed delta
         abs_gap = maximum([abs(all_vals[3*i]) for i in 1:n_players])*rel_gap
         file = open("check_errors_in_differences.txt", "a")
         for p in 1:n_players
@@ -587,7 +604,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
 
         # stopping criterion
         max_delta = maximum([abs(Vps[i]) for i in 1:n_players])
-        if max_delta <= abs_gap
+        if max_delta <= abs_gap || refinement_method == "SGM_NL_model"
             println("\n----------\n$abs_gap-NE found for the nonlinear game in $iter iterations")
             #=if raise_err_at_the_end
                 println("errors of differences of obj values and best responses, cf check_errors_in_differences.txt:\n")
@@ -630,9 +647,9 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
             profits = [outputs_SGM["all_vals"][end][3*p-1] for p in 1:n_players]
             println("profits:\n$profits\nall_vals:\n$(outputs_SGM["all_vals"])")
             length_pwls = [length(cs_instance.cs_players[p].pwl_h.pwl) for p in 1:n_players]
-            output = output_cs_instance(true, outputs_SGM["sol"][end], profits, -1, iter, max_delta, length_pwls,[])
+            output = output_cs_instance(true, outputs_SGM["sol"][end], profits, -1, iter, max_delta, length_pwls,compute_MNE_distance_variation(outputs_SGM["sol"][end]))
             options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap)
-            save_MNE_distance_variation(outputs_SGM["sol"], options, output)
+            #save_MNE_distance_variation(outputs_SGM["sol"], options, output)
             return cs_instance, Vs, iter, outputs_SGM, output
         else
             println("current delta of delta-NE is $max_delta")
@@ -708,16 +725,23 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
             end
 
             # launch again the creation of files with matrices with the new pwl
-            model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_model_to_csv(p, n_players, n_markets, params.Qbar[p,:],
-            max_s_is[p], params.cs[p], cs_instance.cs_players[p].pwl_h.pwl, params.Qs[p], params.Cs[p],
-            params.constant_values[p], params.linear_terms_in_spi[p,:], "../SGM_files/"*filename_save,fixed_costs,
-            params.fcost[p,:])
+            if refinement_method != "SGM_NL_model"
+                model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_model_to_csv(p, n_players, n_markets, params.Qbar[p,:],
+                max_s_is[p], params.cs[p], cs_instance.cs_players[p].pwl_h.pwl, params.Qs[p], params.Cs[p],
+                params.constant_values[p], params.linear_terms_in_spi[p,:], "../SGM_files/"*filename_save,fixed_costs,
+                params.fcost[p,:])
+            else
+                model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_NL_model_to_csv(p, n_players, n_markets, params.Qbar[p,:],
+                max_s_is[p], params.cs[p], cs_instance.cs_players[p].pwl_h.pwl, params.Qs[p], params.Cs[p],
+                params.constant_values[p], params.linear_terms_in_spi[p,:], "../SGM_files/"*filename_save,fixed_costs,
+                params.fcost[p,:])
+            end
         end
 
     end
     close(file_copy)
 
-    abs_gap = maximum([abs(outputs_SGM["all_vals"][end][2*i]) for i in 1:n_players])*rel_gap
+    abs_gap = maximum([abs(outputs_SGM["all_vals"][end][3*p]) for p in 1:n_players])*rel_gap
     println("no delta-NE with $rel_gap relative gap ($abs_gap-equilibrium) have been found in $max_iter iterations")
 
     pstrats = outputs_SGM["num_piece_with_strat"]
@@ -738,7 +762,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
        println(outputs_SGM["length_pwl"][i])
     end
 
-    profits = [outputs_SGM["all_vals"][end][2*p-1] for p in 1:n_players]
+    profits = [outputs_SGM["all_vals"][end][3*p-1] for p in 1:n_players]
     println("profits:\n$profits\nall_vals:\n$(outputs_SGM["all_vals"])")
     length_pwls = [length(cs_instance.cs_players[p].pwl_h.pwl) for p in 1:n_players]
     max_delta = maximum([abs(Vs[end][2][i]) for i in 1:n_players])
@@ -804,6 +828,9 @@ function benchmark_SGM_PWL_solver(; filename_instances, err_pwlhs, fixed_costss 
         println("error preventing from writing results in $filename_save:\n$e")
     end
 
+    # give some elements of analysis
+    preliminary_analysis(experiences, err_pwlhs, fixed_costss, refinement_methods)
+
     return experiences
 end
 
@@ -839,12 +866,24 @@ for i in 2:4
         push!(filename_instances2, "instance_$(i)_$(j)_1.txt")
     end
 end
+filename_instances_big = []
+for i in 5:6
+    for j in 2:10
+        push!(filename_instances_big, "instance_$(i)_$(j)_1.txt")
+    end
+end
 
 #errs = [Absolute(0.5),Absolute(0.4),Absolute(0.3),Absolute(0.2),Absolute(0.1),Absolute(0.075),Absolute(0.05),Absolute(0.025),Absolute(0.1),Absolute(0.0075),Absolute(0.005),Absolute(0.0025),Absolute(0.001),Absolute(0.0005)];
 errs2 = [Absolute(0.5),Absolute(0.05),Absolute(0.005),Absolute(0.0005)]
 refinement_methods2 = ["max_precision","taylor","full_refinement","progressive_taylor","no_refinement"]
+refinement_methods3 = ["SGM_NL_model","full_refinement","max_precision","taylor","progressive_taylor","no_refinement"]
 max_iters=[5]
 filename_save = "bench_scaling_up_small.txt"
+
+#exps_medium = benchmark_SGM_PWL_solver(filename_instances = filename_instances2, err_pwlhs = errs2, refinement_methods = refinement_methods3, filename_save = "bench_medium_with_NL.txt")
+#exps_big = benchmark_SGM_PWL_solver(filename_instances = filename_instances_big, err_pwlhs = errs2, refinement_methods = refinement_methods3, filename_save = "bench_big_with_NL.txt")
+
+
 # experiences_med = benchmark_SGM_PWL_solver(filename_instances=filename_instances[1:end-2], err_pwlhs=errs2, refinement_methods = refinement_methods2, max_iters = max_iters, filename_save = "medium_benchmark.txt")
 
 # experiences_big = benchmark_SGM_PWL_solver(filename_instances=["instance_5_4_1.txt","instance_4_5_1.txt","instance_5_5_1.txt","instance_6_6_1.txt","instance_7_7_1.txt"], err_pwlhs=[Absolute(0.05)], fixed_costss = [true, false], refinement_methods = ["max_precision"], max_iters = [5], filename_save = "big_instances.txt")
@@ -905,3 +944,5 @@ for i in 1:length(outputs)
     println("output $i: $(outputs[i].solved) in $(outputs[i].cpu_time)")
 end
 =#
+
+# exps_NL_test = benchmark_SGM_PWL_solver(filename_instances = filename_instances2[1:5], err_pwlhs = errs2, refinement_methods = ["SGM_NL_model","full_refinement","max_precision","no_refinement"], filename_save = "bench_small_test_NL_model.txt")

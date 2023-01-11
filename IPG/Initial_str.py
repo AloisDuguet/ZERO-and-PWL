@@ -1,4 +1,5 @@
 from Instances import *
+from nonlinear_best_response_cybersecurity import *
 # get optimization software
 import gurobipy as grb
 import numpy as np
@@ -26,7 +27,7 @@ def InitialStrategies(G,opt_solver=1):
     Best_m = []
     for p in range(G.m()):
 
-        if G.type() != "CyberSecurity":
+        if G.type() != "CyberSecurity" and G.type() != "CyberSecurityNL":
             try:
                 S[p][0], U_p[p][0], Model_p = BestReactionGurobi(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False)
             except:
@@ -40,6 +41,8 @@ def InitialStrategies(G,opt_solver=1):
                 #print(G.Q()[p][l])
             #print("just before bestreactiongurobicybersecurity")
             S[p][0], U_p[p][0], Model_p = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins())
+        elif G.type() == "CyberSecurityNL":
+            S[p][0], U_p[p][0], Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
         Best_m.append(Model_p)
     return S, U_p, Best_m
 
@@ -130,11 +133,13 @@ def CreateModels(m, n_I, n_C, n_constr, c, Q, A, b, problem_type = "UNK", G = No
     Profile = [np.array([0 for k in range(n_I[p]+n_C[p])]) for p in range(m)]
     Best_m = []
     for p in range(m):
-        if problem_type != "CyberSecurity":
+        if problem_type != "CyberSecurity" and G.type() != "CyberSecurityNL":
             return "andouille"
             _,_,Model_p = BestReactionGurobi(m,n_I[p],n_C[p],n_constr[p],c[p],Q[p],A[p],b[p],Profile,p,True)
-        else:
+        elif G.type() == "CyberSecurity":
             _,_,Model_p = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p])
+        elif G.type() == "CyberSecurityNL":
+            _,_,Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
         Best_m.append(Model_p)
     return Best_m
 
@@ -393,6 +398,15 @@ def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Pro
                 # this is important for NE verfication
                 m_p.setObjective(m_p.getObjective()-np.dot(xk_Qkp,m_p.getVars()))
         m_p.update()
+
+        if False:
+            f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
+            f.write("solution for player %i:\n"%(p+1))
+            [f.write("%f\n"%(sol[i])) for i in range(n_I_p+n_C_p)]
+            f.write("optimal value: ")
+            f.write("%f\n\n"%value)
+            f.close()
+
         return sol, value, m_p
     except:
         print("Wow! The best reaction problem has no feasible solution. The status code is: ", m_p.status)

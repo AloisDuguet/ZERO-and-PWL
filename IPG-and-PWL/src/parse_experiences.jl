@@ -225,12 +225,23 @@ function parser_SGM_solution(filename)
     return ne, profits, S, num_iter_done, cpu_time
 end
 
-function write_SGM_instance_filename(filename, scriptname = "launch_SGM.py", link_filename = "../IPG-and-PWL")
-    # write in "../../IPG/launch_SGM.py" the file name of the model to solve with SGM
+function write_SGM_instance_last_informations(filename, refinement_method, scriptname = "launch_SGM.py", link_filename = "../IPG-and-PWL")
+    # write in "../../IPG/launch_SGM.py" the file name of the model to solve with SGM as well as the game type given by the refinement_method
 
+    # filename of the model
     line_number = 10
     lines = readlines(scriptname)
     lines[line_number] = "filename = \"$link_filename/SGM_files/$(filename[1:end-10])\""
+
+    # game type
+    line_number = 11
+    if refinement_method == "SGM_NL_model"
+        lines[line_number] = "game_type = \"CyberSecurityNL\""
+    else
+        lines[line_number] = "game_type = \"CyberSecurity\""
+    end
+
+    # write the lines changed
     file = open(scriptname, "w")
     for line in lines
         println(file, line)
