@@ -283,15 +283,21 @@ function add_order_1_taylor_piece(pwl_struct, f, pos, err, iter, max_iter, new_d
 	close(file)
 	if t1 < new_t1
 		println("building pwl1 from $t1 to $new_t1")
-
-		pwl1 = corrected_heuristicLin(pwl_struct.expr_f,t1,new_t1,Absolute(new_delta), 1e-15)
+		if outer_refinement == true
+			pwl1 = corrected_heuristicLin(pwl_struct.expr_f,t1,new_t1,Absolute(new_delta), 1e-15)
+		else
+			pwl1 = [LinA.LinearPiece(t1, new_t1, pwl_struct.pwl[pieces_number[1]].a, pwl_struct.pwl[pieces_number[1]].b, pwl_struct.pwl[pieces_number[1]].fct)]
+		end
 	else
 		pwl1 = []
 	end
 	if t2 > new_t2
-		println("building pwl1 from $new_t2 to $t2")
-    	
-		pwl2 = corrected_heuristicLin(pwl_struct.expr_f,new_t2,t2,Absolute(new_delta))
+		println("building pwl2 from $new_t2 to $t2")
+		if outer_refinement == true
+			pwl2 = corrected_heuristicLin(pwl_struct.expr_f,new_t2,t2,Absolute(new_delta))
+		else
+			pwl2 = [LinA.LinearPiece(new_t2, t2, pwl_struct.pwl[pieces_number[end]].a, pwl_struct.pwl[pieces_number[end]].b, pwl_struct.pwl[pieces_number[end]].fct)]
+		end
 	else
 		pwl2 = []
 	end
@@ -326,7 +332,7 @@ if length(pieces_number) == 1 && piece.a == a && piece.b == b # if not, it can't
 	# (relative error according to the starting error and abs_gap)
 	pwl_struct = refine_longest_piece(pwl_struct, pieces_number, iter, max_iter, new_delta)=#
 
-function check_delta_approx(pwl_struct, eps = 1e-6)
+function check_delta_approx(pwl_struct, threshold, eps = 1e-5)
 	# WARNING this works only for the h_i function!!
 	# return true if the pwl in pwl_struct is a pwl_struct.err.delta-approx of f
 	# else, return false
@@ -347,8 +353,8 @@ function check_delta_approx(pwl_struct, eps = 1e-6)
 			valx = JuMP.value.(x)
 			valf = abs(pwl_struct.alpha*(1/sqrt(1-valx)-1) - (piece.a*valx + piece.b))
 			println("for piece $cpt, max = $valf")
-			if valf > pwl_struct.err.delta*(1+eps)
-				error("error too high")
+			if valf > max(pwl_struct.err.delta, threshold)*(1+eps)
+				error("error too high: err = $valf and threshold is $(max(pwl_struct.err.delta, threshold)*(1+eps))")
 				return false
 			end
 		else

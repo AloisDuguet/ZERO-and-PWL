@@ -180,7 +180,7 @@ function SGM_NL_model_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, pwl
      println(file, n_j) # number of markets (size of indices j)
      close(file)
 
-     # resolution of the model to check that it is fine
+     #=# resolution of the model to check that it is fine
      #println("model: \n\n\n$model")
      # deactivate presolve in case it does not work with PWL
      set_optimizer_attribute(model, "Presolve", 0)
@@ -195,7 +195,7 @@ function SGM_NL_model_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, pwl
              print(iis_model)
          end
          error("status MOI.INFEASIBLE detected for player $player_index")
-     end
+     end=#
 
      return model, IntegerIndexes, l_coefs, r_coefs, ordvar
 end

@@ -43,7 +43,7 @@ function find_comparable_experiences(i, experiences, option, option_values)
     return comparable_instances
 end
 
-function compare_cs_experience(experiences, option, option_values)
+function compare_cs_experience(experiences, option, option_values, filename = "")
     # compute statistics on experiences separately for option_values of option
     # experiences is a list of cs_experience
     # option is a symbol (example: :filename_instance) in the fields of option_cs_instance
@@ -99,6 +99,28 @@ function compare_cs_experience(experiences, option, option_values)
     print("average iterations:\t")
     [print(round(sum(iters[i][j] for j in 1:length(iters[i]))/length(iters[i]),digits=2), "\t") for i in 1:n]
     println("\n")
+
+    # write important informations in file filename
+    if filename != ""
+        file = open(filename, "a")
+        println(file)
+        s = string("\t\t\t",option_values[1])
+        [s = string(s, " ", option_values[i]) for i in 2:length(option_values)]
+        println(file, s)
+        #println("instances solved:\t$solveds for $count instances comparable")
+        print(file, "instances solved:\t")
+        [print(file, solveds[i], "\t") for i in 1:n]
+        println(file)
+        print(file, "instances comparable:\t")
+        [print(file, count[i], "\t") for i in 1:n]
+        println(file)
+        print(file, "average cpu times:\t")
+        [print(file, round(sum(cpu_times[i][j] for j in 1:length(cpu_times[i]))/length(cpu_times[i]), digits=2), "\t") for i in 1:n]
+        println(file)
+        print(file, "average iterations:\t")
+        [print(file, round(sum(iters[i][j] for j in 1:length(iters[i]))/length(iters[i]),digits=2), "\t") for i in 1:n]
+        close(file)
+    end
 
     return solveds, cpu_times, iters
 end
@@ -210,7 +232,7 @@ function relaunch_exp(experiences, number, complete_output = false)
     end
 end
 
-function preliminary_analysis(exps, err_pwlhs, fixed_costss, refinement_methods)
+function preliminary_analysis(exps, err_pwlhs, fixed_costss, refinement_methods, filename = "")
     # uses a number of functions to analyse the data in exps
 
     error_types, count_error = check_error(exps)
@@ -222,7 +244,7 @@ function preliminary_analysis(exps, err_pwlhs, fixed_costss, refinement_methods)
     cpu_timess = []
     iterss = []
     for i in 1:length(options)
-        solveds, cpu_times, iters = compare_cs_experience(exps, options[i], options_values[i])
+        solveds, cpu_times, iters = compare_cs_experience(exps, options[i], options_values[i], filename)
         push!(solvedss, solveds)
         push!(cpu_timess, cpu_times)
         push!(iterss, iters)
@@ -235,6 +257,18 @@ function preliminary_analysis(exps, err_pwlhs, fixed_costss, refinement_methods)
     end
     println("$count_failed experiences stopped because of a failed resolution of Couenne in julia")
     println("the indices of those experiences are in l_failed:\n$l_failed")
+
+    if filename != ""
+        file = open(filename, "a")
+        println(file, "$count_error occured, with errors :")
+        [println(file, error_types[i]) for i in 1:length(error_types)]
+        if length(error_types) == 0
+            println(file, "no errors")
+        end
+        println(file, "$count_failed experiences stopped because of a failed resolution of Couenne in julia")
+        println(file, "the indices of those experiences are in l_failed:\n$l_failed")
+        close(file)
+    end
 
     return error_types, count_error, count_failed, l_failed, options, solvedss, cpu_timess, iterss
 end

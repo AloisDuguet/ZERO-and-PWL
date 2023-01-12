@@ -7,7 +7,7 @@ Created on Tue Nov  8 15:35:36 2022
 """
 # don't change the line number of the following line : it should be line 10
 # (cf write_SGM_instance_filename in ../IPG-and-PWL/src/SGM_solver.jl)
-filename = "../IPG-and-PWL/SGM_files/instance_2_7_1_Abs0-5_fixedcosttrue"
+filename = "../IPG-and-PWL/SGM_files/instance_5_10_1_Abs0-0005_fixedcostfalse"
 game_type = "CyberSecurity"
 
 import Instances

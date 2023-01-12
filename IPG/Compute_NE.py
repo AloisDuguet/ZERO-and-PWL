@@ -130,7 +130,7 @@ def IterativeSG(G,max_iter,opt_solver=1, S=[]):
                 if G.type() != "CyberSecurity" and G.type() != "CyberSecurityNL":
                     s_p, u_max, _ = BestReactionGurobi(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,Best_m[p])
                 elif G.type() == "CyberSecurity":
-                    print("using best response for CyberSecurity model")
+                    #print("using best response for CyberSecurity model")
                     s_p, u_max, _ = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p])
                 elif G.type() == "CyberSecurityNL":
                     s_p, u_max, _ = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
@@ -251,7 +251,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
             if G.type() != "CyberSecurity" and G.type() != "CyberSecurityNL":
                 s_p, u_max, _ = BestReactionGurobi(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,Best_m[p])
             elif G.type() == "CyberSecurity":
-                print("using best response for CyberSecurity model")
+                #print("using best response for CyberSecurity model")
                 s_p, u_max, _ = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p])
             elif G.type() == "CyberSecurityNL":
                 s_p, u_max, _ = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
@@ -326,13 +326,13 @@ def IndUtilities(m, c, Q, S, U_p, S_new, G = []):
                     f.write("entry in IndUtilities with CyberSecurityNL option")
                     f.close()
                 alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
-                U_p[p].append(float(np.dot(c[p],s)-0.5*np.dot(s,np.dot(Q[p][p],s)) - alpha*(1/np.sqrt(1-s[n_markets])-1)))
+                U_p[p].append(float(np.dot(c[p],s) - 0.5*np.dot(s,np.dot(Q[p][p],s)) - alpha*(1/np.sqrt(1-s[n_markets])-1)))
             else:
                 if False:
                     f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
                     f.write("entry in IndUtilities without CyberSecurityNL option")
                     f.close()
-                U_p[p].append(float(np.dot(c[p],s)-0.5*np.dot(s,np.dot(Q[p][p],s))))
+                U_p[p].append(float(np.dot(c[p],s) - 0.5*np.dot(s,np.dot(Q[p][p],s))))
             S[p].append(s)
     return U_p,S
 
@@ -359,12 +359,6 @@ def Utilities_Poymatrix(m,Q,U_depend,S,S_new,Numb_stra_S):
         for k in range(p+1,m):
             for sp in enumerate(S_new[p]):
                 for sk in enumerate(S[k]+S_new[k]):
-                    print("S of length ", len(S))
-                    print("S_new of length ", len(S_new))
-                    print("Q[%i][%i] of shape "%(p,k), np.shape(Q[p][k]))
-                    print("sp[1] of shape ", np.shape(sp[1]))
-                    print("sk[1] of shape ", np.shape(sk[1]))
-                    print("Numb_stra_S[p]+sp[0],sk[0] = %i,%i"%(Numb_stra_S[p]+sp[0],sk[0]))
                     U_depend[p][k][(Numb_stra_S[p]+sp[0],sk[0])] = float(np.dot(sk[1],np.dot(Q[p][k],sp[1])))
                     U_depend[k][p][(sk[0],Numb_stra_S[p]+sp[0])] = float(np.dot(sp[1],np.dot(Q[k][p],sk[1])))
         for k in range(p):

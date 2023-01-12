@@ -16,11 +16,15 @@ end
 
 function instanciate_cybersecurity_params(n_players,n_markets,fixed_cost)
     # return an instanciation of cybersecurity_params with only n_players and n_markets known
-    if fixed_cost
-        return cybersecurity_params(n_players,n_markets,n_markets+1,[],[],[],zeros(n_players),zeros(n_players,n_players-1),zeros(n_players),zeros(n_players),zeros(n_players,n_markets),zeros(n_players),zeros(n_players,n_markets))
+    if fixed_cost # n_var does NOT count the fixed cost binary variables right now
+        return cybersecurity_params(n_players,n_markets,n_markets+1,[],[],[],
+        zeros(n_players),zeros(n_players,n_players-1),zeros(n_players),zeros(n_players),
+        zeros(n_players,n_markets),zeros(n_players),zeros(n_players,n_markets))
         # price of fcost in thousands to start making business between current player and market j
     else
-        return cybersecurity_params(n_players,n_markets,n_markets+1,[],[],[],zeros(n_players),zeros(n_players,n_players-1),zeros(n_players),zeros(n_players),zeros(n_players,n_markets),zeros(n_players),zeros(n_players,n_markets))
+        return cybersecurity_params(n_players,n_markets,n_markets+1,[],[],[],
+        zeros(n_players),zeros(n_players,n_players-1),zeros(n_players),zeros(n_players),
+        zeros(n_players,n_markets),zeros(n_players),zeros(n_players,n_markets))
     end
 end
 

@@ -46,7 +46,7 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
         model.iternVars = pyo.RangeSet(0,model.nVars-1)
         model.nCons = pyo.Param(initialize=n_constr_p)
         model.iternCons = pyo.RangeSet(0,model.nCons-1)
-        print("\n\nshape of Q: ", np.shape(Q_p), "\n\n") # CHECK THAT
+        #print("\n\nshape of Q: ", np.shape(Q_p), "\n\n") # CHECK THAT
         model.nRealVars = pyo.Param(initialize=nRealVars)
         model.iternRealVars = pyo.RangeSet(0,model.nRealVars-1)
         model.nOtherRealVars = pyo.Param(initialize=nOtherRealVars)
@@ -88,7 +88,7 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
                 return 0
             return c_p[i]
 
-        print("nOtherRealVars ", model.nOtherRealVars.value, "\nnRealVars", model.nRealVars.value)
+        #print("nOtherRealVars ", model.nOtherRealVars.value, "\nnRealVars", model.nRealVars.value)
         model.A = pyo.Param(model.iternCons, model.iternRealVars, initialize=A)
         model.b = pyo.Param(model.iternCons, initialize=b)
         model.c = pyo.Param(model.iternRealVars, initialize=c)
@@ -169,8 +169,8 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
     try:
         sol = [pyo.value(model.x[i]) for i in range(nRealVars)]
         value = pyo.value(model.OBJ)
-        print("solution:\n", sol)
-        print("optimal value:\n", value)
+        #print("solution:\n", sol)
+        #print("optimal value:\n", value)
         if False:
             f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
             f.write("solution for player %i:\n"%(p+1))

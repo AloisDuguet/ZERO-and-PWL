@@ -229,7 +229,7 @@ function SGM_model_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, pwl1d,
      # resolution of the model to check that it is fine
      #println("model: \n\n\n$model")
      # deactivate presolve in case it does not work with PWL
-     set_optimizer_attribute(model, "Presolve", 0)
+     #=set_optimizer_attribute(model, "Presolve", 0)
      status = JuMP.optimize!(model)
      term_status = JuMP.termination_status(model)
      println("\n\nstatus termination of the model of player $player_index : $term_status\n\n")
@@ -241,7 +241,7 @@ function SGM_model_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, pwl1d,
              print(iis_model)
          end
          error("status MOI.INFEASIBLE detected for player $player_index")
-     end
+     end=#
 
      return model, IntegerIndexes, l_coefs, r_coefs, ordvar
 end
@@ -418,10 +418,10 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
         #pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,LinA.exactLin(expr_h[p],t1,t2,err))
         pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,corrected_heuristicLin(expr_h[p],t1,t2,err))
         pwl_h.pwl = special_rounding_pwl(pwl_h.pwl) # round the extremes xMin and xMax to 12 decimals to avoid some problems later
-        println("\nh_$p approximated by $(length(pwl_h.pwl)) pieces\n$pwl_h\n")
+        #println("\nh_$p approximated by $(length(pwl_h.pwl)) pieces\n$pwl_h\n")
 
         # launch creation of files with matrices
-        println("player $p and fixed costs:\n$(params.fcost)")
+        #println("player $p and fixed costs:\n$(params.fcost)")
         if refinement_method != "SGM_NL_model"
             model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_model_to_csv(p, n_players, n_markets, params.Qbar[p,:], max_s_is[p],
             params.cs[p], pwl_h.pwl, params.Qs[p], params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:],
@@ -436,7 +436,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
         push!(list_players, cybersecurity_player(pwl_h,[],[],[],max_s_is[p], [ordvar], -Inf))
         global ordvars = []
         push!(ordvars, ordvar)
-        println("normally written with filename $filename_save")
+        #println("normally written with filename $filename_save")
     end
 
     # create cybersecurity instance
@@ -490,7 +490,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
         #run(first_cd)
         cd("../../IPG")
         write_SGM_instance_last_informations(cs_instance.filename_save, refinement_method)
-        println("launch cmd:")
+        #println("launch cmd:")
         @time run(launch_cmd)
         #run(second_cd)
         cd("../IPG-and-PWL/src")
@@ -515,7 +515,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
         push!(outputs_SGM["num_iter_done"],deepcopy(num_iter_done))
         push!(outputs_SGM["cpu_time"],deepcopy(cpu_time))
 
-        # write the number of pure strategies per player in a file
+        #=# write the number of pure strategies per player in a file
         file = open("write_number_strategies.txt", "a")
         cpt = 0
         for i in 1:n_players
@@ -527,7 +527,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
             cpt += length(S[i])
         end
         println(file)
-        close(file)
+        close(file)=#
 
         # form the MNE sol with ne and S
         if !fixed_costs
@@ -585,13 +585,13 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
         for p in 1:n_players
             diff = abs(Vps[p])
             if diff > 2*err_pwlh.delta + abs_gap
-                println(file, "iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err+abs_gap ($(2*err_pwlh.delta + abs_gap)) = $err_pwlh : $(diff) $filename_instance fixed_costs $fixed_costs")
-                println("iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err+abs_gap ($(2*err_pwlh.delta + abs_gap)) = $err_pwlh : $(diff) $filename_instance fixed_costs $fixed_costs")
+                println(file, "iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err+abs_gap ($(2*err_pwlh.delta + abs_gap)) = $err_pwlh : $(diff) $filename_instance fixed_costs $fixed_costs refinement_method $refinement_method sol $sol ")
+                println("iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err+abs_gap ($(2*err_pwlh.delta + abs_gap)) = $err_pwlh : $(diff) $filename_instance fixed_costs $fixed_costs refinement_method $refinement_method")
                 #error("iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err+abs_gap ($(2*err_pwlh.delta + abs_gap)) = $err_pwlh : $(diff)")
                 raise_err_at_the_end = true
             elseif diff > 2*err_pwlh.delta
-                println("iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err = $err_pwlh : $(diff)")
-                println(file, "iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err = $err_pwlh : $(diff) $filename_instance fixed_costs $fixed_costs")
+                println("iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err = $err_pwlh : $(diff) refinement_method $refinement_method")
+                println(file, "iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err = $err_pwlh : $(diff) $filename_instance fixed_costs $fixed_costs refinement_method $refinement_method")
             end
         end
         close(file)
@@ -647,9 +647,9 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
             profits = [outputs_SGM["all_vals"][end][3*p-1] for p in 1:n_players]
             println("profits:\n$profits\nall_vals:\n$(outputs_SGM["all_vals"])")
             length_pwls = [length(cs_instance.cs_players[p].pwl_h.pwl) for p in 1:n_players]
-            output = output_cs_instance(true, outputs_SGM["sol"][end], profits, -1, iter, max_delta, length_pwls,compute_MNE_distance_variation(outputs_SGM["sol"][end]))
+            output = output_cs_instance(true, outputs_SGM["sol"][end], profits, -1, iter, max_delta, length_pwls,compute_MNE_distance_variation(outputs_SGM["sol"]))
             options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap)
-            #save_MNE_distance_variation(outputs_SGM["sol"], options, output)
+            save_MNE_distance_variation(outputs_SGM["sol"], options, output)
             return cs_instance, Vs, iter, outputs_SGM, output
         else
             println("current delta of delta-NE is $max_delta")
@@ -694,16 +694,22 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
                     f = x->params.alphas[p]*(1/sqrt(1-x)-1)
                     # refine up to asked precision the piece containing the pure strategy
                     if refinement_method == "max_precision"
-                        # WARNING: the following function does not use the eps to refine a piece less than eps away from the solution but not containing it
+                        # refine only the piece containing the NE with max useful precision (abs_gap/2)
                         delta = min(cs_instance.cs_players[p].pwl_h.err.delta, abs_gap/2)
                         cs_instance.cs_players[p].pwl_h = refine_pwl1d(cs_instance.cs_players[p].pwl_h, S[p][i-cpt_ne+1][(n_markets+1)], Absolute(delta))
                         #check_delta_approx(cs_instance.cs_players[p].pwl_h)
+                    elseif refinement_method == "taylor+outer"
+                        # add an order 1 taylor approximation on the pure strategy as well as refine with max_precision the bits of pieces around taylor
+                        # if a taylor piece is already exactly in pos, refine the longest (different) piece
+                        new_delta = min(cs_instance.cs_players[p].pwl_h.err.delta, abs_gap/2)
+                        cs_instance.cs_players[p].pwl_h = add_order_1_taylor_piece(cs_instance.cs_players[p].pwl_h,
+                        f, S[p][i-cpt_ne+1][(n_markets+1)], cs_instance.err_pwlh, iter, max_iter, new_delta, eps, outer_refinement = true)
                     elseif refinement_method == "taylor"
                         # add an order 1 taylor approximation on the pure strategy as well as refine with max_precision the bits of pieces around taylor
                         # if a taylor piece is already exactly in pos, refine the longest (different) piece
                         new_delta = min(cs_instance.cs_players[p].pwl_h.err.delta, abs_gap/2)
                         cs_instance.cs_players[p].pwl_h = add_order_1_taylor_piece(cs_instance.cs_players[p].pwl_h,
-                        f, S[p][i-cpt_ne+1][(n_markets+1)], cs_instance.err_pwlh, iter, max_iter, new_delta, eps)
+                        f, S[p][i-cpt_ne+1][(n_markets+1)], cs_instance.err_pwlh, iter, max_iter, new_delta, eps, outer_refinement = false)
                     elseif refinement_method == "progressive_taylor"
                         if abs_gap/2 < cs_instance.cs_players[p].pwl_h.err.delta
                         	new_delta = cs_instance.cs_players[p].pwl_h.err.delta*(abs_gap/2/cs_instance.cs_players[p].pwl_h.err.delta)^(iter/max_iter)
@@ -711,7 +717,15 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
                     		new_delta = cs_instance.cs_players[p].pwl_h.err.delta
                     	end
                         cs_instance.cs_players[p].pwl_h = add_order_1_taylor_piece(cs_instance.cs_players[p].pwl_h,
-                        f, S[p][i-cpt_ne+1][(n_markets+1)], cs_instance.err_pwlh, iter, max_iter, new_delta, eps)
+                        f, S[p][i-cpt_ne+1][(n_markets+1)], cs_instance.err_pwlh, iter, max_iter, new_delta, eps, outer_refinement = false)
+                    elseif refinement_method == "progressive_taylor+outer"
+                        if abs_gap/2 < cs_instance.cs_players[p].pwl_h.err.delta
+                        	new_delta = cs_instance.cs_players[p].pwl_h.err.delta*(abs_gap/2/cs_instance.cs_players[p].pwl_h.err.delta)^(iter/max_iter)
+                    	else
+                    		new_delta = cs_instance.cs_players[p].pwl_h.err.delta
+                    	end
+                        cs_instance.cs_players[p].pwl_h = add_order_1_taylor_piece(cs_instance.cs_players[p].pwl_h,
+                        f, S[p][i-cpt_ne+1][(n_markets+1)], cs_instance.err_pwlh, iter, max_iter, new_delta, eps, outer_refinement = true)
                     elseif refinement_method == "full_refinement" # refine the whole PWL function up to rel_gap/2 (in theory it will find the rel_gap-NE in the next iteration)
                         pwl_h = cs_instance.cs_players[p].pwl_h
                         pwl_h.pwl = corrected_heuristicLin(pwl_h.expr_f, pwl_h.t1, pwl_h.t2, Absolute(abs_gap/2))
@@ -720,7 +734,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
                     outputs_SGM["length_pwl"][iter+1][p] = length(cs_instance.cs_players[p].pwl_h.pwl)
 
                     # check that the pwl still satisfy the delta-approx
-                    #push!(outputs_SGM["valid_pwl"][end], check_delta_approx(cs_instance.cs_players[p].pwl_h))
+                    push!(outputs_SGM["valid_pwl"][end], check_delta_approx(cs_instance.cs_players[p].pwl_h, abs_gap/2))
                 end
             end
 
@@ -829,7 +843,7 @@ function benchmark_SGM_PWL_solver(; filename_instances, err_pwlhs, fixed_costss 
     end
 
     # give some elements of analysis
-    preliminary_analysis(experiences, err_pwlhs, fixed_costss, refinement_methods)
+    preliminary_analysis(experiences, err_pwlhs, fixed_costss, refinement_methods, filename[1:end-4]*"_analysis.txt")
 
     return experiences
 end
@@ -867,7 +881,7 @@ for i in 2:4
     end
 end
 filename_instances_big = []
-for i in 5:6
+for i in 5:5
     for j in 2:10
         push!(filename_instances_big, "instance_$(i)_$(j)_1.txt")
     end

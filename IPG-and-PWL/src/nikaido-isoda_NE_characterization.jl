@@ -40,7 +40,7 @@ function evaluate_cybersecurity_objective_value(x, parameters, p, params, fixed_
     val += params.constant_values[p]
 
     # cybersecurity budget
-    val += -(params.alphas[p]*(1/sqrt(1-x[n_markets+1])-1))
+    val += -params.alphas[p]*(1/sqrt(1-x[n_markets+1])-1)
 
     #println("evaluation of the objective function of player $p:")
     #println("x = $x")
