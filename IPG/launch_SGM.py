@@ -7,8 +7,8 @@ Created on Tue Nov  8 15:35:36 2022
 """
 # don't change the line number of the following line : it should be line 10
 # (cf write_SGM_instance_filename in ../IPG-and-PWL/src/SGM_solver.jl)
-filename = "../IPG-and-PWL/SGM_files/instance_5_10_1_Abs0-0005_fixedcostfalse"
-game_type = "CyberSecurity"
+filename = "../IPG-and-PWL/SGM_files/instance_4_9_1_Abs0-5_fixedcostfalse"
+game_type = "CyberSecurityNL"
 
 import Instances
 import Compute_NE
@@ -20,10 +20,11 @@ max_iter = 100
 print("launching IterativeSG_NOT_DFS")
 ne, Profits_SGM,S,num_iter_done,cpu_time_not_dfs = Compute_NE.IterativeSG_NOT_DFS(G,max_iter)
 filename = "output_SGM.txt"
+print(Profits_SGM)
 save_results_SGM(filename, ne, Profits_SGM, S, num_iter_done, cpu_time_not_dfs)
 print(ne)
 print(Profits_SGM)
-print(cpu_time_not_dfs)
+print(cpu_time_not_dfs, " seconds in the SGM")
 
 #[[24.022497, 98.341273, 0.916109], [22.023038, 93.341724, 0.916109]]
 #[[24.022858, 98.341573, 0.916109], [22.022918, 93.341623, 0.916109]]

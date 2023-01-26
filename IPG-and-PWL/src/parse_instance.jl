@@ -28,8 +28,9 @@ function instanciate_cybersecurity_params(n_players,n_markets,fixed_cost)
     end
 end
 
-function parse_instance_cybersecurity(filename, fixed_cost = false)
+function parse_instance_cybersecurity(filename, fixed_cost = false, coef_big_weights_on_s = 1)
     # parse the data of instance of cybersecurity in filename
+    # coef_big_weights_on_s is a float to change the influence of variable s_i in the game. The bigger it is, the bigger the influence of s
 
     # start parsing
     lines = readlines(filename)
@@ -80,7 +81,7 @@ function parse_instance_cybersecurity(filename, fixed_cost = false)
         splitted = popfirst!(splitteds)
         r = zeros(n_markets)
         for j in 1:n_markets
-            r[j] = parse(Float64, splitted[j])
+            r[j] = parse(Float64, splitted[j])*coef_big_weights_on_s
         end
         # q_j
         splitted = popfirst!(splitteds)
@@ -140,12 +141,12 @@ function parse_instance_cybersecurity(filename, fixed_cost = false)
     # Di
     splitted = popfirst!(splitteds)
     for i in 1:n_players
-        cs_params.D[i] = parse(Float64, splitted[i])
+        cs_params.D[i] = parse(Float64, splitted[i])*coef_big_weights_on_s
     end
     # alphas
     splitted = popfirst!(splitteds)
     for i in 1:n_players
-        cs_params.alphas[i] = parse(Float64, splitted[i])
+        cs_params.alphas[i] = parse(Float64, splitted[i])*coef_big_weights_on_s
     end
     # Qij_bar
     splitted = popfirst!(splitteds)
@@ -157,7 +158,7 @@ function parse_instance_cybersecurity(filename, fixed_cost = false)
     # Bi
     splitted = popfirst!(splitteds)
     for i in 1:n_players
-        cs_params.B[i] = parse(Float64, splitted[i])
+        cs_params.B[i] = parse(Float64, splitted[i])*coef_big_weights_on_s
     end
 
     # add -piDi term

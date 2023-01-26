@@ -220,7 +220,7 @@ function cybersecurity_NE_characterization_function(x, params, fixed_costs)
         # evaluate the NL objective function of player p
         parameters = [x[i] for i in 1:n_players if i != p]
         obj_p = evaluate_cybersecurity_objective_value(x[p], parameters, p, params, fixed_costs)
-
+        #println("obj_p = $obj_p")
         global model_NBR, sol_NBR, obj_NBR, ordvar_NBR
 
         try
@@ -237,7 +237,7 @@ function cybersecurity_NE_characterization_function(x, params, fixed_costs)
                 close(file)
             end
 
-            println("eval NL = $obj_p with solution $(x[p])\nBR NL = $obj_NBR with solution $sol_NBR")
+            #println("eval NL = $obj_p with solution $(x[p])\nBR NL = $obj_NBR with solution $sol_NBR")
 
             #=recompute_obj_NBR = evaluate_cybersecurity_objective_value(sol_NBR, parameters, p, params, fixed_costs)
             if abs(recompute_obj_NBR-obj_NBR) > 1e-9

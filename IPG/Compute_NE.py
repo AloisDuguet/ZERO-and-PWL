@@ -41,10 +41,10 @@ def IterativeSG(G,max_iter,opt_solver=1, S=[]):
     # STEP 0 - INITIALIZATION
     # initialize set of strategies
     if S == []:
-        S, U_p, Best_m = InitialStrategies(G,opt_solver)
+        S, U_p, MCT, Best_m = InitialStrategies(G,opt_solver)
         #S, U_p, Best_m = InitialStrategiesII(G,opt_solver)
     else:
-        U_p, S = IndUtilities(G.m(), G.c(), G.Q(), [[] for _ in range(G.m())], [[] for _ in range(G.m())], S)
+        U_p, MCT, S = IndUtilities(G.m(), G.c(), G.Q(), [[] for _ in range(G.m())], [[] for _ in range(G.m())], [[] for _ in range(G.m())], S)
         Best_m = CreateModels(G.m(), G.n_I(), G.n_C(), G.n_constr(), G.c(), G.Q(), G.A(), G.b())
     S_new = [[] for p in range(G.m())]
     if  [[]] in S:
@@ -100,7 +100,7 @@ def IterativeSG(G,max_iter,opt_solver=1, S=[]):
             U_depend = deepcopy(M_pre[5])
             Numb_stra_S = deepcopy(M_pre[2])
             U_depend = Utilities_Poymatrix(G.m(),G.Q(),U_depend,S,S_new,Numb_stra_S)
-            U_p, S = IndUtilities(G.m(), G.c(), G.Q(), S, U_p, S_new)
+            U_p, MCT, S = IndUtilities(G.m(), G.c(), G.Q(), S, U_p, MCT, S_new)
             Numb_stra = [Numb_stra_S[p]+len(S_new[p]) for p in range(G.m())] # update number of strategies
             M_pos = deepcopy(M_pre)
             Memory.pop()
@@ -149,7 +149,7 @@ def IterativeSG(G,max_iter,opt_solver=1, S=[]):
                     Numb_stra[p] = Numb_stra[p]+1
                     M_pre = deepcopy(M_pos)
                     U_depend = Utilities_Poymatrix(G.m(),G.Q(),U_depend,S,S_new,Numb_stra_S)
-                    U_p, S = IndUtilities(G.m(), G.c(), G.Q(), S, U_p, S_new)
+                    U_p, MCT, S = IndUtilities(G.m(), G.c(), G.Q(), S, U_p, MCT, S_new)
                     S_new = [[] for _ in range(G.m())]
                     M_pos = [None,None,deepcopy(Numb_stra),deepcopy(S),deepcopy(U_p),deepcopy(U_depend),deepcopy(S_new),None,0]
                     print(list_best)
@@ -191,11 +191,14 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
     # STEP 0 - INITIALIZATION
     # initialize set of strategies
     if S == []:
-        S, U_p, Best_m = InitialStrategies(G,opt_solver)
+        S, U_p, MCT, Best_m = InitialStrategies(G,opt_solver)
+        #print("MCT after if S == []\n", MCT)
+        #print("S after if S == []\n", S)
         #S, U_p, Best_m = InitialStrategiesII(G,opt_solver)
     else:
-        U_p, S = IndUtilities(G.m(), G.c(), G.Q(), [[] for _ in range(G.m())], [[] for _ in range(G.m())], S, G)
+        U_p, MCT, S = IndUtilities(G.m(), G.c(), G.Q(), [[] for _ in range(G.m())], [[] for _ in range(G.m())], [[] for _ in range(G.m())], S, G)
         Best_m = CreateModels(G.m(), G.n_I(), G.n_C(), G.n_constr(), G.c(), G.Q(), G.A(), G.b(), G.type(), G)
+        #print("MCT after else of if S == []\n", MCT)
     S_new = [[] for p in range(G.m())]
     if [[]] in S:
         print("ERROR: There is a player without feasible strategies")
@@ -222,7 +225,8 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
         #signal.signal(signal.SIGALRM, signal_handler)
         #signal.alarm(3600-int(time()-time_aux))   #  seconds
         try:
-            ne, Profits = ComputeNE_NOT_DFS(U_depend,U_p,G.m(),G.n_I(),G.n_C(),Numb_stra,opt_solver,ne,deviator)
+            #print("MCT before starting Compute_NE_NOT_DFS\n", MCT)
+            ne, Profits = ComputeNE_NOT_DFS(U_depend,U_p,MCT,G.m(),G.n_I(),G.n_C(),Numb_stra,opt_solver,ne,deviator)
             ### modify ###
             #return ne,Profits,S,count,time()-time_aux
         #except Exception, msg: python2.7
@@ -230,6 +234,15 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
             print("Time limit exceeded")
             return ne_previous, [], S,count,time()-time_aux
         print(" Equilibrium computed successfully")
+
+        cpt = 0
+        for p in range(G.m()):
+            #print("strategy of player %i:\n"%(p+1), ne, "\n", S[p][cpt:cpt+max(len(S[p]),8)])
+            strat = sum(np.multiply(S[p][j], ne[cpt+j]) for j in range(len(S[p])))
+            #print("strategy of player %i: "%(p+1), strat)
+            cpt += len(S[p])
+
+
         aux = True # no player has incentive to deviate
         S_new = [[] for p in range(G.m())] # set of new strategies to be considered
         Profile = [np.array([sum(ne[int(k+sum(Numb_stra[:p]))]*S[p][k][i] for k in range(Numb_stra[p]))  for i in range(G.n_I()[p]+G.n_C()[p])]) for p in range(G.m())]
@@ -253,26 +266,37 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
             elif G.type() == "CyberSecurity":
                 #print("using best response for CyberSecurity model")
                 s_p, u_max, _ = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p])
+                # add MCT to the objective (and mixed terms)
+                alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, G.m())
+                u_max += -Ds[p] + Ds[p]/G.m()*sum(Profile[k][n_markets] for k in range(G.m()) if k != p)
+                #print("Profits[%i]: %f"%(p+1,Profits[p]))
+                #print("u_max for %i: %f"%(p+1,u_max))
+                #print("with strategy ", s_p)
             elif G.type() == "CyberSecurityNL":
                 s_p, u_max, _ = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
                 #f = open("save_NL_and_L_results.txt", "a")
                 #f.write("%f\t%f\t%f\n"%(u_max,valueNL,u_max-valueNL))
                 #f.close()
+                #print("Profits[%i]: %f"%(p+1,Profits[p]))
+                #print("u_max for %i: %f"%(p+1,u_max))
+                #print("with strategy ", s_p)
             if False:
                 f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
                 f.write("profits[%i]: %f\n\n"%(p+1,Profits[p]))
                 f.close()
-            if Profits[p] +10**-6 <= u_max: # don't change it ()
-                if False:
-                    f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
+            if Profits[p] +10**-6 <= u_max:  # it is not the Best Response up to 1e-6 : compute and add BR (don't change the 1e-6)
+                if True:
+                    #f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
+                    f = open("SOCP_solutions.txt", "a")
                     f.write("entry in if block because Profits[%i] = %f and NL BR = %f\n\n"%(p+1,Profits[p],u_max))
                     f.close()
+                print("entry in if block because Profits[%i] = %f and NL BR = %f\n\n"%(p+1,Profits[p],u_max))
                 aux = False
                 S_new[p].append(s_p)
                 Numb_stra_S = deepcopy(Numb_stra)
                 Numb_stra[p] = Numb_stra[p]+1
                 U_depend = Utilities_Poymatrix(G.m(),G.Q(),U_depend,S,S_new,Numb_stra_S)
-                U_p, S = IndUtilities(G.m(), G.c(), G.Q(), S, U_p, S_new, G)
+                U_p, MCT, S = IndUtilities(G.m(), G.c(), G.Q(), S, U_p, MCT, S_new, G)
                 S_new = [[] for _ in range(G.m())]
                 list_best.append(p)
                 list_best = list_best[:aux_p]+list_best[aux_p+1:]
@@ -293,6 +317,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
                 [f.write("%i "%(len(S[i]))) for i in range(len(S))]
                 f.write("\n")
                 f.close()
+            print("usual return")
             return ne, Profits, S,count,time()-time_aux
         count = count +1
     if time()-time_aux>3600:
@@ -317,7 +342,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
 # OUTPUT
 # U_p = list of players individual profits
 # S = new set of strategies
-def IndUtilities(m, c, Q, S, U_p, S_new, G = []):
+def IndUtilities(m, c, Q, S, U_p, MCT, S_new, G = []):
     for p in range(m):
         for s in S_new[p]:
             if G != [] and G.type() == "CyberSecurityNL":
@@ -327,14 +352,20 @@ def IndUtilities(m, c, Q, S, U_p, S_new, G = []):
                     f.close()
                 alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
                 U_p[p].append(float(np.dot(c[p],s) - 0.5*np.dot(s,np.dot(Q[p][p],s)) - alpha*(1/np.sqrt(1-s[n_markets])-1)))
-            else:
+                MCT[p].append(s[n_markets])
+            elif G != [] and G.type() == "CyberSecurity":
                 if False:
                     f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
                     f.write("entry in IndUtilities without CyberSecurityNL option")
                     f.close()
+                alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
                 U_p[p].append(float(np.dot(c[p],s) - 0.5*np.dot(s,np.dot(Q[p][p],s))))
+                MCT[p].append(s[n_markets])
+            else:
+                U_p[p].append(float(np.dot(c[p],s) - 0.5*np.dot(s,np.dot(Q[p][p],s))))
+                MCT[p].append(0)
             S[p].append(s)
-    return U_p,S
+    return U_p,MCT,S
 
 #######################################################################################################################
 
@@ -413,12 +444,12 @@ def ComputeNE(M,Back,U_depend,U_p,m, n_I,n_C,Numb_stra,opt_solver,Supp_Stra,star
                 #D.append([candidate+(M[1],) for candidate in combinations(range(M[1])+range(M[1]+1,Supp_Stra[p]),s0[p]-1)])
                 # HEURISTIC II: give priority to strategies choosen in the previous ne
                 D.append([candidate+(M[1],) for candidate in combinations(HeuristicII(Supp_Stra[p],M[-2][int(sum(M[2][:p])):int(sum(M[2][:p+1]))],M[1],M[-3][p]),s0[p]-1)])
-        ne, Profits = Recursive_Backtracking(m,A_supp,D,0,U_depend,U_p,opt_solver,Numb_stra)
+        ne, Profits = Recursive_Backtracking(m,A_supp,D,0,U_depend,U_p,MCT,opt_solver,Numb_stra)
         if ne != []: # Nash equilibrium found!
             return ne, Profits,start+S0_j
     return [], [],start+S0_j
 
-def ComputeNE_NOT_DFS(U_depend,U_p,m,n_I,n_C,Numb_stra,opt_solver,ne_previous,deviator):
+def ComputeNE_NOT_DFS(U_depend,U_p,MCT,m,n_I,n_C,Numb_stra,opt_solver,ne_previous,deviator):
     ##### HEURISTIC 6 ####
     size_pre_ne = [sum(1 for j in ne_previous[int(sum(Numb_stra[:p])):int(sum(Numb_stra[:p+1]))] if j >10**-5) for p in range(deviator)]+[sum(1 for j in ne_previous[int(sum(Numb_stra[:deviator])):int(sum(Numb_stra[:deviator+1])-1)] if j >10**-5)]+[sum(1 for j in ne_previous[int(sum(Numb_stra[:p])):int(sum(Numb_stra[:p+1]))] if j >10**-5) for p in range(deviator+1,m)]
     S0 = Heuristic6(Numb_stra,m,size_pre_ne,n_I,n_C)
@@ -439,7 +470,7 @@ def ComputeNE_NOT_DFS(U_depend,U_p,m,n_I,n_C,Numb_stra,opt_solver,ne_previous,de
                 D.append([candidate for candidate in combinations(HeuristicII(Numb_stra[p],ne_previous[int(sum(Numb_stra_previous[:p])):int(sum(Numb_stra_previous[:p+1]))],-1,[]),s0[p])])
             else:
                 D.append([candidate for candidate in combinations(HeuristicII(Numb_stra[p],ne_previous[int(sum(Numb_stra_previous[:p])):int(sum(Numb_stra_previous[:p+1]))],-1,[1]),s0[p])])
-        ne, Profits = Recursive_Backtracking(m,A_supp,D,0,U_depend,U_p,opt_solver,Numb_stra)
+        ne, Profits = Recursive_Backtracking(m,A_supp,D,0,U_depend,U_p,MCT,opt_solver,Numb_stra)
         if ne != []: # Nash equilibrium found!
             return ne, Profits
     return [], []
@@ -483,17 +514,17 @@ def Heuristic6(Supp_Stra,m,size_ne,n_I,n_C):
 # ne - Nash equilibrium (list)
 # Profits - profits for each player in the equilibrium ne (list)
 
-def Recursive_Backtracking(m,A_supp,D,i,U_depend, U_p,opt_solver,Numb_stra):
+def Recursive_Backtracking(m,A_supp,D,i,U_depend, U_p, MCT, opt_solver, Numb_stra):
     if i == m: # this is, we have fixed the support for each player
         # Solve Feasibility Problem
-        return FeasibilityProblem(m,A_supp,U_depend,U_p,opt_solver,Numb_stra) # ne, Profits
+        return FeasibilityProblem(m,A_supp,U_depend,U_p,MCT,opt_solver,Numb_stra) # ne, Profits
     else:
         while D[i]!=[]:
             d_i = D[i].pop() # remove d_i from D[i]
             A_supp[i] = d_i
             D_new = RS([[A_supp[p]] for p in range(i+1)]+deepcopy(D[i+1:]), Numb_stra,U_depend, U_p,m)
             if D_new != None:
-                ne, Profits = Recursive_Backtracking(m,deepcopy(A_supp),deepcopy(D_new),i+1,U_depend, U_p,opt_solver,Numb_stra)
+                ne, Profits = Recursive_Backtracking(m,deepcopy(A_supp),deepcopy(D_new),i+1,U_depend, U_p, MCT, opt_solver, Numb_stra)
                 if ne !=[]:
                     return ne, Profits
     return [],[]
@@ -515,10 +546,10 @@ def Recursive_Backtracking(m,A_supp,D,i,U_depend, U_p,opt_solver,Numb_stra):
 # ne = Nash equilibrium (list)
 # Profits = profit of each player for the equilibrium ne (list)
 
-def FeasibilityProblem(m,A_supp, U_depend,U_p, opt_solver,Numb_stra):
-    return FeasibilityProblem_Gurobi(m,A_supp, U_depend,U_p,Numb_stra)
+def FeasibilityProblem(m,A_supp, U_depend,U_p, MCT, opt_solver,Numb_stra):
+    return FeasibilityProblem_Gurobi(m,A_supp, U_depend,U_p,MCT,Numb_stra)
 
-def FeasibilityProblem_Gurobi(m,A_supp, U_depend,U_p,Numb_stra,m_p = None):
+def FeasibilityProblem_Gurobi(m,A_supp, U_depend,U_p,MCT,Numb_stra,m_p = None):
     #print "\n\n Solving Problem with Supports: ", A_supp
     if m_p == None:
         # initiate model
@@ -553,11 +584,14 @@ def FeasibilityProblem_Gurobi(m,A_supp, U_depend,U_p,Numb_stra,m_p = None):
             m_p.update()
         for p, S_p in enumerate(Numb_stra):
             for sp in range(S_p):
+                alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
                 if sp in A_supp[p]:
-                    m_p.addConstr(U_p[p][sp]+grb.quicksum(sigma[k][sk]*U_depend[p][k][(sp,sk)] for k in range(m) if k != p for sk in A_supp[k]) == v[p]) # for equality constraints because sp in A_supp[p]
+                    #print("player %i strategy %i"%(p,sp))
+                    #print(MCT)
+                    m_p.addConstr(U_p[p][sp]+grb.quicksum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p] == v[p]) # for equality constraints because sp in A_supp[p]
                     m_p.update() # because U_depend contains the mixed terms xkQkpxp
                 else:
-                    m_p.addConstr(U_p[p][sp]+grb.quicksum(sigma[k][sk]*U_depend[p][k][(sp,sk)] for k in range(m) if k != p for sk in A_supp[k]) <= v[p]) # for inequality constraints, because sp not in A_supp[p]
+                    m_p.addConstr(U_p[p][sp]+grb.quicksum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p] <= v[p]) # for inequality constraints, because sp not in A_supp[p]
                     m_p.update()
         #m_p.write("apagar.lp")
         m_p.optimize()

@@ -62,6 +62,7 @@ function compare_cs_experience(experiences, option, option_values, filename = ""
         if getfield(exp.options, option) == option_values[1]
             # indices is a set of indices corresponding to experiences comparable to exp, of size length(option_values) because all comparable experiences are found
             indices = find_comparable_experiences(i, experiences, option, option_values)
+            #println("indices for $option $option_values:\n$indices")
 
             if length(indices) != length(option_values) && length(indices) != 0
                 error("indices $indices has a length different from option_values")
@@ -92,13 +93,15 @@ function compare_cs_experience(experiences, option, option_values, filename = ""
     println()
     print("instances comparable:\t")
     [print(count[i], "\t") for i in 1:n]
-    println()
-    print("average cpu times:\t")
-    [print(round(sum(cpu_times[i][j] for j in 1:length(cpu_times[i]))/length(cpu_times[i]), digits=2), "\t") for i in 1:n]
-    println()
-    print("average iterations:\t")
-    [print(round(sum(iters[i][j] for j in 1:length(iters[i]))/length(iters[i]),digits=2), "\t") for i in 1:n]
-    println("\n")
+    if minimum(count) > 0
+        print("average cpu times:\t")
+        print(cpu_times)
+        [print(round(sum(cpu_times[i][j] for j in 1:length(cpu_times[i]))/length(cpu_times[i]), digits=2), "\t") for i in 1:n]
+        println()
+        print("average iterations:\t")
+        [print(round(sum(iters[i][j] for j in 1:length(iters[i]))/length(iters[i]),digits=2), "\t") for i in 1:n]
+        println("\n")
+    end
 
     # write important informations in file filename
     if filename != ""
@@ -114,15 +117,17 @@ function compare_cs_experience(experiences, option, option_values, filename = ""
         print(file, "instances comparable:\t")
         [print(file, count[i], "\t") for i in 1:n]
         println(file)
-        print(file, "average cpu times:\t")
-        [print(file, round(sum(cpu_times[i][j] for j in 1:length(cpu_times[i]))/length(cpu_times[i]), digits=2), "\t") for i in 1:n]
-        println(file)
-        print(file, "average iterations:\t")
-        [print(file, round(sum(iters[i][j] for j in 1:length(iters[i]))/length(iters[i]),digits=2), "\t") for i in 1:n]
+        if minimum(count) > 0
+            print(file, "average cpu times:\t")
+            [print(file, round(sum(cpu_times[i][j] for j in 1:length(cpu_times[i]))/length(cpu_times[i]), digits=2), "\t") for i in 1:n]
+            println(file)
+            print(file, "average iterations:\t")
+            [print(file, round(sum(iters[i][j] for j in 1:length(iters[i]))/length(iters[i]),digits=2), "\t") for i in 1:n]
+        end
         close(file)
     end
 
-    return solveds, cpu_times, iters
+    return solveds, cpu_times, iters, count
 end
 
 function count_NL_BR_failed(experiences)
@@ -232,6 +237,51 @@ function relaunch_exp(experiences, number, complete_output = false)
     end
 end
 
+function make_table(row_names, col_names, data; title = "")
+    # create a latex table with name of rows row_names, name of columns col_names
+    # and values in data (data[i][j] is the value for row i and col j)
+    sep1 = " \\hline\n"
+    sep2 = " \\\\"
+    sep3 = " & "
+
+    # start
+    s = "\\begin{table}[]\n\\centering\n\\begin{tabular}{"
+    s = string(s, "c||")
+    for i in 1:length(col_names)-1
+        s = string(s, "c|")
+    end
+    s = string(s, "c}", "\n")
+
+    # column names
+    s = string(s, sep3)
+    for col in col_names[1:length(col_names)-1]
+        s = string(s, col, sep3)
+    end
+    s = string(s, col_names[end], sep2, sep1)
+    # row names + data
+    for i in 1:length(row_names)
+        s = string(s, row_names[i], sep3)
+        # data of this row
+        for j in 1:length(col_names)-1
+            s = string(s, data[i][j], sep3)
+        end
+        s = string(s, data[i][end], sep2, "\n")
+    end
+    s = string(s, sep1)
+    # end
+    s_end = "\\end{tabular}\n\\caption{$title}\n\\end{table}"
+    s = string(s, s_end)
+
+    # convert "_" into "\_"
+    s = replace(s, "_"=>"\\_")
+    return s
+end
+
+#row_names = [1,2,3]
+#col_names = [1,2]
+#data = zeros(3,2)
+#println(make_table(row_names, col_names, data))
+
 function preliminary_analysis(exps, err_pwlhs, fixed_costss, refinement_methods, filename = "")
     # uses a number of functions to analyse the data in exps
 
@@ -243,11 +293,13 @@ function preliminary_analysis(exps, err_pwlhs, fixed_costss, refinement_methods,
     solvedss = []
     cpu_timess = []
     iterss = []
+    countss = []
     for i in 1:length(options)
-        solveds, cpu_times, iters = compare_cs_experience(exps, options[i], options_values[i], filename)
+        solveds, cpu_times, iters, counts = compare_cs_experience(exps, options[i], options_values[i], filename)
         push!(solvedss, solveds)
         push!(cpu_timess, cpu_times)
         push!(iterss, iters)
+        push!(countss, counts)
     end
 
     println("$count_error occured, with errors :")
@@ -258,8 +310,33 @@ function preliminary_analysis(exps, err_pwlhs, fixed_costss, refinement_methods,
     println("$count_failed experiences stopped because of a failed resolution of Couenne in julia")
     println("the indices of those experiences are in l_failed:\n$l_failed")
 
+    # write the information in a latex table format to write it in the file
+    tables = []
+    try
+        col_names = ["solved","comparable","time","iterations"]
+        for i in 1:length(options)
+            s_option = string(options[i])
+            #println(s_option)
+            s_option = s_option[2:end]
+            row_names = []
+            for name in options_values[i]
+                push!(row_names, name)
+            end
+            data = []
+            for j in 1:length(row_names)
+                push!(data, Any[Int(solvedss[i][j]), Int(countss[i][j]), round(sum(cpu_timess[i][j][k] for k in 1:length(cpu_timess[i][j]))/length(cpu_timess[i][j]), digits=2),
+                round(sum(iterss[i][j][k] for k in 1:length(iterss[i][j]))/length(iterss[i][j]), digits=2)])
+            end
+            push!(tables, make_table(row_names, col_names, data))
+            println(tables[end])
+        end
+    catch e
+        println("could not create table because of ERROR\n$e")
+    end
+
     if filename != ""
         file = open(filename, "a")
+        println(file, "\nTotal number of experiences: $(length(exps))\n")
         println(file, "$count_error occured, with errors :")
         [println(file, error_types[i]) for i in 1:length(error_types)]
         if length(error_types) == 0
@@ -267,6 +344,11 @@ function preliminary_analysis(exps, err_pwlhs, fixed_costss, refinement_methods,
         end
         println(file, "$count_failed experiences stopped because of a failed resolution of Couenne in julia")
         println(file, "the indices of those experiences are in l_failed:\n$l_failed")
+        println(file, "\n\n")
+        for i in 1:length(tables)
+            println(file, tables[i])
+            println(file)
+        end
         close(file)
     end
 

@@ -21,6 +21,9 @@ def InitialStrategies(G,opt_solver=1):
     ### for each player produce the optimal strategy if she was alone in the game ###
     S = [[[]] for p in range(G.m())] # list of strategies
     U_p = [[[]] for p in range(G.m())] # associated individual profit
+    # POSSIBLE ERROR: MCT might not be well initialized. Its only purpose is to add a term in Compute_NE.FeasibilityProblem_Gurobi
+    # which should be 0 for non CyberSecurity(NL) instances and s[n_markets] if it is
+    MCT = [[0] for p in range(G.m())] # associated value of s_p which will be used only for CyberSecurity and CyberSecurityNL games for a Mixed Constant Term
     # Profile is the profile of strategies
     Profile = [np.array([0 for k in range(G.n_I()[p]+G.n_C()[p])]) for p in range(G.m())]
     # Best reaction models
@@ -44,7 +47,7 @@ def InitialStrategies(G,opt_solver=1):
         elif G.type() == "CyberSecurityNL":
             S[p][0], U_p[p][0], Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
         Best_m.append(Model_p)
-    return S, U_p, Best_m
+    return S, U_p, MCT, Best_m
 
 #######################################################################################################################
 #### ALTERNATIVE INITIALIZATION: social optimum or potential #######################################################################
@@ -295,6 +298,7 @@ def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Pro
         # no pritting of the output
         m_p.setParam( 'OutputFlag', False )
         m_p.setParam("Threads", 2)
+        m_p.setParam("MIPGap", 1e-6)
         #m_p.setParam('BarHomogeneous', 1)
         #m_p.setParam('DualReductions',0)
         # set objective function direction
@@ -349,7 +353,7 @@ def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Pro
             m_p.setObjective(m_p.getObjective()+np.dot(x_tmp,xk_Qkp))
             m_p.update()
         else:
-            m_p.setObjective(m_p.getObjective()+np.dot(m_p.getVars(),xk_Qkp))
+            m_p.setObjective(m_p.getObjective() + np.dot(m_p.getVars(),xk_Qkp))
             m_p.update()
     m_p.write("test_model_%i.lp"%(p+1))
     # create is always false
