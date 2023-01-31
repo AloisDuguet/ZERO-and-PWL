@@ -3,6 +3,7 @@ from nonlinear_best_response_cybersecurity import *
 # get optimization software
 import gurobipy as grb
 import numpy as np
+import time as Ltime
 
 #######################################################
 ##        COMPUTE INITIAL SET OF STRATEGIES          ##
@@ -384,7 +385,10 @@ def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Pro
         for j,aux_var in enumerate(m_p.getVars()):
             aux_var.start = Profile[p][j]
             m_p.update()
+    global start_time
+    print("end of model in MILP BR --- %s seconds ---" % (Ltime.time() - 1674741000))
     m_p.optimize()
+    print("end of optimization in MILP BR --- %s seconds ---" % (Ltime.time() - 1674741000))
     try:
         #return [x[i].x for i in range(n_I_p+n_C_p)],m_p.ObjVal, m_p
         sol = [i.x for i in m_p.getVars()]

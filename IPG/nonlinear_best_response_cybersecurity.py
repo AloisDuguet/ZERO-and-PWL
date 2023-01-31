@@ -7,6 +7,7 @@ import numpy as np
 import Initial_str
 import sys
 import copy
+import time as Ltime
 
 #from tools_parse import *
 #from mosek import *
@@ -172,7 +173,10 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
     opt = pyo.SolverFactory('couenne')
     #####opt = pyo.SolverFactory('ipopt') # ipopt can not handle integer variables
     #opt = pyo.SolverFactory('bonmin')
+    global start_time
+    print("end of model in NL BR --- %s seconds ---" % (Ltime.time() - 1674741000))
     results = opt.solve(model)
+    print("end of optimization in NL BR --- %s seconds ---" % (Ltime.time() - 1674741000))
 
     if results.solver.status == SolverStatus.ok and results.solver.termination_condition == TerminationCondition.optimal:
         sol = [pyo.value(model.x[i]) for i in range(nRealVars)]

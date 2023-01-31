@@ -836,7 +836,7 @@ function benchmark_SGM_PWL_solver(; filename_instances, err_pwlhs, fixed_costss 
             close(file)
         catch e
             # if SGM_PWL_solver failed inside the SGM, the working directory should be wrong
-            if !("IPG-and-PWL" in pwd())
+            if !occursin("IPG-and-PWL",pwd())
                 cd("../IPG-and-PWL/src")
             end
             output = output_cs_instance(false, e, [[]], [], 0, -1, [], [])
@@ -916,6 +916,6 @@ refinement_methods_best = ["SGM_NL_model","full_refinement","taylor+outer"]
 # experiences_med = benchmark_SGM_PWL_solver(filename_instances=filename_instances[1:end-2], err_pwlhs=errs2, refinement_methods = refinement_methods2, max_iters = max_iters, filename_save = "medium_benchmark.txt")
 # experiences_big = benchmark_SGM_PWL_solver(filename_instances=["instance_5_4_1.txt","instance_4_5_1.txt","instance_5_5_1.txt","instance_6_6_1.txt","instance_7_7_1.txt"], err_pwlhs=[Absolute(0.05)], fixed_costss = [true, false], refinement_methods = ["max_precision"], max_iters = [5], filename_save = "big_instances.txt")
 
-#exps_medium_big_weights = benchmark_SGM_PWL_solver(filename_instances = filename_instances2, err_pwlhs = errs2, refinement_methods = refinement_methods4, filename_save = "bench_medium_big_weights.txt", big_weights_on_NL_part = true)
-#exps_big5_big_weights = benchmark_SGM_PWL_solver(filename_instances = filename_instances_big5, err_pwlhs = errs2, refinement_methods = refinement_methods4, filename_save = "bench_big5_big_weights.txt", big_weights_on_NL_part = true)
+#exps_medium_big_weights2 = benchmark_SGM_PWL_solver(filename_instances = filename_instances2, err_pwlhs = errs2, refinement_methods = refinement_methods4, filename_save = "bench_medium_big_weights2.txt", big_weights_on_NL_part = true)
+#exps_big5_big_weights2 = benchmark_SGM_PWL_solver(filename_instances = filename_instances_big5, err_pwlhs = errs2, refinement_methods = refinement_methods4, filename_save = "bench_big5_big_weights2.txt", big_weights_on_NL_part = true)
 #preliminary_analysis(exps, errs2, [true,false], refinement_methods_best, filename = "bench_medium_big_weights.txt")
