@@ -19,7 +19,7 @@ import gurobipy as grb
 
 ###########################################################
 # SGM
-def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
+def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=10**-5):
     r"""Create instances in a standard format.
     Only handle CyberSecurity problems, to handle other IPG, see https://github.com/mxmmargarida/IPG
 
@@ -133,10 +133,10 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
             elif G.type() == "CyberSecuritygurobiNL":
                 s_p, u_max, _ = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
             #print("end of computation of Best Response iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
-            if Profits[p]+max(abs(Profits[p])*10**-6,10**-5) <= u_max: # DON'T CHANGE THE 1e-5 AND THE 1e-6 WITHOUT ALSO CHANGING IT IN THE JULIA CODE
+            if Profits[p]+max(abs(Profits[p])*rel_gap,abs_gap) <= u_max: # DON'T CHANGE THE 1e-5 AND THE 1e-6 WITHOUT ALSO CHANGING IT IN THE JULIA CODE
             #if Profits[p] + 10**-5 <= u_max:  # it is not the Best Response up to 1e-6 : compute and add BR (don't change the 1e-6)
                 ###print("start of adding an element in the support iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
-                ###print("entry in if block because Profits[%i] = %f and NL BR = %f"%(p+1,Profits[p],u_max))
+                print("entry in if block because Profits[%i] = %f and NL BR = %f"%(p+1,Profits[p],u_max))
                 print("adding to player %i the strategy "%(p+1), s_p, "\n\n")
                 aux = False
                 S_new[p].append(s_p)

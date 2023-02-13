@@ -7,8 +7,10 @@ Created on Tue Nov  8 15:35:36 2022
 """
 # don't change the line number of the following line : it should be line 10
 # (cf write_SGM_instance_filename in ../IPG-and-PWL/src/SGM_solver.jl)
-filename = "../IPG-and-PWL/SGM_files/instance_8_6_1_Abs0-5_fixedcosttrue"
-game_type = "CyberSecurityNL"
+filename = "../IPG-and-PWL/SGM_files/instance_2_4_8_Abs0-05_fixedcostfalse"
+game_type = "CyberSecurity"
+rel_gap = 5.0e-7
+abs_gap = 5.0e-6
 
 import time as Ltime
 start_time = Ltime.time()
@@ -36,7 +38,7 @@ else:
 # solve with SGM
 print("start of SGM --- %s seconds ---" % (Ltime.time() - 1675900000))
 #ne, Profits_SGM,S,num_iter_done,cpu_time_not_dfs = Compute_NE.IterativeSG_NOT_DFS(G,max_iter)
-ne, Profits_SGM,S,num_iter_done,cpu_time_not_dfs = Compute_NE.IterativeSG_NOT_DFS(G,max_iter,1,S)
+ne, Profits_SGM,S,num_iter_done,cpu_time_not_dfs = Compute_NE.IterativeSG_NOT_DFS(G,max_iter,1,S,rel_gap,abs_gap)
 print("end of SGM --- %s seconds ---" % (Ltime.time() - 1675900000))
 filename = "output_SGM.txt"
 save_results_SGM(filename, ne, Profits_SGM, S, num_iter_done, cpu_time_not_dfs)
