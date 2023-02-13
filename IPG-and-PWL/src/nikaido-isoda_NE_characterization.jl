@@ -19,10 +19,10 @@ function evaluate_cybersecurity_objective_value(x, parameters, p, params, fixed_
 
     # fixed cost terms
     if fixed_costs
-        println("size of variables x $x: $(length(x))")
-        println("n_var = $n_var and $n_markets markets")
-        println("player $p")
-        println("params.fcost[$p,:] = $(params.fcost[p,:])")
+        #println("size of variables x $x: $(length(x))")
+        #println("n_var = $n_var and $n_markets markets")
+        #println("player $p")
+        #println("params.fcost[$p,:] = $(params.fcost[p,:])")
         val -= sum(params.fcost[p,j-n_var]*x[j] for j in n_var+1:n_var+n_markets)
     end
 
@@ -54,28 +54,6 @@ function evaluate_cybersecurity_objective_value(x, parameters, p, params, fixed_
         close(file)
     end
     return val
-end
-
-function compute_profit_linear_game(profits, sol, constant_values, linear_terms_in_spi)
-    # compute the profit of the linear game, using profits because
-    # the profit returned by the SGM in python is missing constant values and linear terms in other player variables
-
-    n_players = length(profits)
-    vals = zeros(n_players)
-    #println(constant_values)
-    #println(linear_terms_in_spi)
-    #println(sol)
-    #println(profits)
-    for p in 1:n_players
-        vals[p] = profits[p]+constant_values[p]
-        for i in 1:n_players-1
-            sp = i + (i >= p)
-            #println("p $p i $i sp $sp")
-            vals[p] += linear_terms_in_spi[p,i]*sol[sp][3]
-        end
-    end
-    #println(vals)
-    return vals
 end
 
 function compute_cybersecurity_nonlinear_best_response(player_index, n_players, n_markets, Qb_i, max_s_i, c, alpha, Q, C, constant_value, linear_terms_in_spi, filename, parameters, fixed_costs = false, fcost = [])
@@ -184,6 +162,123 @@ function compute_cybersecurity_nonlinear_best_response(player_index, n_players, 
      error("(last line of compute_cybersecurity_nonlinear_best_response)\nThis line should not be evaluated, the if structure above should handle all term_status")
 end
 
+function compute_cybersecurity_gurobi_nonlinear_best_response(player_index, n_players, n_markets, Qb_i, max_s_i, c, alpha, Q, C, constant_value, linear_terms_in_spi, filename, parameters, fixed_costs = false, fcost = [])
+     # solve nonlinear best response of cybersecurity model
+
+     # declare model and common variables and constraints
+     model = Model(Gurobi.Optimizer)
+     # does not manage binary variables: model = Model(() -> AmplNLWriter.Optimizer(Ipopt_jll.amplexe))
+     set_optimizer_attribute(model, "MIPGap", 1e-9)
+     #set_optimizer_attribute(model, "IntFeasTol", 1e-9)
+     set_optimizer_attribute(model, "FeasibilityTol", 1e-9)
+     set_optimizer_attribute(model, "OutputFlag", 0)
+     set_optimizer_attribute(model, "Threads", 4) # remove that for final experiments
+
+
+     var_Q_i = @variable(model, Q_i[1:n_markets] >= 0)
+     var_s_i = @variable(model, s_i >= 0)
+     @constraint(model, s_i <= max_s_i)
+
+     # add vector containing the VariableRef
+     vars_player = var_Q_i
+     push!(vars_player, s_i)
+
+     # fixed costs to make business with markets or not depending on the value of parameter fixed_costs
+     if fixed_costs
+         activate_fixed_cost = @variable(model, base_name = "activate_fixed_cost", [j=1:n_markets], Bin)
+         @constraint(model, [j=1:n_markets], Q_i[j] <= Qb_i[j]*activate_fixed_cost[j])
+         [push!(vars_player, activate_fixed_cost[i]) for i in 1:length(activate_fixed_cost)]
+     else
+         @constraint(model, [j=1:n_markets], Q_i[j] <= Qb_i[j])
+     end
+
+     # add the NL expression h_i(s_i) with quadratic constraints
+     #@NLexpression(model, h_i, alpha*(1/sqrt(1-s_i)-1))
+     @variable(model, s_nl >= 0)
+     @variable(model, t_nl >= 0)
+     @constraint(model, s_nl*s_nl <= 1-var_s_i)
+     @constraint(model, s_nl*t_nl >= 1)
+     # FINISH HERE
+
+     # add order two terms in an NLexpression
+     #@NLexpression(model, order_two_terms, sum(sum(vars_player[i]*Q[i,j]*vars_player[j] for j in 1:n_markets+1) for i in 1:n_markets+1))
+     @expression(model, order_two_terms, sum(sum(vars_player[i]*Q[i,j]*vars_player[j] for j in 1:n_markets+1) for i in 1:n_markets+1))
+
+     # prepare expression with the terms of the objective function involving parameters
+     # j is the index for another player's variables
+     # i is the index of the other player currently considered
+     # k is the index for the player's variables
+     @expression(model, param_terms, sum(sum(sum(parameters[i][j]*C[(i-1)*(n_markets+1)+j,k]*vars_player[k] for j in 1:n_markets+1) for i in 1:n_players-1) for k in 1:n_markets+1)
+     + sum(linear_terms_in_spi[i]*parameters[i][n_markets+1] for i in 1:n_players-1) + constant_value)
+     #println("expression:\n$param_terms")
+
+     # add the objective function
+     if fixed_costs
+         @objective(model, Max, -alpha*(t_nl-1) + order_two_terms + sum(c[k]*Q_i[k] for k in 1:n_markets)
+         + c[end]*s_i - sum(fcost[j]*activate_fixed_cost[j] for j in 1:n_markets) + param_terms)
+     else
+         @objective(model, Max, -alpha*(t_nl-1) + order_two_terms + sum(c[k]*Q_i[k] for k in 1:n_markets) + c[end]*s_i + param_terms)
+     end
+
+     # check validity of model by printing it
+     if false
+         file = open("algo_NL_model.txt", "a")
+         #file = open(filename[1:end-4]*"_$(player_index)_NBR.txt", "w")
+         println(file, "julia model for player $player_index:")
+         println(file, model)
+         close(file)
+     end
+
+     # resolution of the model
+     status = JuMP.optimize!(model)
+     term_status = JuMP.termination_status(model)
+     println("----- status termination of the model of player $player_index : $term_status -----")
+     file = open(filename[1:end-4]*"_$(player_index)_solution_NBR.txt", "w")
+     println(file, term_status)
+     close(file)
+     if term_status == MOI.INFEASIBLE
+         file = open("save_infeasible_couenne_models.txt", "a")
+         println(file, model)
+         close(file)
+         try
+             compute_conflict!(model)
+             if MOI.get(model, MOI.ConflictStatus()) == MOI.CONFLICT_FOUND
+                 iis_model, _ = copy_conflict(model)
+                 println("conflict :\n")
+                 print(iis_model)
+             end
+         catch e
+             println("\t\t\t$e\t\t\t")
+             println(model)
+         end
+         error("status MOI.INFEASIBLE detected for player $player_index")
+     elseif term_status == MOI.OPTIMAL || term_status == MOI.LOCALLY_SOLVED
+         # save solution summary in a file
+         file = open(filename[1:end-4]*"_$(player_index)_solution_NBR.txt", "w")
+         println(file, solution_summary(model))
+         close(file)
+
+         solution = [JuMP.value(vars_player[i]) for i in 1:length(vars_player)]
+         obj = objective_value(model)
+
+         if false
+             file = open("algo_NL_model.txt", "a")
+             println(file, "solution:")
+             println(file, solution)
+             println(file, "objective value:")
+             println(file, obj)
+             println(file)
+             close(file)
+         end
+
+         return model, solution, obj, all_variables(model)
+     else
+         error("unknown status $term_status, maybe add a case in the code for it")
+     end
+
+     error("(last line of compute_cybersecurity_nonlinear_best_response)\nThis line should not be evaluated, the if structure above should handle all term_status")
+end
+
 function compute_max_s_i_for_all_players(n_players, params)
     # compute max_s_i (with cybersecurity budget constraint and B[i])
     max_s_is = zeros(n_players)
@@ -225,7 +320,8 @@ function cybersecurity_NE_characterization_function(x, params, fixed_costs)
 
         try
             # compute the inf in y_i (because it is a maximization problem), NBR = Non-linear Best Response
-            global model_NBR, sol_NBR, obj_NBR, ordvar_NBR = compute_cybersecurity_nonlinear_best_response(p, n_players
+            #global model_NBR, sol_NBR, obj_NBR, ordvar_NBR = compute_cybersecurity_nonlinear_best_response(p, n_players
+            @time global model_NBR, sol_NBR, obj_NBR, ordvar_NBR = compute_cybersecurity_gurobi_nonlinear_best_response(p, n_players
             , n_markets, params.Qbar[p,:], max_s_is[p], params.cs[p], params.alphas[p], params.Qs[p]
             , params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:], filename
             , parameters, fixed_costs, params.fcost[p,:])
@@ -245,10 +341,13 @@ function cybersecurity_NE_characterization_function(x, params, fixed_costs)
                 error("problem with the evaluation of the NL best response: diff of $(abs(recompute_obj_NBR-obj_NBR))")
             end=#
         catch e
-            println("\n\n\nerror while computing cybersecurity nonlinear best response for nikaido-isoda function:")
+            println("\n\n\nerror while computing cybersecurity nonlinear best response for nikaido-isoda function:\n$e")
             println("continue with 1e12 to not stop the algorithm (does not work if abs_gap > 1e12) with player $p")
             global obj_NBR = obj_p + 1e12
         end
+
+        println("python NL BR in julia \t", obj_p)
+        println("julia NL BR of value \t", obj_NBR)
 
 
 

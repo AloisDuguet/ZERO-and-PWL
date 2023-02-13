@@ -17,159 +17,6 @@ import gurobipy as grb
 # def signal_handler(signum, frame):
 #     raise Exception("Timed out!")
 
-# m-SGM
-def IterativeSG(G,max_iter,opt_solver=1, S=[]):
-    r"""Create instances in a standard format.
-
-    Parameters:
-    ----------
-    G: Game class (see Instances file)
-    max_iter: maximum number of sampled games to be solved
-    opt_solver: 0 if cplex is used and 1 otherwise (use gurobi); in the paper it is always 1.
-    S: intial set of strategies (optional)
-    Returns:
-    -------
-    ne: list of vectors indicating the Nash equilibrium associated with the strategies in S
-    Profits: List of profits for each player under ne
-    S: final set of strategies
-    count: number of iterations, i.e., sampled games solved
-    numb_back: number of backtracking
-    cpu_time: computational time
-    """
-    # create log file
-    # f = open("log_ComputeOneNE.txt",'w')
-    # f.close()
-    # STEP 0 - INITIALIZATION
-    # initialize set of strategies
-    if S == []:
-        S, U_p, MCT, Best_m = InitialStrategies(G,opt_solver)
-        #S, U_p, Best_m = InitialStrategiesII(G,opt_solver)
-    else:
-        U_p, MCT, S = IndUtilities(G.m(), G.c(), G.Q(), [[] for _ in range(G.m())], [[] for _ in range(G.m())], [[] for _ in range(G.m())], S)
-        Best_m = CreateModels(G.m(), G.n_I(), G.n_C(), G.n_constr(), G.c(), G.Q(), G.A(), G.b())
-    S_new = [[] for p in range(G.m())]
-    if  [[]] in S:
-        print("ERROR: There is a player without feasible strategies")
-        return [],[],S,0,0,0
-    Numb_stra = [1 for p in range(G.m())]
-    U_depend = [[{} for k in range(G.m())] for p in range(G.m())]
-    # set mandatory strategy in the support
-    Numb_stra_S = [0]*G.m()
-    M_pre = [G.m()-1,0,deepcopy(Numb_stra_S),deepcopy(S_new),[[]]*G.m(),deepcopy(U_depend),deepcopy(S_new),[0,0],0] # strategy S[0] must be in the supp of player m
-    # set memory
-    Memory = [deepcopy(M_pre)]
-    Back = False # start computation of equilibria from the start
-    numb_back = 0
-    # STEP 2 - COMPUTE EQUILIBRIA OF RESTRICTED (SAMPLED) GAME
-    # compute Nash equilibrium taking account M and Back
-    count = 1
-    U_depend = Utilities_Poymatrix(G.m(),G.Q(),U_depend,S_new,S,Numb_stra_S)
-    # M_pos = [player p, best response of p, Numb_stra of current node, strategies S of current node, U_p of S, U_depend of S, new best responses from S]
-    M_pos = [None,None,deepcopy(Numb_stra),deepcopy(S),deepcopy(U_p),deepcopy(U_depend),deepcopy(S_new),None,0]
-    list_best = list(range(G.m()))
-    time_aux = time()
-    ne = []
-    ne_previous = ne[:]
-    while True and count <= max_iter and time()-time_aux<=3600:
-        # f = open("log_ComputeOneNE.txt",'a')
-        # f.write("\n\n Processing node ... "+str(count))
-        # f.write("\nComputing equilibria of game of size "+str(Numb_stra)+" .... \n")
-        # f.close()
-        print("\n\n Processing node ... ", count)
-        print("Computing equilibria.... \n")
-        ne_previous = ne[:]
-        # under unix: to limit time
-        #signal.signal(signal.SIGALRM, signal_handler)
-        #signal.alarm(3600-int(time()-time_aux))   #  seconds
-        try:
-            ne, Profits,S0_j = ComputeNE(M_pre,Back,U_depend, U_p,G.m(),G.n_I(), G.n_C(),Numb_stra,opt_solver,M_pos[2],M_pos[-1])
-        #except Exception, msg: python 2.7
-        except Exception:
-            print("Time limit exceeded")
-            return ne_previous, [], S,count,numb_back,time()-time_aux
-        if ne == []: # fail to compute such equilibrium
-            # f = open("log_ComputeOneNE.txt",'a')
-            # f.write("\nFail to compute equilibrium\n#############################\n Backtracking ....\n#############################\n")
-            # f.close()
-            print(" Fail to compute equilibrium")
-            print("#############################")
-            print("\n Backtracking ....\n")
-            print("#############################")
-            S_new = deepcopy(M_pre[-3])
-            U_p = deepcopy(M_pre[4])
-            S = deepcopy(M_pre[3])
-            U_depend = deepcopy(M_pre[5])
-            Numb_stra_S = deepcopy(M_pre[2])
-            U_depend = Utilities_Poymatrix(G.m(),G.Q(),U_depend,S,S_new,Numb_stra_S)
-            U_p, MCT, S = IndUtilities(G.m(), G.c(), G.Q(), S, U_p, MCT, S_new)
-            Numb_stra = [Numb_stra_S[p]+len(S_new[p]) for p in range(G.m())] # update number of strategies
-            M_pos = deepcopy(M_pre)
-            Memory.pop()
-            M_pre = deepcopy(Memory[-1])
-            Back = True
-            numb_back = numb_back+1
-            #count = count -1
-        else:
-            # f = open("log_ComputeOneNE.txt",'a')
-            # f.write("\n Equilibrium computed successfully\n")
-            # f.close()
-            print(" Equilibrium computed successfully")
-            #M_pre[2] = ne
-            #Memory[-1] = M
-            Back = False # ne found
-            aux = True # no player has incentive to deviate
-            S_new = [[] for p in range(G.m())] # set of new strategies to be considered
-            Profile = [np.array([sum(ne[int(k+sum(Numb_stra[:p]))]*S[p][k][i] for k in range(Numb_stra[p]))  for i in range(G.n_I()[p]+G.n_C()[p])]) for p in range(G.m())]
-            aux_p = 0
-            while aux and aux_p<G.m(): # FEED BEST RESPONSES WITH NE solution
-                p = list_best[aux_p]
-                #if G.type() != "CyberSecurity":
-                #    s_p, u_max, _ = BestReactionGurobi(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,Best_m[p])
-                #else:
-                #    print("using best response for CyberSecurity model")
-                #    s_p, u_max, _ = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p])
-                if G.type() != "CyberSecurity" and G.type() != "CyberSecurityNL":
-                    s_p, u_max, _ = BestReactionGurobi(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,Best_m[p])
-                elif G.type() == "CyberSecurity":
-                    #print("using best response for CyberSecurity model")
-                    s_p, u_max, _ = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p])
-                elif G.type() == "CyberSecurityNL":
-                    s_p, u_max, _ = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
-
-                if Profits[p] +10**-6 <= u_max:
-                    aux = False
-                    S_new[p].append(s_p)
-                    Numb_stra_S = deepcopy(Numb_stra)
-                    # update M_pos
-                    M_pos[0] = p
-                    M_pos[1] = Numb_stra[p]
-                    M_pos[-2] = deepcopy(ne)
-                    M_pos[-3][p].append(s_p)
-                    M_pos[-1] = S0_j
-                    Memory.append(deepcopy(M_pos))
-                    Numb_stra[p] = Numb_stra[p]+1
-                    M_pre = deepcopy(M_pos)
-                    U_depend = Utilities_Poymatrix(G.m(),G.Q(),U_depend,S,S_new,Numb_stra_S)
-                    U_p, MCT, S = IndUtilities(G.m(), G.c(), G.Q(), S, U_p, MCT, S_new)
-                    S_new = [[] for _ in range(G.m())]
-                    M_pos = [None,None,deepcopy(Numb_stra),deepcopy(S),deepcopy(U_p),deepcopy(U_depend),deepcopy(S_new),None,0]
-                    print(list_best)
-                    list_best.append(p)
-                    list_best = list_best[:aux_p]+list_best[aux_p+1:]
-                aux_p = aux_p+1
-            #count = count+1
-            if aux:
-                # f = open("log_ComputeOneNE.txt",'a')
-                # f.write("\n Total time: "+str(time()-cpu_time))
-                # f.close()
-                return ne, Profits, S,count,numb_back,time()-time_aux
-        count = count +1
-    if time()-time_aux>3600:
-        print("Time Limit Exceeded")
-    else:
-        print(" Maximum number of iterations was attained")
-    return ne_previous, [], S,count,numb_back,time()-time_aux
-
 ###########################################################
 # SGM
 def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
@@ -181,7 +28,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
     G: Game class (see Instances file)
     max_iter: maximum number of sampled games to be solved
     opt_solver: 0 if cplex is used and 1 otherwise (use gurobi); in the paper it is always 1.
-    S: intial set of strategies (optinal)
+    S: intial set of strategies (optional)
     Returns:
     -------
     ne: list of vectors indicating the Nash equilibrium associated with S
@@ -194,20 +41,24 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
     # initialize set of strategies
     global start_time
     if S == []:
+        # create initial strategies
         S, U_p, MCT, Best_m = InitialStrategies(G,opt_solver)
         #print("MCT after if S == []\n", MCT)
         #print("S after if S == []\n", S)
         #S, U_p, Best_m = InitialStrategiesII(G,opt_solver)
     else:
+        # compute values for initial strategies in S
         U_p, MCT, S = IndUtilities(G.m(), G.c(), G.Q(), [[] for _ in range(G.m())], [[] for _ in range(G.m())], [[] for _ in range(G.m())], S, G)
-        Best_m = CreateModels(G.m(), G.n_I(), G.n_C(), G.n_constr(), G.c(), G.Q(), G.A(), G.b(), G.type(), G)
+        #Best_m = CreateModels(G.m(), G.n_I(), G.n_C(), G.n_constr(), G.c(), G.Q(), G.A(), G.b(), G.type(), G)
+        Best_m = [[] for p in range(G.m())]
         #print("MCT after else of if S == []\n", MCT)
-    print("after initialization of SGM with indUtilities and CreateModels --- %s seconds ---" % (Ltime.time() - 1674741000))
+    ###print("after initialization of SGM with indUtilities and CreateModels --- %s seconds ---" % (Ltime.time() - 1675900000))
     S_new = [[] for p in range(G.m())]
     if [[]] in S:
         print("ERROR: There is a player without feasible strategies")
         return [],[],S,0,0,0
     Numb_stra = [len(S[p]) for p in range(G.m())]
+    warmstart_MIP = {}
     U_depend = [[{} for k in range(G.m())] for p in range(G.m())]
     # set mandatory strategy in the support
     Numb_stra_S = [0]*G.m()
@@ -222,8 +73,9 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
     ne = []
     ne_previous = ne[:]
     #return U_depend,U_p,Numb_stra,ne,deviator,S
-    print("start of main while loop --- %s seconds ---" % (Ltime.time() - 1674741000))
-    while True and count <= max_iter and time()-time_aux<=3600:
+    TIME_LIMIT = 300
+    ###print("start of main while loop --- %s seconds ---" % (Ltime.time() - 1675900000))
+    while True and count <= max_iter and time()-time_aux<=TIME_LIMIT:
         print("\n\n Processing node ... ", count)
         print("Computing equilibria.... \n")
         ne_previous = ne[:]
@@ -231,111 +83,108 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
         #signal.alarm(3600-int(time()-time_aux))   #  seconds
         try:
             #print("MCT before starting Compute_NE_NOT_DFS\n", MCT)
-            print("start of ComputeNE_NOT_DFS iteration %i --- %s seconds ---" %(count, Ltime.time() - 1674741000))
+            ###print("start of ComputeNE_NOT_DFS iteration %i --- %s seconds ---" %(count, Ltime.time() - 1675900000))
             #ne, Profits = ComputeNE_NOT_DFS(U_depend,U_p,MCT,G.m(),G.n_I(),G.n_C(),Numb_stra,opt_solver,ne,deviator)
-            ne, Profits = ComputeNE(U_depend,U_p,MCT,G.m(),G.n_I(),G.n_C(),Numb_stra,opt_solver,ne,deviator)
-            print("end of ComputeNE_NOT_DFS iteration %i --- %s seconds ---" % (count, Ltime.time() - 1674741000))
+            ne, Profits = ComputeNE(U_depend,U_p,MCT,G.m(),G.n_I(),G.n_C(),Numb_stra,warmstart_MIP,opt_solver,ne,deviator)
+            ###print("end of ComputeNE_NOT_DFS iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
             ### modify ###
             #return ne,Profits,S,count,time()-time_aux
         #except Exception, msg: python2.7
-        except Exception:
-            print("Time limit exceeded")
-            return ne_previous, [], S,count,time()-time_aux
+        except Exception as e:
+            #print("Time limit exceeded")
+            print("an error occured during ComputeNE:\n", e)
+            exit(4) # error during ComputeNE
         print(" Equilibrium computed successfully")
-
-        cpt = 0
-        for p in range(G.m()):
-            #print("strategy of player %i:\n"%(p+1), ne, "\n", S[p][cpt:cpt+max(len(S[p]),8)])
-            strat = sum(np.multiply(S[p][j], ne[cpt+j]) for j in range(len(S[p])))
-            #print("strategy of player %i: "%(p+1), strat)
-            cpt += len(S[p])
 
 
         aux = True # no player has incentive to deviate
         S_new = [[] for p in range(G.m())] # set of new strategies to be considered
-        Profile = [np.array([sum(ne[int(k+sum(Numb_stra[:p]))]*S[p][k][i] for k in range(Numb_stra[p]))  for i in range(G.n_I()[p]+G.n_C()[p])]) for p in range(G.m())]
+        Profile = [np.array([sum(ne[int(k+sum(Numb_stra[:p]))]*S[p][k][i] for k in range(Numb_stra[p]))  for i in range(len(S[p][0]))]) for p in range(G.m())]
+        #Profile = [np.array([sum(ne[int(k+sum(Numb_stra[:p]))]*S[p][k][i] for k in range(Numb_stra[p]))  for i in range(G.n_I()[p]+G.n_C()[p])]) for p in range(G.m())] # old version, probably false because of the range of i that does not include all variables
+
+        #cpt = 0
+        #for p in range(G.m()):
+            #print("strategy of player %i:\n"%(p+1), ne, "\n", S[p][cpt:cpt+max(len(S[p]),8)])
+            #strat = sum(np.multiply(S[p][j], ne[cpt+j]) for j in range(len(S[p])))
+            #print("strategy of player %i according to my computation: "%(p+1), strat) # it does not plot all the digits but they are
+            #print("strategy of player %i according to the SGM 'old' code: "%(p+1), Profile[p])
+            #cpt += len(S[p])
+
+        cpt = 0
+        for p in range(G.m()):
+            print("strategies used for player ", p+1)
+            for i in range(len(S[p])):
+                if ne[i+cpt] > 0:
+                    print([round(S[p][i][k],3) for k in range(len(S[p][i]))], " with proba ", ne[i+cpt])
+            cpt += len(S[p])
+
         aux_p = 0
         while aux and aux_p<G.m(): # FEED BEST RESPONSES WITH NE solution
-            if False:
-                f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
-                f.write("iteration %i:\n"%(count))
-                f.write("list_best is: ")
-                f.write(list_to_string(list_best))
-                f.write("\n")
             p = list_best[aux_p]
-            if False:
-                f.write("aux_p = %i and p = %i meaning player p+1 = %i\n"%(aux_p,p,p+1))
-                f.write("ne = ")
-                f.write(list_to_string(ne))
-                f.write("\n")
-                f.close()
-            print("start of computation of Best Response iteration %i --- %s seconds ---" % (count, Ltime.time() - 1674741000))
-            if G.type() != "CyberSecurity" and G.type() != "CyberSecurityNL":
+            ###print("start of computation of Best Response iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
+            if G.type() != "CyberSecurity" and G.type() != "CyberSecurityNL" and G.type() != "CyberSecuritySOCP" and G.type() != "CyberSecuritygurobiNL" :
                 s_p, u_max, _ = BestReactionGurobi(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,Best_m[p])
             elif G.type() == "CyberSecurity":
-                #print("using best response for CyberSecurity model")
-                s_p, u_max, _ = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p])
-                # add MCT to the objective (and mixed terms)
-                alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, G.m())
-                u_max += -Ds[p] + Ds[p]/G.m()*sum(Profile[k][n_markets] for k in range(G.m()) if k != p)
-                #print("Profits[%i]: %f"%(p+1,Profits[p]))
-                #print("u_max for %i: %f"%(p+1,u_max))
-                #print("with strategy ", s_p)
+                s_p, u_max, _ = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
             elif G.type() == "CyberSecurityNL":
                 s_p, u_max, _ = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
-                #f = open("save_NL_and_L_results.txt", "a")
-                #f.write("%f\t%f\t%f\n"%(u_max,valueNL,u_max-valueNL))
-                #f.close()
-                #print("Profits[%i]: %f"%(p+1,Profits[p]))
-                #print("u_max for %i: %f"%(p+1,u_max))
-                #print("with strategy ", s_p)
-            print("end of computation of Best Response iteration %i --- %s seconds ---" % (count, Ltime.time() - 1674741000))
-            if False:
-                f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
-                f.write("profits[%i]: %f\n\n"%(p+1,Profits[p]))
-                f.close()
-            if Profits[p] + 10**-6 <= u_max:  # it is not the Best Response up to 1e-6 : compute and add BR (don't change the 1e-6)
-                print("start of adding an element in the support iteration %i --- %s seconds ---" % (count, Ltime.time() - 1674741000))
-                if False:
-                    #f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
-                    f = open("SOCP_solutions.txt", "a")
-                    f.write("entry in if block because Profits[%i] = %f and NL BR = %f\n\n"%(p+1,Profits[p],u_max))
-                    f.close()
-                print("entry in if block because Profits[%i] = %f and NL BR = %f\n\n"%(p+1,Profits[p],u_max))
+            elif G.type() == "CyberSecuritySOCP":
+                s_p, u_max, _ = SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
+            elif G.type() == "CyberSecuritygurobiNL":
+                s_p, u_max, _ = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
+            #print("end of computation of Best Response iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
+            if Profits[p]+max(abs(Profits[p])*10**-6,10**-5) <= u_max: # DON'T CHANGE THE 1e-5 AND THE 1e-6 WITHOUT ALSO CHANGING IT IN THE JULIA CODE
+            #if Profits[p] + 10**-5 <= u_max:  # it is not the Best Response up to 1e-6 : compute and add BR (don't change the 1e-6)
+                ###print("start of adding an element in the support iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
+                ###print("entry in if block because Profits[%i] = %f and NL BR = %f"%(p+1,Profits[p],u_max))
+                print("adding to player %i the strategy "%(p+1), s_p, "\n\n")
                 aux = False
                 S_new[p].append(s_p)
                 Numb_stra_S = deepcopy(Numb_stra)
                 Numb_stra[p] = Numb_stra[p]+1
                 U_depend = Utilities_Poymatrix(G.m(),G.Q(),U_depend,S,S_new,Numb_stra_S)
                 U_p, MCT, S = IndUtilities(G.m(), G.c(), G.Q(), S, U_p, MCT, S_new, G)
+
+
+                # check if new strategy s_p is already inside S[p]
+                for k in range(len(S[p])-1):
+                    strat = S[p][k]
+                    if sum(abs(s_p[i]-strat[i]) for i in range(len(s_p))) <= 1e-12:
+                        print("mixed part: ", np.dot(s_p,sum(np.dot(Profile[k], G.Q()[p][k]) for k in range(G.m()) if k!=p)))
+                        alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, G.m())
+                        print("constant part: ", - Ds[p] + Ds[p]/G.m()*sum(Profile[k][n_markets] for k in range(G.m()) if k != p))
+                        #total =
+                        #print("total: ", total)
+                        print("adding the same as strategy %i:"%k)
+                        print(s_p)
+                        print(S[p][:len(S[p])-1])
+                        print("Profile:")
+                        for i in range(G.m()):
+                            print("for player %i: "%(i+1), Profile[i])
+                        exit(12)
+
+
                 S_new = [[] for _ in range(G.m())]
                 list_best.append(p)
                 list_best = list_best[:aux_p]+list_best[aux_p+1:]
                 deviator = p
-                print("end of adding an element in the support iteration %i --- %s seconds ---" % (count, Ltime.time() - 1674741000))
+                #print("end of adding an element in the support iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
+            else:
+                print("stopping criterion passed for player %i with Profits[%i] = %f and NL BR = %f"%(p+1,p+1,Profits[p],u_max))
             aux_p = aux_p+1
         if aux:
-            if False:
-                f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
-                f.write("list_best at return is: ")
-                f.write(list_to_string(list_best))
-                f.write("\n")
-                f.write("length of ne:\n")
-                f.write("%i"%(len(ne)))
-                f.write("\nne:\n")
-                f.write(list_to_string(ne))
-                f.write("\n")
-                f.write("lengths of S[i] for all i:\n")
-                [f.write("%i "%(len(S[i]))) for i in range(len(S))]
-                f.write("\n")
-                f.close()
-            print("usual return")
-            return ne, Profits, S,count,time()-time_aux
+            if time()-time_aux:
+                print("usual return")
+                return ne, Profits, S,count,time()-time_aux
+            else:
+                exit(5) # time limit reached during the iteration that proved the solution of the SGM
         count = count +1
-    if time()-time_aux>3600:
-        print("Time Limit Exceeded")
+    if time()-time_aux>TIME_LIMIT:
+        exit(10)
+        # not working : raise Exception("ERROR Time Limit of %i seconds exceeded"%TIME_LIMIT)
     else:
-        print(" Maximum number of iterations was attained")
+        exit(11)
+        # not working : raise Exception("ERROR Maximum number of iterations of %i was attained"%max_iter)
     return ne_previous, [], S,count,time()-time_aux
 
 #######################################################################################################################
@@ -357,19 +206,18 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
 def IndUtilities(m, c, Q, S, U_p, MCT, S_new, G = []):
     for p in range(m):
         for s in S_new[p]:
-            if G != [] and G.type() == "CyberSecurityNL":
-                if False:
-                    f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
-                    f.write("entry in IndUtilities with CyberSecurityNL option")
-                    f.close()
+            if G != [] and (G.type() == "CyberSecurityNL" or G.type() == "CyberSecuritySOCP" or G.type() == "CyberSecuritygurobiNL"):
                 alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
                 U_p[p].append(float(np.dot(c[p],s) - 0.5*np.dot(s,np.dot(Q[p][p],s)) - alpha*(1/np.sqrt(1-s[n_markets])-1)))
                 MCT[p].append(s[n_markets])
-            elif G != [] and G.type() == "CyberSecurity":
                 if False:
-                    f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
-                    f.write("entry in IndUtilities without CyberSecurityNL option")
-                    f.close()
+                    print("values of terms in IndUtilities:")
+                    print("linear part: ", np.dot(c[p],s))
+                    print("quadratic part: ", - 0.5*np.dot(s,np.dot(Q[p][p],s)))
+                    print("nonlinear part: ", - alpha*(1/np.sqrt(1-s[n_markets])-1))
+                    print("U_p = ", U_p[p])
+                    print("MCT: ", MCT[p])
+            elif G != [] and G.type() == "CyberSecurity":
                 alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
                 U_p[p].append(float(np.dot(c[p],s) - 0.5*np.dot(s,np.dot(Q[p][p],s))))
                 MCT[p].append(s[n_markets])
@@ -466,13 +314,13 @@ def ComputeNE_NOT_DFS(U_depend,U_p,MCT,m,n_I,n_C,Numb_stra,opt_solver,ne_previou
     size_pre_ne = [sum(1 for j in ne_previous[int(sum(Numb_stra[:p])):int(sum(Numb_stra[:p+1]))] if j >10**-5) for p in range(deviator)]+[sum(1 for j in ne_previous[int(sum(Numb_stra[:deviator])):int(sum(Numb_stra[:deviator+1])-1)] if j >10**-5)]+[sum(1 for j in ne_previous[int(sum(Numb_stra[:p])):int(sum(Numb_stra[:p+1]))] if j >10**-5) for p in range(deviator+1,m)]
     print(size_pre_ne)
     print("size_pre_ne of size ", len(size_pre_ne))
-    print("start of heuristic6 --- %s seconds ---" % (Ltime.time() - 1674741000))
+    print("start of heuristic6 --- %s seconds ---" % (Ltime.time() - 1675900000))
     S0 = Heuristic6(Numb_stra,m,size_pre_ne,n_I,n_C)
-    print("end of heuristic6   --- %s seconds ---" % (Ltime.time() - 1674741000))
+    print("end of heuristic6   --- %s seconds ---" % (Ltime.time() - 1675900000))
 
-    print("start of heuristic6Optimized --- %s seconds ---" % (Ltime.time() - 1674741000))
+    print("start of heuristic6Optimized --- %s seconds ---" % (Ltime.time() - 1675900000))
     #S0optimized = Heuristic6Optimized(Numb_stra,m,size_pre_ne,n_I,n_C)
-    print("end of heuristic6Optimized   --- %s seconds ---" % (Ltime.time() - 1674741000))
+    print("end of heuristic6Optimized   --- %s seconds ---" % (Ltime.time() - 1675900000))
 
     print("length of S0 is ", len(S0))
     #print("length of S0optimized is ", len(S0optimized))
@@ -482,7 +330,7 @@ def ComputeNE_NOT_DFS(U_depend,U_p,MCT,m,n_I,n_C,Numb_stra,opt_solver,ne_previou
     ##### HEURISTIC 6 ####
     Numb_stra_previous = deepcopy(Numb_stra)
     Numb_stra_previous[deviator] = Numb_stra_previous[deviator]-1
-    print("start of for loop in ComputeNE_NOT_DFS --- %s seconds ---" % (Ltime.time() - 1674741000))
+    print("start of for loop in ComputeNE_NOT_DFS --- %s seconds ---" % (Ltime.time() - 1675900000))
     for S0_j,s0 in enumerate(S0):
         print("element ", s0, " of S0")
         # now we have the support sizes
@@ -490,7 +338,7 @@ def ComputeNE_NOT_DFS(U_depend,U_p,MCT,m,n_I,n_C,Numb_stra,opt_solver,ne_previou
         A_supp = [None for p in range(m)]
         # ATTENTION: THE SETS IN D ARE NOT SORTED
         D = []
-        print("start of heuristicII --- %s seconds ---" % (Ltime.time() - 1674741000))
+        print("start of heuristicII --- %s seconds ---" % (Ltime.time() - 1675900000))
         for p in range(m):
             # D[p] is the set of strategies in the support of player p with size s0[p]
             # from S[p] take s0[p] strategies
@@ -499,10 +347,10 @@ def ComputeNE_NOT_DFS(U_depend,U_p,MCT,m,n_I,n_C,Numb_stra,opt_solver,ne_previou
                 D.append([candidate for candidate in combinations(HeuristicII(Numb_stra[p],ne_previous[int(sum(Numb_stra_previous[:p])):int(sum(Numb_stra_previous[:p+1]))],-1,[]),s0[p])])
             else:
                 D.append([candidate for candidate in combinations(HeuristicII(Numb_stra[p],ne_previous[int(sum(Numb_stra_previous[:p])):int(sum(Numb_stra_previous[:p+1]))],-1,[1]),s0[p])])
-        print("end of heuristicII --- %s seconds ---" % (Ltime.time() - 1674741000))
-        print("start of Recursive_Backtracking --- %s seconds ---" % (Ltime.time() - 1674741000))
+        print("end of heuristicII --- %s seconds ---" % (Ltime.time() - 1675900000))
+        print("start of Recursive_Backtracking --- %s seconds ---" % (Ltime.time() - 1675900000))
         ne, Profits = Recursive_Backtracking(m,A_supp,D,0,U_depend,U_p,MCT,opt_solver,Numb_stra)
-        print("end of Recursive_Backtracking --- %s seconds ---" % (Ltime.time() - 1674741000))
+        print("end of Recursive_Backtracking --- %s seconds ---" % (Ltime.time() - 1675900000))
         if ne != []: # Nash equilibrium found!
             return ne, Profits
     return [], []
@@ -519,10 +367,10 @@ def Heuristic6(Supp_Stra,m,size_ne,n_I,n_C):
     S0 = []
     # it is n_I[p]+n_C[p]+1 in case the objectives are linear: an optimum is in a facet which has dimension n_I+n_C-1
     # and thus, any point of it can be written as a convex combinatiuon of n_I+n_C extreme points of that facet
-    print("start of for loop --- %s seconds ---" % (Ltime.time() - 1674741000))
+    print("start of for loop --- %s seconds ---" % (Ltime.time() - 1675900000))
     for s0 in product(*[range(1,min(Supp_Stra[p]+1,n_I[p]+n_C[p]+2)) for p in range(m)]): # n_I[p]+n_C[p]+2 should be the max number of strategies used for one player in an MNE
         S0.append(list(s0))
-    print("start of sort     --- %s seconds ---" % (Ltime.time() - 1674741000))
+    print("start of sort     --- %s seconds ---" % (Ltime.time() - 1675900000))
     if m == 2:
         return sorted(S0,key =lambda x:(abs(x[0]-x[1]),max(abs(size_ne[0] -x[0]),abs(size_ne[1] -x[1])),max(abs(size_ne[0]+1-x[0]),abs(size_ne[1]+1-x[1])),x[0]+x[1]))
     else:
@@ -535,15 +383,15 @@ def Heuristic6Optimized(Supp_Stra,m,size_ne,n_I,n_C):
     # it is n_I[p]+n_C[p]+1 in case the objectives are linear: an optimum is in a facet which has dimension n_I+n_C-1
     # and thus, any point of it can be written as a convex combinatiuon of n_I+n_C extreme points of that facet
     cpt = 0
-    print("start of for loop --- %s seconds ---" % (Ltime.time() - 1674741000))
+    print("start of for loop --- %s seconds ---" % (Ltime.time() - 1675900000))
     for s0 in product(*[range(1,min(Supp_Stra[p]+1,n_I[p]+n_C[p]+2)) for p in range(m)]): # n_I[p]+n_C[p]+2 should be the max number of strategies used for one player in an MNE
         S0[cpt,:] = list(s0)
         cpt += 1
-    print("start of tolist() --- %s seconds ---" % (Ltime.time() - 1674741000))
+    print("start of tolist() --- %s seconds ---" % (Ltime.time() - 1675900000))
     S0 = S0.tolist()
-    print("start of sort test --- %s seconds ---" % (Ltime.time() - 1674741000))
+    print("start of sort test --- %s seconds ---" % (Ltime.time() - 1675900000))
     a = sorted(S0,key = lambda x:max(abs(size_ne[p]-x[p]) for p in range(m))) # 2.4s against 14s for the real key (4 criteria)
-    print("start of sort      --- %s seconds ---" % (Ltime.time() - 1674741000))
+    print("start of sort      --- %s seconds ---" % (Ltime.time() - 1675900000))
     if m == 2:
         #return np.sort(S0, axis = 0, key = lambda x:(abs(x[0]-x[1]),max(abs(size_ne[0] -x[0]),abs(size_ne[1] -x[1])),max(abs(size_ne[0]+1-x[0]),abs(size_ne[1]+1-x[1])),x[0]+x[1]))
         #return S0[np.apply_along_axis(lambda x:(abs(x[0]-x[1]),max(abs(size_ne[0] -x[0]),abs(size_ne[1] -x[1])),max(abs(size_ne[0]+1-x[0]),abs(size_ne[1]+1-x[1])),x[0]+x[1]), 0, x).argsort()]
@@ -581,9 +429,9 @@ def Recursive_Backtracking(m,A_supp,D,i,U_depend, U_p, MCT, opt_solver, Numb_str
         while D[i]!=[]:
             d_i = D[i].pop() # remove d_i from D[i]
             A_supp[i] = d_i
-            print("start of RS --- %s seconds ---" % (Ltime.time() - 1674741000))
+            print("start of RS --- %s seconds ---" % (Ltime.time() - 1675900000))
             D_new = RS([[A_supp[p]] for p in range(i+1)]+deepcopy(D[i+1:]), Numb_stra,U_depend, U_p,m)
-            print("end of RS --- %s seconds ---" % (Ltime.time() - 1674741000))
+            print("end of RS --- %s seconds ---" % (Ltime.time() - 1675900000))
             if D_new != None:
                 ne, Profits = Recursive_Backtracking(m,deepcopy(A_supp),deepcopy(D_new),i+1,U_depend, U_p, MCT, opt_solver, Numb_stra)
                 if ne !=[]:
@@ -615,11 +463,11 @@ def FeasibilityProblem_Gurobi(m,A_supp, U_depend,U_p,MCT,Numb_stra,m_p = None):
     print(A_supp)
     print(A_supp[0])
     print(A_supp[0][0])
-    print("start of FeasibilityProblem_Gurobi --- %s seconds ---" % (Ltime.time() - 1674741000))
+    print("start of FeasibilityProblem_Gurobi --- %s seconds ---" % (Ltime.time() - 1675900000))
     if m_p == None:
         # initiate model
         m_p = grb.Model("FeasibilityProblem")
-        m_p.setParam("Threads", 2)
+        m_p.setParam("Threads", 4)
         # no pritting of the output
         m_p.setParam( 'OutputFlag', False )
         # set objective function direction
@@ -661,9 +509,9 @@ def FeasibilityProblem_Gurobi(m,A_supp, U_depend,U_p,MCT,Numb_stra,m_p = None):
                     m_p.addConstr(U_p[p][sp]+grb.quicksum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p] <= v[p]) # for inequality constraints, because sp not in A_supp[p]
                     m_p.update()
         #m_p.write("apagar.lp")
-        print("end of model in FeasibilityProblem_Gurobi --- %s seconds ---" % (Ltime.time() - 1674741000))
+        print("end of model in FeasibilityProblem_Gurobi --- %s seconds ---" % (Ltime.time() - 1675900000))
         m_p.optimize()
-        print("end of optimization in FeasibilityProblem_Gurobi --- %s seconds ---" % (Ltime.time() - 1674741000))
+        print("end of optimization in FeasibilityProblem_Gurobi --- %s seconds ---" % (Ltime.time() - 1675900000))
         ne = []
         Profits = []
         #print "Solution status for Feasibility Problem: ", m_p.status
@@ -677,7 +525,7 @@ def FeasibilityProblem_Gurobi(m,A_supp, U_depend,U_p,MCT,Numb_stra,m_p = None):
                 Profits.append(v[p].x)
         return ne, Profits
 
-def ComputeNE(U_depend,U_p,MCT,m,n_I,n_C,Numb_stra,opt_solver,ne_previous,deviator):
+def ComputeNE(U_depend,U_p,MCT,m,n_I,n_C,Numb_stra,warmstart_MIP,opt_solver,ne_previous,deviator):
     # prepare ComputeNE_MIP, an MIP model to find the NE to a normal-form finite game
 
     print("starting ComputeNE")
@@ -689,7 +537,7 @@ def ComputeNE(U_depend,U_p,MCT,m,n_I,n_C,Numb_stra,opt_solver,ne_previous,deviat
             A_supp[p].append(sp)
     print("A_supp filled")
     # launch MIP
-    ne,Profits = ComputeNE_MIP(m,A_supp, U_depend,U_p,MCT,Numb_stra)
+    ne,Profits = ComputeNE_MIP(m,A_supp,U_depend,U_p,MCT,Numb_stra,warmstart_MIP)
     print("ComputeNE_MIP finished:\nne = ", ne, "\nProfits = ", Profits)
     return ne,Profits
 
@@ -702,23 +550,26 @@ def check_relax_infeasibility_solution(filename):
     line = f.readline()
     while len(line) >= 1:
         if line[:3] == "Art":
-            print(line)
-            val = int(line.split()[1])
-            if val != 0:
+            #print(line)
+            #print(line.split())
+            val = float(line.split()[1])
+            #print("val = ", val)
+            if val >= 1e-9: # the numerical value should be the FeasibilityTol parameter
                 print("there is a value of artificial variable that is nonzero:\nval = ", val, "\n", line)
-                exit(911)
+                exit(9) #specific exit number for problem in ComputeNE_MIP
         line = f.readline()
     return True
 
-def ComputeNE_MIP(m,A_supp, U_depend,U_p,MCT,Numb_stra,m_p = None):
+def ComputeNE_MIP(m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, m_p = None):
     # define and solve an MIP model to solve a normal-form finite game
     #print "\n\n Solving Problem with Supports: ", A_supp
-    #print("start of ComputeNE_MIP --- %s seconds ---" % (Ltime.time() - 1674741000))
+    #print("start of ComputeNE_MIP --- %s seconds ---" % (Ltime.time() - 1675900000))
     if m_p == None:
+        ###print("start of model in ComputeNE_MIP --- %s seconds ---" % (Ltime.time() - 1675900000))
         # initiate model
         m_p = grb.Model("ComputeNE_MIP")
-        m_p.setParam("Threads", 2)
-        m_p.setParam("MIPGap", 1e-6)
+        m_p.setParam("Threads", 4)
+        m_p.setParam("MIPGap", 1e-9)
         m_p.setParam("IntFeasTol", 1e-9)
         m_p.setParam("FeasibilityTol", 1e-9)
         # no pritting of the output
@@ -753,32 +604,34 @@ def ComputeNE_MIP(m,A_supp, U_depend,U_p,MCT,Numb_stra,m_p = None):
         for p in range(m):
             m_p.addConstr(grb.quicksum(sigma[p].values())==1)
             m_p.update()
+        # compute the parts of the big-M that do not depend on the player and/or the strategy
+        alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(1, m)
+        M1 = max([max(U_p[pp][spp] for spp in A_supp[pp]) for pp in range(m)])
+        #print("M1 = ", M1)
+        M2 = (m-1)*max(U_depend[pp][k][(spp,sk)] for pp in range(m) for spp in A_supp[pp] for k in range(m) if k != pp for sk in A_supp[k])
+        #print("M2 = ", M2)
+        #print("Ds = ", Ds)
+        M3 = (m-1)*max(Ds[pp] for pp in range(m))/m
+        #print("M3 = ", M3)
+        M4 = min([min(U_p[pp][spp] for spp in A_supp[pp]) for pp in range(m)])
+        M5 = (m-1)*min(U_depend[pp][k][(spp,sk)] for pp in range(m) for spp in A_supp[pp] for k in range(m) if k != pp for sk in A_supp[k])
+        M0 = abs(M1) + abs(M2) + abs(M3) + abs(M4) + abs(M5)
         #print("sigma==1 constraints added")
         for p, S_p in enumerate(Numb_stra):
             #print("player ", p)
+            M = M0 + Ds[p]
+            #M += 10000
             for sp in range(S_p):
-                #print("strategy ", sp)
-                alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
                 # all strategies should be less than v[p] the max payoff of a strategy of player p
-                #print("additional infos found")
                 m_p.addConstr(U_p[p][sp]+grb.quicksum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p] <= v[p]) # for inequality constraints, because sp not in A_supp[p]
                 # played strategies (sigma[p][sp] > 0) should be equal (less already done) to v[p]
                 #print("<= v[p] added")
-                M1 = max([max(U_p[pp][spp] for spp in A_supp[pp]) for pp in range(m)])
-                #print("M1 = ", M1)
-                M2 = (m-1)*max(U_depend[pp][k][(spp,sk)] for pp in range(m) for spp in A_supp[pp] for k in range(m) if k != pp for sk in A_supp[k])
-                #print("M2 = ", M2)
-                #print("Ds = ", Ds)
-                M3 = (m-1)*max(Ds[pp] for pp in range(m))/m
-                #print("M3 = ", M3)
-                M4 = min([min(U_p[pp][spp] for spp in A_supp[pp]) for pp in range(m)])
-                M5 = (m-1)*min(U_depend[pp][k][(spp,sk)] for pp in range(m) for spp in A_supp[pp] for k in range(m) if k != pp for sk in A_supp[k])
-                M = abs(M1) + abs(M2) + abs(M3) + abs(M4) + abs(M5) + Ds[p]
-                #M += 10000
                 if p == 0 and sp == 0:
                     print("M = ", M)
                 #print("player %i strategy %i: U_p[p][sp] = %f"%(p,sp,U_p[p][sp]))
                 m_p.addConstr(U_p[p][sp]+grb.quicksum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p] >= v[p] - M*(1-activ[p][sp])) # for equality constraints because sp in A_supp[p]
+                #value = U_p[p][sp] + sum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p]
+                #print("player %i strategy %i has a value of ", value)
                 # deactivate strategies if activ[p][sp] == 0
                 #print(">= v[p] added")
                 m_p.addConstr(sigma[p][sp] <= activ[p][sp])
@@ -792,12 +645,32 @@ def ComputeNE_MIP(m,A_supp, U_depend,U_p,MCT,Numb_stra,m_p = None):
                 #    m_p.addConstr(U_p[p][sp]+grb.quicksum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p] <= v[p]) # for inequality constraints, because sp not in A_supp[p]
                 #    m_p.update()
         #m_p.write("apagar.lp")
-        print("constraints added")
-        #m_p.setObjective(grb.LinExpr(grb.quicksum(sum(activ[p][sp] for sp in range(Numb_stra[p])) for p in range(m))))
-        m_p.write("infeasible_model.lp")
-        print("end of model in ComputeNE_MIP --- %s seconds ---" % (Ltime.time() - 1674741000))
+        #print("constraints added")
+        m_p.setObjective(grb.LinExpr(grb.quicksum(sum(activ[p][sp] for sp in range(Numb_stra[p])) for p in range(m))))
+        m_p.update()
+        # warmstart (should be really helpful since each iteration only add one strategy)
+        # I need to know on which variable
+        #if Numb_stra[0] > 0:
+        #    activ[0][0].start = 0
+        #    print("after adding a warmstart to variable activ[0][0]")
+
+        #print(len(warmstart_MIP))
+        if len(warmstart_MIP) > 0:
+            for p in range(m):
+                for key in activ[p]:
+                    if "activ_%i_%i"%(p,key) in warmstart_MIP.keys():
+                        activ[p][key].start = warmstart_MIP["activ_%i_%i"%(p,key)]
+                        sigma[p][key].start = warmstart_MIP["sigma_%i_%i"%(p,key)]
+                #v[p].start = warmstart_MIP["v_%i"%p]
+            m_p.update()
+        #for key in warmstart_MIP: # warmstart_MIP is a dict, and this for loop loops through the keys which are variables of the model
+        #    print("trying to add warmstart for variable ", key)
+        #    key.start = warmstart_MIP[key]
+
+        ###print("end of model in ComputeNE_MIP --- %s seconds ---" % (Ltime.time() - 1675900000))
         m_p.optimize()
-        print("end of optim in ComputeNE_MIP --- %s seconds ---" % (Ltime.time() - 1674741000))
+        ###print("end of optim in ComputeNE_MIP --- %s seconds ---" % (Ltime.time() - 1675900000))
+        print("\t\t\t\t\t\twith number of strategies by players: ", Numb_stra)
         ne = []
         Profits = []
         print("Solution status for MIP Problem: ", m_p.status)
@@ -815,19 +688,27 @@ def ComputeNE_MIP(m,A_supp, U_depend,U_p,MCT,Numb_stra,m_p = None):
             print("relaxed model optimized?")
             print("Solution status for relaxed model: ", m_p.status)
             m_p.write("debug.sol")
-            print(m_p.__dict__)
+            #print(m_p.__dict__)
+            print("\n"*5)
+            print("\t"*10,"relaxed model optimized because of infeasibility")
+            print("\n"*5)
             print("debug.sol should be written now")
-            bool_continue = True
-            cpt = 0
-            #while bool_continue:
-            #    try:
-            #        print("ArtP_R1")
-            #print("ArtP_R1 = ", m_p.ArtP_R1)
             bool_check = check_relax_infeasibility_solution("debug.sol")
             print("end of checking artificial variables values with output ", bool_check)
         if m_p.status not in [3,4]:
             for p, sp in enumerate(Numb_stra):
                 for j in range(sp):
+                    if False:
+                        if sigma[p][j].x > 0:
+                            print("obj value in MIP for player %i and strategy %i of proba %f: "%(p+1,j,sigma[p][j].x), U_p[p][j]+sum(sigma[k][sk].x*(U_depend[p][k][(j,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p])
+                            print("U_p: ", U_p[p][j])
+                            print("mixed part: ", sum(sigma[k][sk].x*U_depend[p][k][(j,sk)] for k in range(m) if k != p for sk in A_supp[k]))
+                            print("constant part: ", sum(sigma[k][sk].x*Ds[p]/m*MCT[k][sk] for k in range(m) if k != p for sk in A_supp[k]) - Ds[p])
+                            print("-Ds[p] ", -Ds[p])
+                            print("sum of Profile[k][n_markets] ", sum(MCT[k][sk] for k in range(m) if k != p for sk in A_supp[k]))
+                            for k in range(m):
+                                if k != p:
+                                    print([sigma[k][sk].x*MCT[k][sk] for sk in A_supp[k]])
                     if j in A_supp[p]:
                         #print(sigma[p][j].x)
                         #print(round(sigma[p][j].x,9))
@@ -836,6 +717,12 @@ def ComputeNE_MIP(m,A_supp, U_depend,U_p,MCT,Numb_stra,m_p = None):
                     else:
                         ne.append(0)
                 Profits.append(v[p].x)
+            for p in range(m):
+                for key in activ[p]:
+                    warmstart_MIP["activ_%i_%i"%(p,key)] = activ[p][key].x
+                    warmstart_MIP["sigma_%i_%i"%(p,key)] = sigma[p][key].x
+                warmstart_MIP["v_%i"%p] = v[p].x
+            #print(warmstart_MIP)
         return ne, Profits
 
 

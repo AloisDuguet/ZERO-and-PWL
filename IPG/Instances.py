@@ -46,6 +46,10 @@ class Game(object):
             m, n_I, n_C, n_constr, c, Q, C, A, b = CyberSecurityGame(ins)
         elif type == 'CyberSecurityNL':
             m, n_I, n_C, n_constr, c, Q, C, A, b = CyberSecurityGame(ins)
+        elif type == 'CyberSecuritySOCP':
+            m, n_I, n_C, n_constr, c, Q, C, A, b = CyberSecurityGame(ins)
+        elif type == 'CyberSecuritygurobiNL':
+            m, n_I, n_C, n_constr, c, Q, C, A, b = CyberSecurityGame(ins)
         elif type == "empty":
             m = 0
             n_I = []
@@ -512,6 +516,25 @@ def read_list(filename):
         l.append(int(line.split()[0]))
         line = f.readline()
     return l
+
+def get_warmstart_cybersecurity(filename, n_players):
+    # read files which can be either empty, or populated with a vector of unknown size
+    wm_activated = True
+    wm = []
+    for i in range(n_players):
+        real_filename = filename+"/model_warmstart%i.csv"%(i+1)
+        f = open(real_filename, "r")
+        cpt_line = 0
+        while len(f.readline()) >= 2:
+            cpt_line += 1
+        f.close()
+        if cpt_line == 0:
+            break
+        else:
+            wm.append([read_vector(real_filename,cpt_line)])
+            f = open(real_filename, "w") # destroy the warmstart because it could be used for another instance at the first iteration
+            f.close()
+    return wm
 
 # identify each player set of cycles
 def IdentifyCyles(cycles_K,num_V):

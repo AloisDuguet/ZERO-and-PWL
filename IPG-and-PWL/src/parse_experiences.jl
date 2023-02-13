@@ -112,10 +112,10 @@ end
 
 function write_output_instance(file, option, output)
     # write in file open by stream file the output_cs_instance structure output with the corresponding option_cs_instance option
+    delta, eps = get_infos_err(option.err_pwlh)
+    s_option = "$(option.filename_instance)$(SEP1)delta$(Float64(delta))$(SEP2)epsilon$(Float64(eps))$(SEP1)"
+    s_option = string(s_option, option.fixed_costs, SEP1, option.refinement_method, SEP1, option.max_iter, SEP1, option.rel_gap, SEP1, option.big_weights_on_NL_part, SEP1)
     try
-        delta, eps = get_infos_err(option.err_pwlh)
-        s_option = "$(option.filename_instance)$(SEP1)delta$(Float64(delta))$(SEP2)epsilon$(Float64(eps))$(SEP1)"
-        s_option = string(s_option, option.fixed_costs, SEP1, option.refinement_method, SEP1, option.max_iter, SEP1, option.rel_gap, SEP1, option.big_weights_on_NL_part, SEP1)
         if typeof(output.solution) != ErrorException && typeof(output.solution) != MethodError
             s_output = string(output.solved, SEP1, write_matrix(output.solution), SEP1, write_vector(output.profits), SEP1, output.cpu_time, SEP2, "secondes")
             s_output = string(s_output, SEP1, output.iter, SEP2, "iterations", SEP1, output.delta_eq, SEP2, "observed", SEP2, "delta", SEP1, write_vector(output.length_pwls), SEP1, write_vector(output.variation_MNE))
@@ -124,14 +124,14 @@ function write_output_instance(file, option, output)
             println(file, string(s_option, "ERROR: $(output.solution)"))
         end
     catch e
-        println(file, "ERROR WHILE WRITING IN FILE: $e")
+        println(file, string(s_option, "ERROR WHILE WRITING IN FILE: $e"))
     end
 end
 
 function load_output_instance(line)
     # read in string line an output_cs_instance and return it
-    println(line)
-    println()
+    #println(line)
+    #println()
     try
         infos = split(line, SEP1)
         filename_instance = infos[1]
@@ -140,33 +140,37 @@ function load_output_instance(line)
         refinement_method = infos[4]
         max_iter = parse(Int64, infos[5])
         rel_gap = parse(Float64, infos[6])
-        if length(infos) == 15 # specific case because many instances are saved without big_weights_on_NL_part option
+        #=if length(infos) == 15 # specific case because many instances are saved without big_weights_on_NL_part option
             big_weights_on_NL_part = parse(Bool, infos[7])
             deleteat!(infos, 7)
         else
             big_weights_on_NL_part = false
-        end
+        end=#
+        big_weights_on_NL_part = parse(Bool, infos[7])
         options = option_cs_instance(filename_instance, err_pwlh, fixed_costs,
         refinement_method, max_iter, rel_gap, big_weights_on_NL_part)
-
-        if !occursin("ERROR", line)
-            solved = parse(Bool, infos[7])
-            solution = parse_matrix(infos[8])
-            println(solution)
-            profits = parse_vector(infos[9], Float64, SEP_MAT[3])
-            cpu_time = parse(Float64, split(infos[10])[1])
-            iter = parse(Int64, split(infos[11])[1])
-            delta_eq = parse(Float64, split(infos[12])[1])
-            length_pwls = parse_vector(infos[13], Int64, SEP_MAT[3])
+        if !occursin("ERROR", line) && !occursin("ProcessExited", line)
+            solved = parse(Bool, infos[8])
+            solution = parse_matrix(infos[9])
+            #println(solution)
+            profits = parse_vector(infos[10], Float64, SEP_MAT[3])
+            cpu_time = parse(Float64, split(infos[11])[1])
+            iter = parse(Int64, split(infos[12])[1])
+            delta_eq = parse(Float64, split(infos[13])[1])
+            length_pwls = parse_vector(infos[14], Int64, SEP_MAT[3])
             if iter > 1
-                variations = parse_vector(infos[14], Float64, SEP_MAT[3]) # here
+                variations = parse_vector(infos[15], Float64, SEP_MAT[3]) # here
             else
                 variations = "-"
             end
             outputs = output_cs_instance(solved, solution, profits, cpu_time,
             iter, delta_eq, length_pwls, variations)
+        elseif occursin("ProcessExited(10)", line) # SGM finished with TIME LIMIT reached
+            outputs = output_cs_instance(false, [[]], [], Inf, -1, [], [], [])
+        elseif occursin("ProcessExited(11)", line) # SGM finished with MAX ITER reached
+            outputs = output_cs_instance(false, [[]], [], Inf, -1, [], [], [])
         else
-            outputs = output_cs_instance(false, [[]], [], 0, -1, [], [], [])
+            outputs = output_cs_instance(false, [[]], [], Inf, -1, [], [], [])
             #outputs = output_cs_instance(false, infos[7], [[]], [], 0, -1, [], [])  old
         end
         return cs_experience(options, outputs)
@@ -226,7 +230,9 @@ function parser_SGM_solution(filename)
     ne = parse_vector(lines[1])
 
     sp = split(lines[2])
+    println("line with profits in output_SGM.txt in julia code reads:\n$(lines[2])")
     profits = [parse(Float64, sp[i]) for i in 2:length(sp)]
+    println("and profits in julia code is:\n$profits")
 
     num_iter_done = parse(Int64, split(lines[3])[1])
 
@@ -262,6 +268,10 @@ function write_SGM_instance_last_informations(filename, refinement_method, scrip
     line_number = 11
     if refinement_method == "SGM_NL_model"
         lines[line_number] = "game_type = \"CyberSecurityNL\""
+    elseif refinement_method == "SGM_SOCP_model"
+        lines[line_number] = "game_type = \"CyberSecuritySOCP\""
+    elseif refinement_method == "SGM_gurobiNL_model"
+        lines[line_number] = "game_type = \"CyberSecuritygurobiNL\""
     else
         lines[line_number] = "game_type = \"CyberSecurity\""
     end

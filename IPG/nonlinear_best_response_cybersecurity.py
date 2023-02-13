@@ -9,20 +9,6 @@ import sys
 import copy
 import time as Ltime
 
-#from tools_parse import *
-#from mosek import *
-
-#import pyomo
-#print("Pyomo version ", pyomo.__version__)
-
-# probably useful lines:
-# model.OBJ = pyo.Objective(expr=1/pyo.sqrt(1-model.x[1])-1,sense=pyo.maximize)
-# model.pprint()
-# model.con2 = pyo.Constraint(rule=(2,1/pyo.sqrt(1-model.x[1])-1,None))
-# initialize a parameter with a function s_init(model,i,j):
-# model.S2 = pyo.Param(model.A, model.A, initialize=s_init) # for each index of model.S2, s_init(model,i,j) will be called
-# opt = pyo.SolverFactory('glpk')
-
 def get_additional_info_for_NL_model(p, n_players):
     # return alpha and nRealVars of player p (p in 0,...,G.m()-1) by reading file "additional_infos_for_python.txt"
     f = open("additional_infos_for_python.txt")
@@ -36,10 +22,11 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
     if CE_verify:
         xk_Qkp = sum(Q_p[k] for k in range(m) if k!=p)
         print("function not coded for CE_verify == ", CE_verify)
-        exit(0)
+        exit(0) #specific exit number for problem in parameters in BR
     else: # this is the case used
         xk_Qkp = sum(np.dot(Profile[k], Q_p[k]) for k in range(m) if k!=p) # np.array
     if model == None:
+        ###print("start of model in NL BR --- %s seconds ---" % (Ltime.time() - 1675900000))
         # retrieve alpha, nRealVars and n_markets for later
         alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
 
@@ -53,7 +40,6 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
         model.iternVars = pyo.RangeSet(0,model.nVars-1) # starts from 0 and -1 at the end because pyo.RangeSet(a) goes from 1 to a included
         model.nCons = pyo.Param(initialize=n_constr_p) # whereas range(a) goes from 0 to a-1 included
         model.iternCons = pyo.RangeSet(0,model.nCons-1)
-        #print("\n\nshape of Q: ", np.shape(Q_p), "\n\n") # CHECK THAT
         model.nRealVars = pyo.Param(initialize=nRealVars)
         model.iternRealVars = pyo.RangeSet(0,model.nRealVars-1)
         model.nOtherRealVars = pyo.Param(initialize=nOtherRealVars)
@@ -122,6 +108,15 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
             if not(test1 or (test2 and test3 and test4)):
                 model.linCons.add((None, sum(model.A[i,j]*model.x[j] for j in model.iternRealVars), model.b[i]))
 
+        bool_quad_formulation = False
+        if bool_quad_formulation:
+            # add nonlinear term as quadratic constraints and variables s_nl and t_nl
+            model.s_nl = pyo.Var(domain=pyo.NonNegativeReals)
+            model.t_nl = pyo.Var(domain=pyo.NonNegativeReals)
+            model.quadCons = pyo.ConstraintList()
+            model.quadCons.add((None, model.s_nl*model.s_nl+model.x[n_markets], 1))
+            model.quadCons.add((1,model.s_nl*model.t_nl,None))
+
         # objective function
         def obj_expression(model):
             expr = 0
@@ -129,18 +124,13 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
             #expr += pyo.summation(c_p,model.x)-0.5*(pyo.summation(pyo.summation(Q_p[p],model.x),model.x))
             expr += pyo.summation(c_p,model.x)-0.5*sum(Q_p[p][i,j]*model.x[i]*model.x[j] for i in model.iternRealVars for j in model.iternRealVars)
             # nonlinear term h_p
-            expr += -alpha*(1/pyo.sqrt(1-model.x[n_markets])-1)
+            if bool_quad_formulation:
+                expr += -alpha*(model.t_nl - 1) # replace the nonlinear term
+            else:
+                expr += -alpha*(1/pyo.sqrt(1-model.x[n_markets])-1)
             # mixed terms with xk_Qkp
             expr += pyo.summation(xk_Qkp,model.x)
             # constant terms (-D_i) and spi terms (D_i/n_players*s_pi)
-            if False:
-                f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
-                f.write("value of s_pi: ")
-                [f.write(list_to_string([Profile[k][n_markets] for k in range(m) if k != p]))]
-                f.write("\nthe addition of constant and spi terms makes a change of ")
-                f.write("%f"%(-Ds[p] + Ds[p]/m*sum(Profile[k][n_markets] for k in range(m) if k != p)))
-                f.write("\n\n")
-                f.close()
             expr += -Ds[p] + Ds[p]/m*sum(Profile[k][n_markets] for k in range(m) if k != p)
             #expr += Ds[p]/m*sum(Profile[k][n_markets] for k in range(m) if k != p)
             return expr
@@ -154,7 +144,7 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
     # create is always false
     if create:
         print("create is not false, the function does not know what to do")
-        exit(1)
+        exit(0) #specific exit number for problem in parameters in BR
 
     #model.pprint()
 
@@ -174,9 +164,9 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
     #####opt = pyo.SolverFactory('ipopt') # ipopt can not handle integer variables
     #opt = pyo.SolverFactory('bonmin')
     global start_time
-    print("end of model in NL BR --- %s seconds ---" % (Ltime.time() - 1674741000))
+    ###print("end of model in NL BR --- %s seconds ---" % (Ltime.time() - 1675900000))
     results = opt.solve(model)
-    print("end of optimization in NL BR --- %s seconds ---" % (Ltime.time() - 1674741000))
+    ###print("end of optimization in NL BR --- %s seconds ---" % (Ltime.time() - 1675900000))
 
     if results.solver.status == SolverStatus.ok and results.solver.termination_condition == TerminationCondition.optimal:
         sol = [pyo.value(model.x[i]) for i in range(nRealVars)]
@@ -193,25 +183,25 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
 
         #print("exit because debug in progress")
         #exit(0)
-        if False:
-            f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
-            f.write("solution for player %i:\n"%(p+1))
-            [f.write("%f\n"%(sol[i])) for i in range(nRealVars)]
-            f.write("optimal value: ")
-            f.write("%f\n\n"%value)
-            f.write("with parameters:\n")
-            [f.write("%s "%(list_to_string(Profile[k]))) for k in range(m) if k!=p]
-            f.write("\n")
-            f.close()
         return sol, value, model
     else:
         print("optimization did not finished with optimal result:")
         print(results.solver.status)
         print(results.solver.termination_condition)
-        exit(3)
-    #except Exception as e:
-    #    print("problem after solve when getting back values:\n", e)
-    #    exit(2)
+        exit(3) #specific exit number for problem in NL BR, mainly time limit reached (max_iteration)
+
+def get_symmetric(Q):
+    # return a symmetric matrix computed from Q:
+    # same diagonal
+    # non diagonal value equal to the mean divided by two of the two symmetric positions in Q
+    n1 = np.shape(Q)[0]
+    n2 = np.shape(Q)[1]
+    symQ = np.zeros((n1,n2))
+    for i in range(n1):
+        for j in range(n2):
+            symQ[i,j] = (Q[i,j]+Q[j,i])/2
+            symQ[j,i] = (Q[i,j]+Q[j,i])/2
+    return symQ
 
 def SOCPBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_p, Profile, p, create, ins, model = None,CE_verify = False):
 
@@ -221,10 +211,11 @@ def SOCPBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
     if CE_verify:
         xk_Qkp = sum(Q_p[k] for k in range(m) if k!=p)
         print("function not coded for CE_verify == ", CE_verify)
-        exit(0)
+        exit(0) #specific exit number for problem in parameters in BR
     else: # this is the case used
         xk_Qkp = sum(np.dot(Profile[k], Q_p[k]) for k in range(m) if k!=p) # np.array
     if model == None:
+        #print("start of model in SOCP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
         # retrieve alpha, nRealVars and n_markets for later
         alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
 
@@ -269,7 +260,15 @@ def SOCPBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
         for i in model.iternRealVars:
             model.w.append(pmo.variable()) # put lb=0? it is not guaranteed, but I am not sure if the constraint is well-defined if it is not
         #model.cone_quad = pmo.conic.rotated_quadratic.as_domain(r1=0.5,r2=model.t_quad, x=model.w)
-        Q_halved = sqrtm(Q_p[p])
+        sym_Qpp = get_symmetric(Q_p[p])
+        Q_halved = sqrtm(sym_Qpp)
+        Q_halved = np.transpose(Q_halved)
+        #print("Q_p[p]: ", Q_p[p])
+        #Q_halved_nonsym = sqrtm(Q_p[p])
+        #print("with symmetrised Q_p[p]:")
+        #print(Q_halved)
+        #print("with non symmetrised Q_p[p]:")
+        #print(Q_halved_nonsym)
         model.cone_quad_comp = pmo.constraint_list()
         #for j in model.iternRealVars:
         #    model.cone_quad_comp.append(pmo.constraint(model.w[j] == sum(Q_halved[j,i]*model.x[i] for i in model.iternRealVars)))
@@ -299,42 +298,74 @@ def SOCPBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
     # create is always false
     if create:
         print("create is not false, the function does not know what to do")
-        exit(1)
+        exit(0) #specific exit number for problem in parameters in BR
 
-    # give warm start with Profile
-    #for i in range(nRealVars):
-    #    model.x[i] = Profile[p][i]
-    #print(model.__dict__)
-    opt.solve(model, options = {'dparam.basis_tol_s': 1e-9,
-    'dparam.basis_tol_x': 1e-9,
-    'dparam.intpnt_co_tol_dfeas': 1e-9,
-    'dparam.intpnt_co_tol_mu_red': 1e-12,
-    'dparam.intpnt_co_tol_pfeas': 1e-12,
-    'dparam.intpnt_co_tol_rel_gap': 1e-12})
+    if False: # activate fixing NL model solution to mosek's optimization problem
+        # plug-in values from the NL model solution
+        print("start of NL BR inside SOCP function --- %s seconds ---" % (Ltime.time() - 1675900000))
+        print()
+        solNL,valueNL,modelNL = NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_p, Profile, p, create, ins)
+        print()
+        print("end of NL BR inside SOCP function --- %s seconds ---" % (Ltime.time() - 1675900000))
+        model.fix_NL_sol = pmo.constraint_list()
+        for i in model.iternRealVars:
+            model.fix_NL_sol.append(pmo.constraint(model.x[i] == pyo.value(modelNL.x[i])))
 
-    sol = [pyo.value(model.x[i]) for i in range(nRealVars)]
-    value = pyo.value(model.OBJ)
+        # give warm start with Profile
+        #for i in range(nRealVars):
+        #    model.x[i] = Profile[p][i]
+        #print(model.__dict__)
+        print("start of optimization in SOCP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
+        #opt.solve(model, options = {'dparam.basis_tol_s': 1e-6,
+        #'dparam.basis_tol_x': 1e-6,
+        #'dparam.intpnt_co_tol_dfeas': 1e-8,
+        #'dparam.intpnt_co_tol_mu_red': 1e-8,
+        #'dparam.intpnt_co_tol_pfeas': 1e-8,
+        #'dparam.intpnt_co_tol_rel_gap': 1e-8})
+        opt.solve(model, options = {'dparam.basis_tol_s': 1e-9, # old parameters here and below
+        'dparam.basis_tol_x': 1e-9,
+        'dparam.intpnt_co_tol_dfeas': 1e-9,
+        'dparam.intpnt_co_tol_mu_red': 1e-12,
+        'dparam.intpnt_co_tol_pfeas': 1e-12,
+        'dparam.intpnt_co_tol_rel_gap': 1e-12})
+        print("end of optimization in SOCP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
+
+        sol = [pyo.value(model.x[i]) for i in range(nRealVars)]
+        value = pyo.value(model.OBJ)
+
+        print("NL solution of value %f:\n"%valueNL, solNL)
+        print("SOCP solution with fixed variables of value %f:\n"%value, sol)
+        print("double of the difference between NL and SOCP solution: ", 2*(valueNL-value))
+
+    if False:
+        sol,value,model = NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_p, Profile, p, create, ins)
+
+    if True:
+        ###print("start of optimization in SOCP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
+        opt.solve(model, options = {'dparam.intpnt_co_tol_pfeas': 1e-9,
+        'dparam.intpnt_co_tol_dfeas': 1e-9,
+        'dparam.intpnt_co_tol_rel_gap': 1e-9,
+        'dparam.basis_tol_x': 1e-9,
+        'iparam.num_threads': 4})
+        #opt.solve(model, options = {'dparam.basis_tol_s': 1e-9, # old parameters here and below
+        #'dparam.basis_tol_x': 1e-9,
+        #'dparam.intpnt_co_tol_dfeas': 1e-9,
+        #'dparam.intpnt_co_tol_mu_red': 1e-12,
+        #'dparam.intpnt_co_tol_pfeas': 1e-12,
+        #'dparam.intpnt_co_tol_rel_gap': 1e-12})
+        ###print("end of optimization in SOCP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
+
+        sol = [pyo.value(model.x[i]) for i in range(nRealVars)]
+        value = pyo.value(model.OBJ)
 
     # compute value_NL, which is value computed in the same way as in the NL BR function
+    #print()
     #value_NL = np.dot(c_p, sol) - 0.5*sum(Q_p[p][i,j]*sol[i]*sol[j] for i in model.iternRealVars for j in model.iternRealVars)
     #value_NL += -alpha*(1/np.sqrt(1-sol[n_markets])-1) # OK
     #value_NL += sum(xk_Qkp[i]*sol[i] for i in model.iternRealVars)
     #value_NL += -Ds[p] + Ds[p]/m*sum(Profile[k][n_markets] for k in range(m) if k != p)
     #print("value_NL = ", value_NL)
 
-    #print("values of intermediary variables:")
-    #print("t_nl = %f\ns = %f"%(pyo.value(model.t_nl),pyo.value(model.s)))
-    #print("1/sqrt(1-sol[n_markets]) = ", 1/np.sqrt(1-sol[n_markets]))
-    #print("t_quad = %f\nsum of w**2: "%(pyo.value(model.t_quad)))
-    #ww = []
-    #for j in model.iternRealVars:
-        #ww.append(pyo.value(model.w[j]))
-    #    ww.append(sum(Q_halved[j,i]*sol[i] for i in model.iternRealVars))
-    #eval_ww = sum(ww[i]**2 for i in model.iternRealVars)
-    #print(eval_ww)
-    #eval_quad_term = sum(Q_p[p][i,j]*sol[i]*sol[j] for i in model.iternRealVars for j in model.iternRealVars)
-    #print("value of quad terms in NL eval = ", eval_quad_term)
-    #print("\t\t\t\t\t\t\t\t\t\teval_ww - eval_quad_term = ", eval_ww - eval_quad_term)
 
     try:
         #sol = [pyo.value(model.x[i]) for i in range(nRealVars)]
@@ -343,28 +374,9 @@ def SOCPBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
         #value = value_NL
         print("SOCP BR solution: ", sol)
         print("SOCP BR optimal value: ", value)
+        #print()
 
-        #f = open("SOCP_solutions.txt", "a")
-        #[f.write("%f, "%(sol[i])) for i in range(nRealVars)]
-        #f.write(" -> ")
-        #f.write("%f\n"%value)
-        #f.close()
-
-
-        #print("----> forced exit because if the model is not complete, the SGM will not stop:")
-        #exit(0)
-
-        if False:
-            f = open("../IPG-and-PWL/src/algo_NL_model.txt", "a")
-            f.write("solution for player %i:\n"%(p+1))
-            [f.write("%f\n"%(sol[i])) for i in range(nRealVars)]
-            f.write("optimal value: ")
-            f.write("%f\n\n"%value)
-            f.write("with parameters:\n")
-            [f.write("%s "%(list_to_string(Profile[k]))) for k in range(m) if k!=p]
-            f.write("\n")
-            f.close()
         return sol, value, model
     except Exception as e:
         print("problem after solve when getting back values:\n", e)
-        exit(2)
+        exit(2) #specific exit number for problem to exit SOCP BR

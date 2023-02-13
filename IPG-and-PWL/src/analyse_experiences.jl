@@ -3,7 +3,7 @@ function find_comparable_experiences(i, experiences, option, option_values)
     # those indices corresponds to the order of option_values
 
     # special case: experiences[i] has an error (ERROR written in outputs.solution or outputs.delta_eq == 1e12)
-    if typeof(experiences[i].outputs.solution) != Vector{Vector{Float64}} || experiences[i].outputs.delta_eq == 1e12
+    if experiences[i].outputs.solution == [[]] || experiences[i].outputs.delta_eq == 1e12
         return []
     end
 
@@ -31,7 +31,7 @@ function find_comparable_experiences(i, experiences, option, option_values)
                 end
             end
         end
-        if is_comparable && typeof(exp.outputs.solution) == Vector{Vector{Float64}} && exp.outputs.delta_eq != 1e12
+        if is_comparable && exp.outputs.solution != [[]] && exp.outputs.delta_eq != 1e12
             pos = findall(x->x==getfield(exp.options, option), option_values)[1]
             comparable_instances[pos] = ind
         end
@@ -93,14 +93,45 @@ function compare_cs_experience(experiences, option, option_values, filename = ""
     println()
     print("instances comparable:\t")
     [print(count[i], "\t") for i in 1:n]
+    println()
     if minimum(count) > 0
         print("average cpu times:\t")
-        print(cpu_times)
-        [print(round(sum(cpu_times[i][j] for j in 1:length(cpu_times[i]))/length(cpu_times[i]), digits=2), "\t") for i in 1:n]
+        #[print(file, round(sum(cpu_times[i][j] for j in 1:length(cpu_times[i]))/length(cpu_times[i]), digits=2), "\t") for i in 1:n]
+        for i in 1:n
+            average_time = 0
+            cpt = 0
+            for j in 1:length(cpu_times[i])
+                if cpu_times[i][j] != Inf && cpu_times[i][j] > 0
+                    average_time += cpu_times[i][j]
+                    cpt += 1
+                end
+            end
+            if cpt > 0
+                average_time = round(average_time/cpt, digits=2)
+            else
+                average_time = "undef" # 0 instances solved, thus the average time is undefined
+            end
+            print(average_time, "\t")
+        end
         println()
         print("average iterations:\t")
-        [print(round(sum(iters[i][j] for j in 1:length(iters[i]))/length(iters[i]),digits=2), "\t") for i in 1:n]
-        println("\n")
+        #[print(file, round(sum(iters[i][j] for j in 1:length(iters[i]))/length(iters[i]),digits=2), "\t") for i in 1:n]
+        for i in 1:n
+            average_iter = 0
+            cpt = 0
+            for j in 1:length(iters[i])
+                if iters[i][j] != Inf && iters[i][j] > 0
+                    average_iter += iters[i][j]
+                    cpt += 1
+                end
+            end
+            if cpt > 0
+                average_iter = round(average_iter/cpt, digits=2)
+            else
+                average_iter = "undef" # 0 instances solved, thus the average number of iteration is undefined
+            end
+            print(average_iter, "\t")
+        end
     end
 
     # write important informations in file filename
@@ -119,10 +150,42 @@ function compare_cs_experience(experiences, option, option_values, filename = ""
         println(file)
         if minimum(count) > 0
             print(file, "average cpu times:\t")
-            [print(file, round(sum(cpu_times[i][j] for j in 1:length(cpu_times[i]))/length(cpu_times[i]), digits=2), "\t") for i in 1:n]
+            #[print(file, round(sum(cpu_times[i][j] for j in 1:length(cpu_times[i]))/length(cpu_times[i]), digits=2), "\t") for i in 1:n]
+            for i in 1:n
+                average_time = 0
+                cpt = 0
+                for j in 1:length(cpu_times[i])
+                    if cpu_times[i][j] != Inf && cpu_times[i][j] > 0
+                        average_time += cpu_times[i][j]
+                        cpt += 1
+                    end
+                end
+                if cpt > 0
+                    average_time = round(average_time/cpt, digits=2)
+                else
+                    average_time = "undef" # 0 instances solved, thus the average time is undefined
+                end
+                print(file, average_time, "\t")
+            end
             println(file)
             print(file, "average iterations:\t")
-            [print(file, round(sum(iters[i][j] for j in 1:length(iters[i]))/length(iters[i]),digits=2), "\t") for i in 1:n]
+            #[print(file, round(sum(iters[i][j] for j in 1:length(iters[i]))/length(iters[i]),digits=2), "\t") for i in 1:n]
+            for i in 1:n
+                average_iter = 0
+                cpt = 0
+                for j in 1:length(iters[i])
+                    if iters[i][j] != Inf && iters[i][j] > 0
+                        average_iter += iters[i][j]
+                        cpt += 1
+                    end
+                end
+                if cpt > 0
+                    average_iter = round(average_iter/cpt, digits=2)
+                else
+                    average_iter = "undef" # 0 instances solved, thus the average number of iteration is undefined
+                end
+                print(file, average_iter, "\t")
+            end
         end
         close(file)
     end
@@ -166,18 +229,23 @@ function check_error(experiences)
     error_types = []
     count_error = 0
     counts = []
+    failed = []
     for i in 1:length(experiences)
         exp = experiences[i]
         sol = exp.outputs.solution
-        if typeof(sol) == ErrorException
+        if !(typeof(sol) <: Vector{}) || sol == [[]]
             println("experience $i finished with error $sol")
             count_error += 1
+            push!(failed, i)
             if !(sol in error_types)
                 push!(error_types, sol)
                 push!(counts, 1)
             end
         end
     end
+    println("indices of the $(length(failed)) failed experiences:")
+    println(failed)
+    println()
     return error_types, count_error
 end
 
@@ -228,13 +296,49 @@ end
 function relaunch_exp(experiences, number, complete_output = false)
     # launch the experience with options of experiences[number]
     options = experiences[number].options
-    cs_instance, Vs, iter, outputs_SGM, output = SGM_PWL_solver(options.filename_instance,err_pwlh=options.err_pwlh,fixed_costs=options.fixed_costs,
-    refinement_method=options.refinement_method,max_iter=options.max_iter,rel_gap=options.rel_gap)
-    if !complete_output
-        return cs_experience(options,output)
-    else
-        return cs_instance, Vs, iter, outputs_SGM, cs_experience(options,output)
+    try
+        t = @elapsed cs_instance, Vs, iter, outputs_SGM, output = SGM_PWL_solver(options.filename_instance,err_pwlh=options.err_pwlh,fixed_costs=options.fixed_costs,
+        refinement_method=options.refinement_method,max_iter=options.max_iter,rel_gap=options.rel_gap,big_weights_on_NL_part=options.big_weights_on_NL_part)
+        output.cpu_time = t
+        if !complete_output
+            return cs_experience(options,output)
+        else
+            return cs_instance, Vs, iter, outputs_SGM, cs_experience(options,output)
+        end
+    catch e
+        if !occursin("IPG-and-PWL",pwd())
+            cd("../IPG-and-PWL/src")
+        end
+        if occursin("ProcessExited(10)", string(e)) # SGM finished with TIME LIMIT reached
+            output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [])
+        #elseif occursin("ProcessExited(11)", string(e)) # SGM finished with MAX ITER reached
+        elseif occursin("ProcessExited(11)", string(e)) # SGM finished with MAX ITER reached
+            output = output_cs_instance(false, ErrorException("ERROR max iter reached in SGM"), [], Inf, -1, [], [], [])
+        elseif occursin("ProcessExited(3)", string(e)) # SGM finished with MAX ITER reached
+            output = output_cs_instance(false, ErrorException("ERROR time limit reached in NL BR"), [], Inf, -1, [], [], [])
+        else
+            output = output_cs_instance(false, e, [], Inf, -1, [], [], [])
+            #outputs = output_cs_instance(false, infos[7], [[]], [], 0, -1, [], [])  old
+        end
+        if !complete_output
+            return cs_experience(options,output)
+        else
+            return cs_instance, Vs, iter, outputs_SGM, cs_experience(options,output)
+        end
     end
+end
+
+function relaunch_failed_exps(experiences)
+    # relaunch all failed experiences in experiences
+    l = []
+    for i in 1:length(experiences)
+        exp = experiences[i]
+        sol = exp.outputs.solution
+        if !(typeof(sol) <: Vector{}) || sol == [[]]
+            experiences[i] = relaunch_exp(experiences, i)
+        end
+    end
+    return experiences
 end
 
 function make_table(row_names, col_names, data; title = "")
@@ -274,6 +378,25 @@ function make_table(row_names, col_names, data; title = "")
 
     # convert "_" into "\_"
     s = replace(s, "_"=>"\\_")
+    return s
+end
+
+function print_table(row_names, col_names, data)
+    # print a table with the same data as in make_table
+
+    s = ""
+    for col_name in col_names
+        s = string(s, col_name, "\t")
+    end
+    s = string(s, "\n")
+    for i in 1:length(row_names)
+        s = string(s, row_names[i], "\t")
+        for j in 1:length(data[i])
+            s = string(s, data[i][j], "\t")
+        end
+        s = string(s, "\n")
+    end
+    println(s)
     return s
 end
 
@@ -324,8 +447,39 @@ function preliminary_analysis(exps, err_pwlhs, fixed_costss, refinement_methods,
             end
             data = []
             for j in 1:length(row_names)
-                push!(data, Any[Int(solvedss[i][j]), Int(countss[i][j]), round(sum(cpu_timess[i][j][k] for k in 1:length(cpu_timess[i][j]))/length(cpu_timess[i][j]), digits=2),
-                round(sum(iterss[i][j][k] for k in 1:length(iterss[i][j]))/length(iterss[i][j]), digits=2)])
+                # compute average time while avoiding undefined times (-1 and Inf)
+                #round(sum(cpu_timess[i][j][k] for k in 1:length(cpu_timess[i][j]))/length(cpu_timess[i][j]), digits=2)
+                #[print(file, round(sum(cpu_times[i][j] for j in 1:length(cpu_times[i]))/length(cpu_times[i]), digits=2), "\t") for i in 1:n]
+                average_time = 0
+                cpt = 0
+                for k in 1:length(cpu_timess[i][j])
+                    if cpu_timess[i][j][k] != Inf && cpu_timess[i][j][k] > 0
+                        average_time += cpu_timess[i][j][k]
+                        cpt += 1
+                    end
+                end
+                if cpt > 0
+                    average_time = round(average_time/cpt, digits=2)
+                else
+                    average_time = "undef" # 0 instances solved, thus the average time is undefined
+                end
+
+                average_iter = 0
+                cpt = 0
+                for k in 1:length(iterss[i][j])
+                    if iterss[i][j][k] != Inf && iterss[i][j][k] > 0
+                        average_iter += iterss[i][j][k]
+                        cpt += 1
+                    end
+                end
+                if cpt > 0
+                    average_iter = round(average_iter/cpt, digits=2)
+                else
+                    average_iter = "undef" # 0 instances solved, thus the average number of iteration is undefined
+                end
+
+                push!(data, Any[Int(solvedss[i][j]), Int(countss[i][j]), average_time,
+                average_iter])
             end
             push!(tables, make_table(row_names, col_names, data))
             println(tables[end])
@@ -353,4 +507,156 @@ function preliminary_analysis(exps, err_pwlhs, fixed_costss, refinement_methods,
     end
 
     return error_types, count_error, count_failed, l_failed, options, solvedss, cpu_timess, iterss
+end
+
+function select_ref_method_preliminary_analysis(number, exps, err_pwlhs, fixed_costss, refinement_methods)
+    # return the preliminary_analysis of only the experiences done with the refinement_method number number
+
+    selected_exps = copy([exps[i] for i in number:length(refinement_methods):length(exps)])
+    preliminary_analysis(selected_exps, err_pwlhs, fixed_costss,["full_refinement"])
+end
+
+function load_and_select_ref_method_preliminary_analysis(filename, number, err_pwlhs, fixed_costss, refinement_methods)
+    # return the preliminary_analysis of only the experiences in filename done with the refinement_method number number
+
+    exps = load_all_outputs(filename)
+    select_ref_method_preliminary_analysis(number, exps, err_pwlhs, fixed_costss, refinement_methods)
+end
+
+mutable struct option_selection
+    option::Symbol
+    option_value
+    bool_keep::Bool
+end
+
+function select_preliminary_analysis(selections, exps, err_pwlhs, fixed_costss, refinement_methods)
+    # return the preliminary_analysis of only the experiences of exps corresponding with selections (cf option_selection structure)
+    # option should be written with a ":" at first because it needs to be a Symbol
+    selected_exps = copy(exps)
+    for selection in selections
+        l = []
+        for exp in selected_exps
+            if selection.bool_keep
+                selected_exps = copy([selected_exps[i] for i in 1:length(selected_exps) if getfield(selected_exps[i].options,selection.option) == selection.option_value])
+            else
+                selected_exps = copy([selected_exps[i] for i in 1:length(selected_exps) if getfield(selected_exps[i].options,selection.option) != selection.option_value])
+            end
+        end
+    end
+    preliminary_analysis(selected_exps, err_pwlhs, fixed_costss,refinement_methods)
+    return selected_exps
+end
+
+function load_and_select_preliminary_analysis(filename, selections, err_pwlhs, fixed_costss, refinement_methods)
+    # return the preliminary_analysis of only the experiences in filename done with the refinement_method number number
+
+    exps = load_all_outputs(filename)
+    exps = select_preliminary_analysis(selections, exps, err_pwlhs, fixed_costss, refinement_methods)
+    return exps
+end
+
+mutable struct characteristic
+    option::Symbol
+    option_value
+end
+
+mutable struct category
+    l_option::Vector{characteristic}
+    name::String
+end
+
+function method_comparison(exps, list_categories, title = "table"; filename_save = "")
+    # compute number of solved instances and mean computation time for categories in list_categories
+
+    # keep track of informations
+    mean_times = []
+    computeds = []
+    solveds = []
+    iterss = []
+    data = []
+    row_names = []
+    col_names = ["methods", "%solved", "#inst", "time", "iter"]
+
+    for category in list_categories
+        mean_time = 0
+        computed = 0
+        solved = 0
+        iters = 0
+        for exp in exps
+            in_category = true
+            # does it meet the required characteristics?
+            for characteristic in category.l_option
+                if getfield(exp.options, characteristic.option) != characteristic.option_value
+                    in_category = false
+                    break
+                end
+            end
+            # if yes, add informations
+            if in_category
+                computed += 1
+                if exp.outputs.solved
+                    solved += 1
+                    mean_time += exp.outputs.cpu_time
+                    iters += exp.outputs.iter
+                end
+            end
+        end
+        # add results
+        if solved > 0
+            push!(mean_times, round(mean_time/solved, digits=2))
+            push!(computeds, computed)
+            push!(solveds, solved)
+            push!(iterss, round(iters/solved, digits=2))
+        else
+            push!(mean_times, "undef")
+            push!(computeds, computed)
+            push!(solveds, solved)
+            push!(iterss, "undef")
+        end
+        if computeds[end] != 0
+            push!(data, Any[round(solveds[end]/computeds[end], digits=3), computeds[end], mean_times[end], iterss[end]])
+        else
+            push!(data, Any[0, 0, mean_times[end], iterss[end]])
+        end
+        push!(row_names, category.name)
+    end
+
+    # print results
+    s = print_table(row_names, col_names, data)
+    println(make_table(row_names, col_names, data; title = title))
+    if filename_save != ""
+        file = open(filename_save, "a")
+        println(file, s)
+        println(file)
+        println(file, make_table(row_names, col_names, data; title = title))
+        close(file)
+    end
+
+    return mean_times, computeds, solveds, iterss
+end
+
+function launch_method_comparison(filename, refinement_methods, errs, title = ""; filename_save = "")
+    # create list_categories for analyse_performance by putting results :
+    # for NL versions, only one category
+    # for PWL versions, one category per error in errs
+
+    exps = load_all_outputs(filename)
+
+    list_categories = []
+    for refinement_method in refinement_methods
+        if refinement_method[1:4] == "SGM_"
+            # it is a NL version, adding only one
+            cat = category([characteristic(:refinement_method,refinement_method)], split(refinement_method, "_")[2])
+            push!(list_categories, cat)
+        else
+            for err in errs
+                charac1 = characteristic(:refinement_method, refinement_method)
+                charac2 = characteristic(:err_pwlh, err)
+                name = string(refinement_method, "_", err.delta)
+                cat = category([charac1,charac2], name)
+                push!(list_categories, cat)
+            end
+        end
+    end
+    method_comparison(exps, list_categories, title; filename_save = filename_save)
 end
