@@ -1,6 +1,6 @@
 using PolygonOps, JuMP
 
-include("../basic_functions.jl")
+include("basic_functions.jl")
 
 function generate_sampled_polygon(polygon, n)
     # retourne un échantillonnage de la hessienne de f sur le polygone P à environ n échantillons
@@ -71,11 +71,13 @@ function solve_max_error_sample_model(samples; arguments = Dict())
 	LP_SOLVER = get(arguments, "LP_SOLVER", "GLPK")
 	if LP_SOLVER == "GLPK"
 		model = Model(GLPK.Optimizer)
+		set_optimizer_attribute(model, "msg_lev", GLPK.GLP_MSG_OFF)
 	elseif LP_SOLVER == "Gurobi"
     	model = Model(Gurobi.Optimizer)
 		set_optimizer_attribute(model, "LogToConsole", 0)
 	elseif LP_SOLVER == "Cbc"
 		model = Model(Cbc.Optimizer)
+		set_optimizer_attribute(model, "LogLevel", 0)
 	else
 		error("a value of $LP_SOLVER for LP_SOLVER is not supported. Only GLPK, Gurobi and Cbc are supported.")
 	end

@@ -1,4 +1,4 @@
-include("../basic_functions.jl")
+include("basic_functions.jl")
 
 function get_inclined_rectangle(polygon,forward_direction,digits=12)
     # retourne un rectangle [X1,X2,X3,X4] contenant polygon, le plus petit et parallèle à forward_direction

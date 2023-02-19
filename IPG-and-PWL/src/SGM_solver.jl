@@ -20,6 +20,7 @@ mutable struct option_cs_instance
     refinement_method
     max_iter
     rel_gap
+    NL_term
     big_weights_on_NL_part
 end
 
@@ -32,6 +33,8 @@ mutable struct output_cs_instance
     delta_eq
     length_pwls
     variation_MNE
+    SGM_time
+    julia_time
 end
 
 mutable struct cs_experience
@@ -39,7 +42,8 @@ mutable struct cs_experience
     outputs::output_cs_instance
 end
 
-function SGM_model_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, pwl1d, Q, C, constant_value, linear_terms_in_spi, filename, fixed_costs = false, fcost = []; warmstart = [])
+function SGM_model_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, pwl1d, Q, C, constant_value,
+    linear_terms_in_spi, filename, fixed_costs = false, fcost = [], NL_term = "inverse_square_root"; warmstart = [])
     # write in file filename the matrices of the model Nagurney17 in csv format
 
     # declare model and common variables and constraints
@@ -225,6 +229,7 @@ function SGM_model_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, pwl1d,
      println(file, n_C) # number of continuous variables
      println(file, n_players) # number of players (size of indices i)
      println(file, n_j) # number of markets (size of indices j)
+     println(file, NL_term) # formula of the nonlinear term
      close(file)
 
      # resolution of the model to check that it is fine
@@ -399,7 +404,8 @@ function save_MNE_distance_variation(sols, option, output, filename = "MNE_dista
     return variations
 end
 
-function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_costs = false, refinement_method = "max_precision", max_iter = 6, rel_gap = 1e-6, abs_gap = 1e-5, big_weights_on_NL_part = false)
+function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_costs = false, refinement_method = "max_precision",
+    max_iter = 6, rel_gap = 2e-6, abs_gap = 1e-5, big_weights_on_NL_part = false, NL_term = "log")
     # prepare the instance of PWL approximation of a cybersecurity instance and launch the SGM solver
     # refinement_method is the method used to refine the PWL. It can be "taylor" for the order 1 taylor piece, and "max_precision" to refine the piece(s) containing the pure strategy to rel_gap
 
@@ -428,14 +434,14 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
     n_var = params.n_var
 
     # compute max_s_i (with cybersecurity budget constraint and B[i])
-    max_s_is = compute_max_s_i_for_all_players(n_players, params)
+    max_s_is = compute_max_s_i_for_all_players(n_players, params, NL_term)
 
     # mainly for debug
     ordvars = []
 
     # prepare the definition of expressions to approximate h_i
-    parametrized_expressions(params.alphas)
-    include("expressions.jl")
+    parametrized_expressions(params.alphas, NL_term)
+    include("expressions.jl") # reading expr_h
 
     # declare a list containing all cybersecurity_players until cybersecurity_instance is instantiated
     list_players = []
@@ -466,10 +472,11 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
             #pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,LinA.exactLin(expr_h[p],t1,t2,err))
             pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,corrected_heuristicLin(expr_h[p],t1,t2,err))
             pwl_h.pwl = special_rounding_pwl(pwl_h.pwl) # round the extremes xMin and xMax to 12 decimals to avoid some problems later
-            println("\nh_$p approximated on [$t1,$t2] by $(length(pwl_h.pwl)) pieces\n$pwl_h\n")
+            #println("\nh_$p approximated on [$t1,$t2] by $(length(pwl_h.pwl)) pieces\n$pwl_h\n")
+            println("\nh_$p approximated on [$t1,$t2] by $(length(pwl_h.pwl)) pieces")
             model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_model_to_csv(p, n_players, n_markets, params.Qbar[p,:], max_s_is[p],
             params.cs[p], pwl_h.pwl, params.Qs[p], params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:],
-            "../SGM_files/"*filename_save,fixed_costs,params.fcost[p,:])
+            "../SGM_files/"*filename_save,fixed_costs,params.fcost[p,:], NL_term)
         else
             err_nullified = Absolute(params.alphas[p])
             pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,corrected_heuristicLin(expr_h[p],t1,t2,err_nullified))
@@ -477,7 +484,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
             #println("\nh_$p approximated on [$t1,$t2] by $(length(pwl_h.pwl)) pieces\n$pwl_h\n")
             model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_NL_model_to_csv(p, n_players, n_markets, params.Qbar[p,:], max_s_is[p],
             params.cs[p], pwl_h.pwl, params.Qs[p], params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:],
-            "../SGM_files/"*filename_save,fixed_costs,params.fcost[p,:])
+            "../SGM_files/"*filename_save,fixed_costs,params.fcost[p,:], NL_term)
         end
 
          # create cybersecurity_player p
@@ -532,6 +539,12 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
 
     println("Q[1] = \n", params.cs[1])
 
+    # count different computation times
+    time_to_remove = 0
+    total_SGM_time = 0
+    total_python_time = 0
+
+
     # refinement loop
     file_copy = open("check_copy_problems.txt", "w")
     for iter in 1:max_iter
@@ -539,11 +552,16 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
         # solve current model with SGM
         cd("../../IPG")
         write_SGM_instance_last_informations(cs_instance.filename_save, refinement_method, rel_gap = rel_gap/2, abs_gap = abs_gap/2)
-        @time run(launch_cmd)
+        python_time = @elapsed run(launch_cmd)
         cd("../IPG-and-PWL/src")
 
         # read solution
-        ne, profits, S, num_iter_done, cpu_time = parser_SGM_solution("../../IPG/output_SGM.txt")
+        ne, profits, S, num_iter_done, SGM_cpu_time = parser_SGM_solution("../../IPG/output_SGM.txt")
+        #if refinement_method == "SGM_NL_model" || refinement_method == "SGM_SOCP_model" || refinement_method == "SGM_gurobiNL_model"
+        time_to_remove += python_time-SGM_cpu_time
+        total_SGM_time += SGM_cpu_time
+        total_python_time += python_time
+        #end
         # correct rounding problem on variable s: it is the upper bound of its domain but the rounding is above this limit
         # in this case, write the upper bound of the domain instead of the rounding
         S = correct_rounding_problem_SGM(S, cs_instance, params)
@@ -560,7 +578,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
         push!(outputs_SGM["profits"],deepcopy(profits))
         push!(outputs_SGM["S"],deepcopy(S))
         push!(outputs_SGM["num_iter_done"],deepcopy(num_iter_done))
-        push!(outputs_SGM["cpu_time"],deepcopy(cpu_time))
+        push!(outputs_SGM["cpu_time"],deepcopy(SGM_cpu_time))
 
         #=# write the number of pure strategies per player in a file
         file = open("write_number_strategies.txt", "a")
@@ -601,7 +619,49 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
         push!(outputs_SGM["sol"], sol)
 
         # compute the sup of the Nikaido-Isoda function in y
-        V,Vps,all_vals = cybersecurity_NE_characterization_function(sol, params, fixed_costs)
+        if NL_term != "log"
+            if iter == 1
+                V,Vps,all_vals = cybersecurity_NE_characterization_function(sol, params, fixed_costs, NL_term)
+            elseif refinement_method != "SGM_NL_model" && refinement_method != "SGM_SOCP_model" && refinement_method != "SGM_gurobiNL_model"
+                check_convergence_time = @elapsed V,Vps,all_vals = cybersecurity_NE_characterization_function(sol, params, fixed_costs, NL_term)
+                #time_to_remove += check_convergence_time
+            end
+        elseif NL_term == "log"
+            println("entering computation of BR in julia at iteration $iter with refinement_method $refinement_method")
+            # reconstruct a false output of cybersecurity_NE_characterization_function, that passes the stopping criterion if it is an NL method or if err is lower than abs_tol/4
+            # and that do not pass the stopping criterion in other cases
+            test_NL_method = !(refinement_method != "SGM_NL_model" && refinement_method != "SGM_SOCP_model" && refinement_method != "SGM_gurobiNL_model") # NL method don't need BR computed
+            overestimated_abs_tol = maximum([profits[p]*(1+rel_gap/2)+2*err_pwlh.delta for p in 1:n_players])*rel_gap
+            underestimated_abs_tol = maximum([profits[p]*(1-rel_gap/2)+2*err_pwlh.delta for p in 1:n_players])*rel_gap
+            println("profits $profits")
+            println("overestimated_abs_tol $overestimated_abs_tol")
+            println("underestimated_abs_tol $underestimated_abs_tol")
+            test_PWL_approx_sufficient = (err_pwlh.delta <= underestimated_abs_tol/4) # PWL methods with err_pwlh.delta sufficiently low are guaranteed to have found a sigma-NE at first iteration
+            test_iter_PWL = (iter >= 2) && refinement_method == "full_refinement" # full_refinement is guaranteed to finish at the second iteration or before
+            if test_NL_method || test_PWL_approx_sufficient || test_iter_PWL
+                println("entering ending if")
+                V = 0
+                Vps = [0 for p in 1:n_players]
+                all_vals = []
+                for p in 1:n_players
+                    parameters = [sol[i] for i in 1:n_players if i != p]
+                    push!(all_vals, evaluate_cybersecurity_objective_value(sol[p], parameters, p, params, fixed_costs, NL_term))
+                    push!(all_vals, all_vals[end])
+                end
+            else # stopping criterion should NOT pass
+                println("entering continuing if")
+                val = 1e8
+                V = val
+                Vps = [val for p in 1:n_players]
+                all_vals = []
+                for p in 1:n_players
+                    parameters = [sol[i] for i in 1:n_players if i != p]
+                    push!(all_vals, evaluate_cybersecurity_objective_value(sol[p], parameters, p, params, fixed_costs, NL_term))
+                    push!(all_vals, all_vals[end]+val) # 1e8 instead of "UNK" because maybe a numerical test is done
+                end
+            end
+            println("V, Vps and all_vals:\n$V\n$Vps\n$all_vals")
+        end
 
         #=# check that the NL model in python finds the same as here
         if false
@@ -627,24 +687,27 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
         # check errors are less than proved theoretically
         # abs_gap is computed at each iteration as a function of rel_gap because we need an absolute value to compare with the observed delta
         ###abs_gap = maximum([abs(all_vals[3*i]) for i in 1:n_players])*rel_gap
-        abs_tol = 2*max(maximum([abs(all_vals[3*i]) for i in 1:n_players])*rel_gap,abs_gap) # don't touch this 1e-5 without also changing it in the stopping criterion of the SGM!!
-        file = open("check_errors_in_differences.txt", "a")
-        for p in 1:n_players
-            diff = abs(Vps[p])
-            ###if diff > max(2*err_pwlh.delta, abs_gap)
-            ###if diff > max(2*err_pwlh.delta+abs_gap/2,abs_gap)
-            if diff > max(2*err_pwlh.delta+abs_tol/2,abs_gap)
-                #println(file, "iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err+abs_gap ($(2*err_pwlh.delta + abs_gap)) = $err_pwlh : $(diff) $filename_instance fixed_costs $fixed_costs refinement_method $refinement_method sol $sol ")
-                #println("iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err+abs_gap ($(2*err_pwlh.delta + abs_gap)) = $err_pwlh : $(diff) $filename_instance fixed_costs $fixed_costs refinement_method $refinement_method")
-                #error("iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err+abs_gap ($(2*err_pwlh.delta + abs_gap)) = $err_pwlh : $(diff)")
-                error("iteration $iter: difference between profit and best nonlinear response for player $p is above 2*err_pwlh.delta+abs_tol/2 $(2*err_pwlh.delta+abs_tol/2) = $err_pwlh : $(diff)")
-                raise_err_at_the_end = true
-            #elseif diff > 2*err_pwlh.delta
-                #println("iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err = $err_pwlh : $(diff) refinement_method $refinement_method")
-                #println(file, "iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err = $err_pwlh : $(diff) $filename_instance fixed_costs $fixed_costs refinement_method $refinement_method")
+        abs_tol = max(maximum([abs(all_vals[3*i]) for i in 1:n_players])*rel_gap,abs_gap) # don't touch this abs_gap without also changing it in the stopping criterion of the SGM!!
+        if NL_term != "log"
+            file = open("check_errors_in_differences.txt", "a")
+            for p in 1:n_players
+                diff = abs(Vps[p])
+                println("abs(Vps[p]) = ", diff)
+                ###if diff > max(2*err_pwlh.delta, abs_gap)
+                ###if diff > max(2*err_pwlh.delta+abs_gap/2,abs_gap)
+                if diff > max(max(2*err_pwlh.delta+abs_tol/2,abs_gap), abs_tol) # if delta < abs_tol/4, then 2*err_pwlh.delta+abs_tol/2 < abs_tol, so no errors should be raised in this situation
+                    #println(file, "iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err+abs_gap ($(2*err_pwlh.delta + abs_gap)) = $err_pwlh : $(diff) $filename_instance fixed_costs $fixed_costs refinement_method $refinement_method sol $sol ")
+                    #println("iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err+abs_gap ($(2*err_pwlh.delta + abs_gap)) = $err_pwlh : $(diff) $filename_instance fixed_costs $fixed_costs refinement_method $refinement_method")
+                    #error("iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err+abs_gap ($(2*err_pwlh.delta + abs_gap)) = $err_pwlh : $(diff)")
+                    error("iteration $iter: difference between profit and best nonlinear response for player $p is above 2*err_pwlh.delta+abs_tol/2 $(2*err_pwlh.delta+abs_tol/2) = $err_pwlh : $(diff)")
+                    raise_err_at_the_end = true
+                #elseif diff > 2*err_pwlh.delta
+                    #println("iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err = $err_pwlh : $(diff) refinement_method $refinement_method")
+                    #println(file, "iteration $iter: difference between profit and best nonlinear response for player $p is above 2 err = $err_pwlh : $(diff) $filename_instance fixed_costs $fixed_costs refinement_method $refinement_method")
+                end
             end
+            close(file)
         end
-        close(file)
 
         push!(outputs_SGM["V"], deepcopy(V))
         push!(outputs_SGM["Vps"], deepcopy(Vps))
@@ -702,8 +765,8 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
             profits = [outputs_SGM["all_vals"][end][3*p-1] for p in 1:n_players]
             println("profits:\n$profits\nall_vals:\n$(outputs_SGM["all_vals"])")
             length_pwls = [length(cs_instance.cs_players[p].pwl_h.pwl) for p in 1:n_players]
-            output = output_cs_instance(true, outputs_SGM["sol"][end], profits, -1, iter, max_delta, length_pwls,compute_MNE_distance_variation(outputs_SGM["sol"]))
-            options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, big_weights_on_NL_part)
+            output = output_cs_instance(true, outputs_SGM["sol"][end], profits, -1, iter, max_delta, length_pwls,compute_MNE_distance_variation(outputs_SGM["sol"]), total_SGM_time, -total_python_time)
+            options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, NL_term, big_weights_on_NL_part)
             save_MNE_distance_variation(outputs_SGM["sol"], options, output)
             return cs_instance, Vs, iter, outputs_SGM, output
         elseif max_delta > 1e11
@@ -748,7 +811,13 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
                     end=#
 
                     # refine pwl
-                    f = x->params.alphas[p]*(1/sqrt(1-x)-1)
+                    if NL_term == "inverse_square_root"
+                        f = x->params.alphas[p]*(1/sqrt(1-x)-1)
+                    elseif NL_term == "inverse_cubic_root"
+                        f = x->params.alphas[p]*(1/(1-x)^(1/3)-1)
+                    elseif NL_term == "log"
+                        f = x->params.alphas[p]*(-log(1-x))
+                    end
                     # refine up to asked precision the piece containing the pure strategy
                     if refinement_method == "max_precision"
                         # refine only the piece containing the NE with max useful precision (abs_tol/4)
@@ -792,7 +861,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
                     outputs_SGM["length_pwl"][iter+1][p] = length(cs_instance.cs_players[p].pwl_h.pwl)
 
                     # check that the pwl still satisfy the delta-approx
-                    #push!(outputs_SGM["valid_pwl"][end], check_delta_approx(cs_instance.cs_players[p].pwl_h, abs_tol/4))
+                    #push!(outputs_SGM["valid_pwl"][end], check_delta_approx(cs_instance.cs_players[p].pwl_h, abs_tol/4), 1e-5, NL_term)
                     #println("new pwl:\n", cs_instance.cs_players[p].pwl_h.pwl)
                 end
             end
@@ -803,13 +872,13 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
                 model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_model_to_csv(p, n_players, n_markets, params.Qbar[p,:],
                 max_s_is[p], params.cs[p], cs_instance.cs_players[p].pwl_h.pwl, params.Qs[p], params.Cs[p],
                 params.constant_values[p], params.linear_terms_in_spi[p,:], "../SGM_files/"*filename_save,fixed_costs,
-                params.fcost[p,:], warmstart = sol[p]) # HERE TO ACTIVATE WARMSTART
+                params.fcost[p,:], NL_term, warmstart = sol[p]) # HERE TO ACTIVATE WARMSTART
                 #params.fcost[p,:]) # HERE TO DEACTIVATE WARMSTART
             else
                 model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_NL_model_to_csv(p, n_players, n_markets, params.Qbar[p,:],
                 max_s_is[p], params.cs[p], cs_instance.cs_players[p].pwl_h.pwl, params.Qs[p], params.Cs[p],
                 params.constant_values[p], params.linear_terms_in_spi[p,:], "../SGM_files/"*filename_save,fixed_costs,
-                params.fcost[p,:])
+                params.fcost[p,:], NL_term)
             end
         end
 
@@ -839,15 +908,15 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
     println("profits:\n$profits\nall_vals:\n$(outputs_SGM["all_vals"])")
     length_pwls = [length(cs_instance.cs_players[p].pwl_h.pwl) for p in 1:n_players]
     max_delta = maximum([abs(Vs[end][2][i]) for i in 1:n_players])
-    options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, big_weights_on_NL_part)
-    output = output_cs_instance(false, outputs_SGM["sol"][end], profits, -1, max_iter, max_delta, length_pwls,[])
+    options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, NL_term, big_weights_on_NL_part)
+    output = output_cs_instance(false, outputs_SGM["sol"][end], profits, -1, max_iter, max_delta, length_pwls,[], total_SGM_time, -total_python_time)
     variations = save_MNE_distance_variation(outputs_SGM["sol"], options, output)
-    output = output_cs_instance(false, outputs_SGM["sol"][end], profits, -1, max_iter, max_delta, length_pwls,variations)
+    output = output_cs_instance(false, outputs_SGM["sol"][end], profits, time_to_remove, max_iter, max_delta, length_pwls,variations, total_SGM_time, -total_python_time)
     return cs_instance, Vs, max_iter, outputs_SGM, output
 end
 
-function benchmark_SGM_PWL_solver(; filename_instances, err_pwlhs, fixed_costss = [true, false], refinement_methods = ["taylor","max_precision"],
-    max_iters = [5], rel_gaps = [1e-6], filename_save = "last_experiences.txt", big_weights_on_NL_part = false)
+function benchmark_SGM_PWL_solver(; filename_instances, err_pwlhs, fixed_costss = [true], refinement_methods = ["taylor","max_precision"],
+    max_iters = [5], rel_gaps = [2e-6], filename_save = "last_experiences.txt", big_weights_on_NL_part = false, NL_terms = ["log"])
     # build, solve, and retrieve solution to instances defined with the cartesian products of the options
 
     # build instances and store them in list instance_queue
@@ -856,9 +925,13 @@ function benchmark_SGM_PWL_solver(; filename_instances, err_pwlhs, fixed_costss 
         for err_pwlh in err_pwlhs
             for fixed_costs in fixed_costss
                 for refinement_method in refinement_methods
+                    #if refinement_method == "SGM_NL_model" || refinement_method == "SGM_SOCP_model" || refinement_method == "SGM_gurobiNL_model"
+                    #    if err_pwlh != err_pwlhs[1]
                     for max_iter in max_iters
                         for rel_gap in rel_gaps
-                            push!(instance_queue, option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, big_weights_on_NL_part))
+                            for NL_term in NL_terms
+                                push!(instance_queue, option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, NL_term, big_weights_on_NL_part))
+                            end
                         end
                     end
                 end
@@ -869,17 +942,29 @@ function benchmark_SGM_PWL_solver(; filename_instances, err_pwlhs, fixed_costss 
     # solve instances and store the output with the options of the instance in a list
     experiences = []
     # false experience to compile everything
-    SGM_PWL_solver("instance_1.txt", err_pwlh = Absolute(0.05), fixed_costs = false, refinement_method = "taylor+outer", max_iter = 2)
-    SGM_PWL_solver("instance_1.txt", err_pwlh = Absolute(0.05), fixed_costs = false, refinement_method = "SGM_NL_model", max_iter = 2)
+    SGM_PWL_solver("instance_1.txt", err_pwlh = Absolute(0.05), fixed_costs = true, refinement_method = "taylor+outer", max_iter = 2)
+    SGM_PWL_solver("instance_1.txt", err_pwlh = Absolute(0.05), fixed_costs = true, refinement_method = "SGM_SOCP_model", max_iter = 2)
+    if NL_terms[1] != "log"
+        SGM_PWL_solver("instance_1.txt", err_pwlh = Absolute(0.05), fixed_costs = true, refinement_method = "SGM_gurobiNL_model", max_iter = 2)
+    end
+    inst = instance_queue[1]
+    try
+        SGM_PWL_solver(inst.filename_instance, err_pwlh = inst.err_pwlh,
+        fixed_costs = inst.fixed_costs, refinement_method = inst.refinement_method, max_iter = inst.max_iter,
+        rel_gap = inst.rel_gap, big_weights_on_NL_part = big_weights_on_NL_part, NL_term = inst.NL_term)
+    catch e
+        println("last warming failed due to: $e")
+    end
 
     for inst in instance_queue
         # detect MOI.INFEASIBLE because max_delta == 1e12
         try
             t = @elapsed cs_instance, Vs, iter, outputs_SGM, output = SGM_PWL_solver(inst.filename_instance, err_pwlh = inst.err_pwlh,
             fixed_costs = inst.fixed_costs, refinement_method = inst.refinement_method, max_iter = inst.max_iter,
-            rel_gap = inst.rel_gap, big_weights_on_NL_part = big_weights_on_NL_part)
+            rel_gap = inst.rel_gap, big_weights_on_NL_part = big_weights_on_NL_part, NL_term = inst.NL_term)
             # store output and options
             output.cpu_time = t
+            output.julia_time += t
             push!(experiences, cs_experience(inst, output))
             file = open(filename_save[1:end-4]*"_intermediary.txt", "a")
             write_output_instance(file, inst, output)
@@ -890,14 +975,14 @@ function benchmark_SGM_PWL_solver(; filename_instances, err_pwlhs, fixed_costss 
                 cd("../IPG-and-PWL/src")
             end
             if occursin("ProcessExited(10)", string(e)) # SGM finished with TIME LIMIT reached
-                output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [])
+                output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [], -1, -1)
             #elseif occursin("ProcessExited(11)", string(e)) # SGM finished with MAX ITER reached
             elseif occursin("ProcessExited(11)", string(e)) # SGM finished with MAX ITER reached
-                output = output_cs_instance(false, ErrorException("ERROR max iter reached in SGM"), [], Inf, -1, [], [], [])
+                output = output_cs_instance(false, ErrorException("ERROR max iter reached in SGM"), [], Inf, -1, [], [], [], -1, -1)
             elseif occursin("ProcessExited(3)", string(e)) # SGM finished with MAX ITER reached
-                output = output_cs_instance(false, ErrorException("ERROR time limit reached in NL BR"), [], Inf, -1, [], [], [])
+                output = output_cs_instance(false, ErrorException("ERROR time limit reached in NL BR"), [], Inf, -1, [], [], [], -1, -1)
             else
-                output = output_cs_instance(false, e, [], Inf, -1, [], [], [])
+                output = output_cs_instance(false, e, [], Inf, -1, [], [], [], -1, -1)
                 #outputs = output_cs_instance(false, infos[7], [[]], [], 0, -1, [], [])  old
             end
             #output = output_cs_instance(false, e, [[]], [], 0, -1, [], [])
@@ -920,7 +1005,7 @@ function benchmark_SGM_PWL_solver(; filename_instances, err_pwlhs, fixed_costss 
     end
 
     # give some elements of analysis
-    launch_method_comparison(filename_save, refinement_methods, err_pwlhs, filename_save[1:end-4]*"_analysis.txt")
+    launch_method_comparison(filename_save, experiences, refinement_methods, err_pwlhs, filename_save = filename_save[1:end-4]*"_analysis.txt")
     preliminary_analysis(experiences, err_pwlhs, fixed_costss, refinement_methods, filename_save[1:end-4]*"_analysis.txt")
 
     return experiences
@@ -931,6 +1016,14 @@ for i in 2:4
     for j in 2:10
         for k in 1:10
             push!(filename_instances, "instance_$(i)_$(j)_$(k).txt")
+        end
+    end
+end
+filename_instances_half = []
+for i in 2:4
+    for j in 2:10
+        for k in 1:5
+            push!(filename_instances_half, "instance_$(i)_$(j)_$(k).txt")
         end
     end
 end
@@ -993,6 +1086,8 @@ refinement_methods6 = ["SGM_NL_model","full_refinement"]
 refinement_methods7 = ["SGM_NL_model","SGM_SOCP_model","SGM_gurobiNL_model","full_refinement","no_refinement"]
 refinement_methods8 = ["SGM_SOCP_model","SGM_gurobiNL_model","full_refinement"]
 refinement_methods9 = ["SGM_SOCP_model","SGM_gurobiNL_model","full_refinement","no_refinement"]
+refinement_methods10 = ["SGM_NL_model","SGM_SOCP_model","full_refinement","no_refinement"]
+refinement_methods11 = ["SGM_SOCP_model","full_refinement","no_refinement"]
 #filename_save = "bench_scaling_up_small.txt"
 
 #exps_medium = benchmark_SGM_PWL_solver(filename_instances = filename_instances2, err_pwlhs = errs2, refinement_methods = refinement_methods4, filename_save = "bench_medium.txt")
@@ -1030,6 +1125,34 @@ if false
     exps_bigover7small = benchmark_SGM_PWL_solver(filename_instances = filename_instances_bigover7_small, err_pwlhs = errs2, refinement_methods = refinement_methods7, filename_save = "bigover7_true.txt")
     exps_bigover7_bigweights_small = benchmark_SGM_PWL_solver(filename_instances = filename_instances_bigover7_small, err_pwlhs = errs2, refinement_methods = refinement_methods7, filename_save = "bigover7_true_bigweights.txt", big_weights_on_NL_part = true)
 end
+
+if false
+    #exps_medium = benchmark_SGM_PWL_solver(filename_instances = filename_instances2, err_pwlhs = errs3, refinement_methods = refinement_methods7, rel_gaps = [2e-3,2e-4,2e-5,2e-6], filename_save = "medium_rel_gap.txt", big_weights_on_NL_part = false)
+    #exps_big567 = benchmark_SGM_PWL_solver(filename_instances = filename_instances_big567, err_pwlhs = errs3, refinement_methods = refinement_methods7, rel_gaps = [2e-3,2e-4,2e-5,2e-6], filename_save = "big567_rel_gap.txt", big_weights_on_NL_part = false)
+    #exps_medium = benchmark_SGM_PWL_solver(filename_instances = filename_instances2, err_pwlhs = errs2, refinement_methods = refinement_methods9, filename_save = "medium.txt", big_weights_on_NL_part = false)
+    #exps_medium_bigweights = benchmark_SGM_PWL_solver(filename_instances = filename_instances2, err_pwlhs = errs2, refinement_methods = refinement_methods9, rel_gaps = [2e-3], filename_save = "medium_rel3_bigweights.txt", big_weights_on_NL_part = true)
+    #exps_big567 = benchmark_SGM_PWL_solver(filename_instances = filename_instances_big567, err_pwlhs = errs2, refinement_methods = refinement_methods9, filename_save = "big567.txt")
+    #exps_big567_bigweights = benchmark_SGM_PWL_solver(filename_instances = filename_instances_big567, err_pwlhs = errs2, refinement_methods = refinement_methods9, rel_gaps = [2e-3], filename_save = "big567_rel3_bigweights.txt", big_weights_on_NL_part = true)
+
+    exps_medium_half = benchmark_SGM_PWL_solver(filename_instances = filename_instances_half, err_pwlhs = errs2, refinement_methods = refinement_methods11, filename_save = "medium_log_half.txt")
+    exps_big567_complete = benchmark_SGM_PWL_solver(filename_instances = filename_instances_big567_complete, err_pwlhs = errs2, refinement_methods = refinement_methods11, filename_save = "big567_log_complete.txt")
+
+end
+#=
+@time SGM_PWL_solver("instance_2_2_1.txt", err_pwlh = Absolute(0.0005), fixed_costs = true, refinement_method = "full_refinement", rel_gap = 2e-6, max_iter = 5, big_weights_on_NL_part = false)
+@time SGM_PWL_solver("instance_2_2_1.txt", err_pwlh = Absolute(0.0005), fixed_costs = true, refinement_method = "SGM_SOCP_model", rel_gap = 2e-6, max_iter = 5, big_weights_on_NL_part = false)
+exps_medium_half = load_all_outputs("medium_half2.txt")
+exps_big567_complete = load_all_outputs("big567_complete2.txt")
+exps_medium_half = relaunch_failed_exps_specific3(exps_medium_half)
+exps_big567_complete = relaunch_failed_exps_specific3(exps_big567_complete)
+
+=#
+#exps_medium_test = benchmark_SGM_PWL_solver(filename_instances = filename_instances2, err_pwlhs = errs3, refinement_methods = refinement_methods11[[1,2]], filename_save = "medium_log_test.txt", big_weights_on_NL_part = false)
+
+#exps_medium_gurobiNL = benchmark_SGM_PWL_solver(filename_instances = filename_instances2, err_pwlhs = errs2, refinement_methods = ["SGM_gurobiNL_model"], filename_save = "medium_cubic_gurobiNL.txt", big_weights_on_NL_part = false)
+#exps_medium_bigweights_gurobiNL = benchmark_SGM_PWL_solver(filename_instances = filename_instances2, err_pwlhs = errs2, refinement_methods = ["SGM_gurobiNL_model"], filename_save = "medium_cubic_gurobiNL_bigweights.txt", big_weights_on_NL_part = true)
+#exps_big567_gurobiNL = benchmark_SGM_PWL_solver(filename_instances = filename_instances_big567, err_pwlhs = errs2, refinement_methods = ["SGM_gurobiNL_model"], filename_save = "big567_cubic_gurobiNL.txt")
+#exps_big567_bigweights_gurobiNL = benchmark_SGM_PWL_solver(filename_instances = filename_instances_big567, err_pwlhs = errs2, refinement_methods = ["SGM_gurobiNL_model"], filename_save = "big567_cubic_gurobiNL_bigweights.txt", big_weights_on_NL_part = true)
 
 #exps_big567part = benchmark_SGM_PWL_solver(filename_instances = filename_instances_big567_complete[[i for i in 1:5:length(filename_instances_big567_complete)]], err_pwlhs = errs2, refinement_methods = refinement_methods7[[2,3,4]], filename_save = "big567part.txt")
 #exps_big10 = benchmark_SGM_PWL_solver(filename_instances = filename_instances_big10, err_pwlhs = errs2[[1,4]], refinement_methods = refinement_methods7[[2,3,4]], filename_save = "big10.txt")

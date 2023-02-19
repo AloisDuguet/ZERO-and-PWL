@@ -1,4 +1,5 @@
-function SGM_NL_model_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, pwl1d, Q, C, constant_value, linear_terms_in_spi, filename, fixed_costs = false, fcost = [])
+function SGM_NL_model_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, pwl1d, Q, C, constant_value,
+    linear_terms_in_spi, filename, fixed_costs = false, fcost = [], NL_term = "inverse_square_root")
     # write in file filename the matrices of the model Nagurney17 in csv format
 
     # declare model and common variables and constraints
@@ -178,6 +179,7 @@ function SGM_NL_model_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, pwl
      println(file, n_C) # number of continuous variables
      println(file, n_players) # number of players (size of indices i)
      println(file, n_j) # number of markets (size of indices j)
+     println(file, NL_term) # formula of the nonlinear term
      close(file)
 
      #=# resolution of the model to check that it is fine

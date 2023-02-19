@@ -1,6 +1,6 @@
 using JuMP, Plots
 
-include("heuristique Lipschitz/test_functions.jl")
+include("test_functions.jl")
 include("efficiency_refinement_bounding.jl")
 
 function gradf(f,x)

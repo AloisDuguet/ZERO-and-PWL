@@ -80,11 +80,13 @@ function feasibility_model(pieces, n_test, time_limit, additional_constraints = 
     LP_SOLVER = get(arguments, "LP_SOLVER", "GLPK")
 	if LP_SOLVER == "GLPK"
 		model = Model(GLPK.Optimizer)
+		set_optimizer_attribute(model, "msg_lev", GLPK.GLP_MSG_OFF)
 	elseif LP_SOLVER == "Gurobi"
     	model = Model(Gurobi.Optimizer)
 		set_optimizer_attribute(model, "LogToConsole", 0)
 	elseif LP_SOLVER == "Cbc"
 		model = Model(Cbc.Optimizer)
+        set_optimizer_attribute(model, "LogLevel", 0)
 	else
 		error("a value of $LP_SOLVER for LP_SOLVER is not supported. Only GLPK, Gurobi and Cbc are supported.")
 	end

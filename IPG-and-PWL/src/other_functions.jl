@@ -1,11 +1,17 @@
-function parametrized_expressions(alphas)
+function parametrized_expressions(alphas, NL_term = "inverse_square_root")
     # return an expression with alpha as parameter by writing it in a file and reading
     # because it raises an error to write simply expr = :(alpha*(1/sqrt(1-x))-1)
     file = open("expressions.jl", "w")
     println(file, "expr_h = []")
     for i in 1:length(alphas)
         alpha = alphas[i]
-        println(file, "push!(expr_h, :($(alpha)*(1/sqrt(1-x)-1)))")
+        if NL_term == "inverse_square_root"
+            println(file, "push!(expr_h, :($(alpha)*(1/sqrt(1-x)-1)))")
+        elseif NL_term == "inverse_cubic_root"
+            println(file, "push!(expr_h, :($(alpha)*(1/(1-x)^(1/3)-1)))")
+        elseif NL_term == "log"
+            println(file, "push!(expr_h, :($(alpha)*(-log(1-x))))")
+        end
     end
     close(file)
     return 0

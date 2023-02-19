@@ -1,9 +1,9 @@
 using LinA
 
-include("../basic_functions.jl")
-include("../pwl_constant_bounding.jl")
-include("../estimate_longest_1D_piece.jl")
-include("../heuristique triangle+rectangle/polygon_difference.jl")
+include("basic_functions.jl")
+include("pwl_constant_bounding.jl")
+include("estimate_longest_1D_piece.jl")
+include("polygon_difference.jl")
 include("tools_inclined_rectangle_bounding.jl")
 include("tools_select_new_piece.jl")
 

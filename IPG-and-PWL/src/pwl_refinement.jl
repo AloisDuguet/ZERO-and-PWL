@@ -332,7 +332,7 @@ if length(pieces_number) == 1 && piece.a == a && piece.b == b # if not, it can't
 	# (relative error according to the starting error and abs_gap)
 	pwl_struct = refine_longest_piece(pwl_struct, pieces_number, iter, max_iter, new_delta)=#
 
-function check_delta_approx(pwl_struct, threshold, eps = 1e-5)
+function check_delta_approx(pwl_struct, threshold, eps = 1e-5, NL_term = "inverse_square_root")
 	# WARNING this works only for the h_i function!!
 	# return true if the pwl in pwl_struct is a pwl_struct.err.delta-approx of f
 	# else, return false
@@ -345,13 +345,25 @@ function check_delta_approx(pwl_struct, threshold, eps = 1e-5)
 		model = Model(() -> AmplNLWriter.Optimizer(Ipopt_jll.amplexe))
         set_optimizer_attribute(model, "print_level", 0)
 		@variable(model, x, lower_bound = piece.xMin, upper_bound = piece.xMax)
-		@NLobjective(model, Max, abs(pwl_struct.alpha*(1/sqrt(1-x)-1) - (piece.a*x + piece.b)))
+		if NL_term == "inverse_square_root"
+			@NLobjective(model, Max, abs(pwl_struct.alpha*(1/sqrt(1-x)-1) - (piece.a*x + piece.b)))
+		elseif NL_term == "inverse_cubic_root"
+			@NLobjective(model, Max, abs(pwl_struct.alpha*(1/(1-x)^(1/3)-1) - (piece.a*x + piece.b)))
+        elseif NL_term == "log"
+			@NLobjective(model, Max, abs(pwl_struct.alpha*(-log(1-x)) - (piece.a*x + piece.b)))
+		end
 		optimize!(model)
 		term_status = JuMP.termination_status(model)
 		println("statut de terminaison de l'optimisation du modèle : $term_status")
 		if(term_status != MOI.INFEASIBLE && term_status != MOI.OTHER_ERROR)
 			valx = JuMP.value.(x)
-			valf = abs(pwl_struct.alpha*(1/sqrt(1-valx)-1) - (piece.a*valx + piece.b))
+			if NL_term == "inverse_square_root"
+				valf = abs(pwl_struct.alpha*(1/sqrt(1-valx)-1) - (piece.a*valx + piece.b))
+			elseif NL_term == "inverse_cubic_root"
+				valf = abs(pwl_struct.alpha*(1/(1-valx)^(1/3)-1) - (piece.a*valx + piece.b))
+			elseif NL_term == "log"
+				valf = abs(pwl_struct.alpha*(-log(1-x)) - (piece.a*valx + piece.b))
+			end
 			println("for piece $cpt, max = $valf")
 			if valf > max(pwl_struct.err.delta, threshold)*(1+eps)
 				error("error too high: err = $valf and threshold is $(max(pwl_struct.err.delta, threshold)*(1+eps))")

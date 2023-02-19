@@ -114,11 +114,12 @@ function write_output_instance(file, option, output)
     # write in file open by stream file the output_cs_instance structure output with the corresponding option_cs_instance option
     delta, eps = get_infos_err(option.err_pwlh)
     s_option = "$(option.filename_instance)$(SEP1)delta$(Float64(delta))$(SEP2)epsilon$(Float64(eps))$(SEP1)"
-    s_option = string(s_option, option.fixed_costs, SEP1, option.refinement_method, SEP1, option.max_iter, SEP1, option.rel_gap, SEP1, option.big_weights_on_NL_part, SEP1)
+    s_option = string(s_option, option.fixed_costs, SEP1, option.refinement_method, SEP1, option.max_iter, SEP1, option.rel_gap, SEP1, option.NL_term, SEP1, option.big_weights_on_NL_part, SEP1)
     try
-        if typeof(output.solution) != ErrorException && typeof(output.solution) != MethodError
+        if typeof(output.solution) != ErrorException && typeof(output.solution) != MethodError && typeof(output.solution) != String
             s_output = string(output.solved, SEP1, write_matrix(output.solution), SEP1, write_vector(output.profits), SEP1, output.cpu_time, SEP2, "secondes")
-            s_output = string(s_output, SEP1, output.iter, SEP2, "iterations", SEP1, output.delta_eq, SEP2, "observed", SEP2, "delta", SEP1, write_vector(output.length_pwls), SEP1, write_vector(output.variation_MNE))
+            s_output = string(s_output, SEP1, output.iter, SEP2, "iterations", SEP1, output.delta_eq, SEP2, "observed", SEP2, "delta", SEP1, write_vector(output.length_pwls)
+            , SEP1, write_vector(output.variation_MNE), SEP1, output.SGM_time, SEP1, output.julia_time)
             println(file, string(s_option, s_output))
         else
             println(file, string(s_option, "ERROR: $(output.solution)"))
@@ -140,16 +141,16 @@ function load_output_instance(line)
         refinement_method = infos[4]
         max_iter = parse(Int64, infos[5])
         rel_gap = parse(Float64, infos[6])
-        #=if length(infos) == 15 # specific case because many instances are saved without big_weights_on_NL_part option
-            big_weights_on_NL_part = parse(Bool, infos[7])
+        if length(infos[7]) > 5 || infos[7] == "log" # specific case because many instances are saved without NL_term option
+            NL_term =  infos[7]
             deleteat!(infos, 7)
         else
-            big_weights_on_NL_part = false
-        end=#
+            NL_term = "inverse_square_root"
+        end
         big_weights_on_NL_part = parse(Bool, infos[7])
         options = option_cs_instance(filename_instance, err_pwlh, fixed_costs,
-        refinement_method, max_iter, rel_gap, big_weights_on_NL_part)
-        if !occursin("ERROR", line) && !occursin("ProcessExited", line)
+        refinement_method, max_iter, rel_gap, NL_term, big_weights_on_NL_part)
+        if !occursin("ERROR", line) && !occursin("ProcessExited", line) && !occursin("E__r__r__o__r", line)
             solved = parse(Bool, infos[8])
             solution = parse_matrix(infos[9])
             #println(solution)
@@ -163,23 +164,60 @@ function load_output_instance(line)
             else
                 variations = "-"
             end
+            if length(infos) >= 16
+                SGM_time = parse(Float64, infos[16])
+            else
+                SGM_time = "UNK"
+            end
+            if length(infos) >= 17
+                julia_time = parse(Float64, infos[17])
+            else
+                julia_time = "UNK"
+            end
             outputs = output_cs_instance(solved, solution, profits, cpu_time,
-            iter, delta_eq, length_pwls, variations)
+            iter, delta_eq, length_pwls, variations, SGM_time, julia_time)
         elseif occursin("ProcessExited(10)", line) # SGM finished with TIME LIMIT reached
-            outputs = output_cs_instance(false, [[]], [], Inf, -1, [], [], [])
+            outputs = output_cs_instance(false, [[]], [], Inf, -1, [], [], [], -1, -1)
         elseif occursin("ProcessExited(11)", line) # SGM finished with MAX ITER reached
-            outputs = output_cs_instance(false, [[]], [], Inf, -1, [], [], [])
+            outputs = output_cs_instance(false, [[]], [], Inf, -1, [], [], [], -1, -1)
+        #elseif occursin("E__r__r__o__r", line)
         else
-            outputs = output_cs_instance(false, [[]], [], Inf, -1, [], [], [])
+            s = line[findfirst("ErrorException",line)[2]:end]
+            outputs = output_cs_instance(false, ErrorException(s), [], Inf, -1, [], [], [], -1, -1)
             #outputs = output_cs_instance(false, infos[7], [[]], [], 0, -1, [], [])  old
         end
         return cs_experience(options, outputs)
     catch e
-        println(e)
-        options = option_cs_instance("UNK", "UNK", false,
-        "UNK", "UNK", "UNK", "UNK")
-        outputs = output_cs_instance(false, [[]], [], 0,
-            -1, -1, [], [])
+        try
+            println("entering first catch of load_output_instance for error message: ", e)
+            println("with line: ", line)
+            infos = split(line, SEP1)
+            filename_instance = infos[1]
+            err_pwlh = parse_err(infos[2])
+            fixed_costs = parse(Bool, infos[3])
+            refinement_method = infos[4]
+            max_iter = parse(Int64, infos[5])
+            rel_gap = parse(Float64, infos[6])
+            if length(infos[7]) > 5 # specific case because many instances are saved without NL_term option
+                NL_term =  infos[7]
+                deleteat!(infos, 7)
+            else
+                NL_term = "inverse_square_root"
+            end
+            big_weights_on_NL_part = parse(Bool, infos[7])
+            options = option_cs_instance(filename_instance, err_pwlh, fixed_costs,
+            refinement_method, max_iter, rel_gap, NL_term, big_weights_on_NL_part)
+            outputs = output_cs_instance(false, [[]], [], 0,
+                -1, -1, [], [], -1, -1)
+            return cs_experience(options, outputs)
+        catch e
+            println("entering second catch of load_output_instance for error message: ", e)
+            options = option_cs_instance("UNK", "UNK", false,
+            "UNK", "UNK", "UNK", "UNK", "UNK")
+            outputs = output_cs_instance(false, [[]], [], 0,
+                -1, -1, [], [], -1, -1)
+            return cs_experience(options, outputs)
+        end
         return cs_experience(options, outputs)
     end
 end
@@ -277,10 +315,19 @@ function write_SGM_instance_last_informations(filename, refinement_method, scrip
     end
 
     # relative gap and absolute gap for SGM
+    # if the method is a nonlinear one, rel_gap and abs_gap need to be doubled because there is no approximation and thus no loss on the precision of this solution
     line_number = 12
-    lines[line_number] = "rel_gap = $rel_gap"
+    if refinement_method == "SGM_NL_model" || refinement_method == "SGM_SOCP_model" || refinement_method == "SGM_gurobiNL_model"
+        lines[line_number] = "rel_gap = $(2*rel_gap)"
+    else
+        lines[line_number] = "rel_gap = $rel_gap"
+    end
     line_number = 13
-    lines[line_number] = "abs_gap = $abs_gap"
+    if refinement_method == "SGM_NL_model" || refinement_method == "SGM_SOCP_model" || refinement_method == "SGM_gurobiNL_model"
+        lines[line_number] = "abs_gap = $(2*abs_gap)"
+    else
+        lines[line_number] = "abs_gap = $abs_gap"
+    end
 
     # write the lines changed
     file = open(scriptname, "w")

@@ -15,10 +15,10 @@ end
 include("Clipper_utilisation.jl")
 
 # ╔═╡ aa8dbdcb-2f02-4733-a783-0a9da14b4090
-include("Algorithme_de_Kazda/fonction.jl")
+include("fonction.jl")
 
-include("heuristique_avancee_flex/polygon_subdivision.jl")
-include("heuristique Lipschitz/test_functions.jl")
+include("polygon_subdivision.jl")
+include("test_functions.jl")
 include("basic_planar_and_polygonal_functions.jl")
 
 # ╔═╡ 0db861fd-2d46-49c6-9ae4-3dfe9c0c89ae

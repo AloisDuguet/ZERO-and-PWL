@@ -1,3 +1,5 @@
+using Plots
+
 function find_comparable_experiences(i, experiences, option, option_values)
     # find the set of indices of experiences which have the same setting than experiences[i] except for option which is in option_values
     # those indices corresponds to the order of option_values
@@ -310,14 +312,14 @@ function relaunch_exp(experiences, number, complete_output = false)
             cd("../IPG-and-PWL/src")
         end
         if occursin("ProcessExited(10)", string(e)) # SGM finished with TIME LIMIT reached
-            output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [])
+            output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [], -1, -1)
         #elseif occursin("ProcessExited(11)", string(e)) # SGM finished with MAX ITER reached
         elseif occursin("ProcessExited(11)", string(e)) # SGM finished with MAX ITER reached
-            output = output_cs_instance(false, ErrorException("ERROR max iter reached in SGM"), [], Inf, -1, [], [], [])
+            output = output_cs_instance(false, ErrorException("ERROR max iter reached in SGM"), [], Inf, -1, [], [], [], -1, -1)
         elseif occursin("ProcessExited(3)", string(e)) # SGM finished with MAX ITER reached
-            output = output_cs_instance(false, ErrorException("ERROR time limit reached in NL BR"), [], Inf, -1, [], [], [])
+            output = output_cs_instance(false, ErrorException("ERROR time limit reached in NL BR"), [], Inf, -1, [], [], [], -1, -1)
         else
-            output = output_cs_instance(false, e, [], Inf, -1, [], [], [])
+            output = output_cs_instance(false, e, [], Inf, -1, [], [], [], -1, -1)
             #outputs = output_cs_instance(false, infos[7], [[]], [], 0, -1, [], [])  old
         end
         if !complete_output
@@ -335,6 +337,45 @@ function relaunch_failed_exps(experiences)
         exp = experiences[i]
         sol = exp.outputs.solution
         if !(typeof(sol) <: Vector{}) || sol == [[]]
+            experiences[i] = relaunch_exp(experiences, i)
+        end
+    end
+    return experiences
+end
+
+function relaunch_failed_exps_specific(experiences)
+    # relaunch all failed experiences in experiences
+    l = []
+    for i in 1:length(experiences)
+        exp = experiences[i]
+        sol = exp.outputs.solution
+        if typeof(sol) == ErrorException && occursin("iteration 1", sol.msg)
+            experiences[i] = relaunch_exp(experiences, i)
+        end
+    end
+    return experiences
+end
+
+function relaunch_failed_exps_specific2(experiences)
+    # relaunch all failed experiences in experiences
+    l = []
+    for i in 1:length(experiences)
+        exp = experiences[i]
+        sol = exp.outputs.solution
+        if exp.options.refinement_method == "full_refinement"
+            experiences[i] = relaunch_exp(experiences, i)
+        end
+    end
+    return experiences
+end
+
+function relaunch_failed_exps_specific3(experiences)
+    # relaunch all failed experiences in experiences
+    l = []
+    for i in 1:length(experiences)
+        exp = experiences[i]
+        sol = exp.outputs.solution
+        if typeof(sol) == String && occursin("max iter", sol)
             experiences[i] = relaunch_exp(experiences, i)
         end
     end
@@ -577,7 +618,9 @@ function method_comparison(exps, list_categories, title = "table"; filename_save
     row_names = []
     col_names = ["methods", "%solved", "#inst", "time", "iter"]
 
+
     for category in list_categories
+        println(category)
         mean_time = 0
         computed = 0
         solved = 0
@@ -635,12 +678,14 @@ function method_comparison(exps, list_categories, title = "table"; filename_save
     return mean_times, computeds, solveds, iterss
 end
 
-function launch_method_comparison(filename, refinement_methods, errs, title = ""; filename_save = "")
+function launch_method_comparison(filename, exps, refinement_methods, errs, title = ""; filename_save = "")
     # create list_categories for analyse_performance by putting results :
     # for NL versions, only one category
     # for PWL versions, one category per error in errs
 
-    exps = load_all_outputs(filename)
+    if filename != ""
+        exps = load_all_outputs(filename)
+    end
 
     list_categories = []
     for refinement_method in refinement_methods
@@ -659,4 +704,163 @@ function launch_method_comparison(filename, refinement_methods, errs, title = ""
         end
     end
     method_comparison(exps, list_categories, title; filename_save = filename_save)
+    return exps
+end
+
+struct Profile # informations on one curve of a performance profile
+    x # list of values for axis x
+    y # list of valeus for axis y
+    name # name of the profile (method name)
+    dict_options # In case I forgot some things
+end
+
+struct Performance_profile
+    profiles::Vector{Profile}
+    title::String
+    x_axis::String
+    y_axis::String
+    x_range::Vector{Float64} # range of values of x
+    y_range::Vector{Float64} # range of values of y
+    dict_options # In case I forgot some things
+end
+
+function performance_profile(profiles; xlog = false)
+    # plot a performance profile of the profiles in profiles
+    # display a title, an x_axis, a y_axis...
+
+    # general informations
+    p = plot(legend=:bottomright)
+    title!(p,profiles.title)
+    xlabel!(p,profiles.x_axis)
+    ylabel!(p,profiles.y_axis)
+    xlims!(p,profiles.x_range[1], profiles.x_range[2])
+    ylims!(p,profiles.y_range[1], profiles.y_range[2])
+    #=lc for linecolor
+    lw for linewidth
+    mc for markercolor
+    ms for markersize
+    ma for markeralpha=#
+
+    # add profiles
+    for profile in profiles.profiles
+        if xlog
+            plot!(p,profile.x, profile.y, label = profile.name, xaxis=:log)
+        else
+            plot!(p,profile.x, profile.y, label = profile.name)
+        end
+    end
+    return p
+end
+
+function prepare_performance_profile_cybersecurity(filename, filename_save = "performance_profile.png", list_categories = []; refinement_methods = ["full_refinement","SGM_SOCP_model"],
+    errs = [Absolute(0.5),Absolute(0.05),Absolute(0.005),Absolute(0.0005)], time_limit=100)
+    # prepare profiles for a call to function performance_profile
+    # the performace profile will be:
+    # computation time in x
+    # #solved in y
+
+    exps = load_all_outputs(filename)
+
+    # create list_categories if not given
+    if list_categories == []
+        for refinement_method in refinement_methods
+            if refinement_method[1:4] == "SGM_"
+                # it is a NL version, adding only one
+                cat = category([characteristic(:refinement_method,refinement_method)], split(refinement_method, "_")[2])
+                push!(list_categories, cat)
+            else
+                for err in errs
+                    charac1 = characteristic(:refinement_method, refinement_method)
+                    charac2 = characteristic(:err_pwlh, err)
+                    name = string(refinement_method, "_", err.delta)
+                    cat = category([charac1,charac2], name)
+                    push!(list_categories, cat)
+                end
+            end
+        end
+    end
+
+    # find all experiences for each category
+    exps_by_category = [[] for i in 1:length(list_categories)]
+    for i in 1:length(list_categories)
+        category = list_categories[i]
+        println(category)
+        for exp in exps
+            in_category = true
+            # does it meet the required characteristics?
+            for characteristic in category.l_option
+                if getfield(exp.options, characteristic.option) != characteristic.option_value
+                    in_category = false
+                    break
+                end
+            end
+            # if yes, add informations
+            if in_category
+                cpu_time = Inf
+                if exp.outputs.solved
+                    if exp.options.refinement_method == "SGM_NL_model" || exp.options.refinement_method == "SGM_SOCP_model" || exp.options.refinement_method == "SGM_gurobiNL_model"
+                        cpu_time = exp.outputs.SGM_time
+                    else
+                        cpu_time = exp.outputs.cpu_time
+                    end
+                end
+                push!(exps_by_category[i], cpu_time)
+            end
+        end
+        sort!(exps_by_category[i])
+    end
+
+    # create profiles
+    l_profiles = []
+    for i in 1:length(list_categories)
+        x = []
+        y = []
+        n_exps = length(exps_by_category[i])
+        for j in 1:length(exps_by_category[i])
+            if exps_by_category[i][j] <= time_limit
+                push!(x, exps_by_category[i][j])
+                push!(y, j/n_exps)
+            end
+        end
+        # add last point with same fraction of instances solved and time to time_limit to finish the curve in the plot
+        push!(x, time_limit)
+        push!(y, y[end])
+        println("adding point ($time_limit,$(y[end-1]))")
+
+        name = list_categories[i].name
+        # change some names to fit my slides: "full_refinement"=>"PWL-ANE", "SOCP"=>"SGM-MOSEK"
+        name = replace(name, "full_refinement"=>"PWL-ANE")
+        name = replace(name, "SOCP"=>"SGM-MOSEK")
+        push!(l_profiles, Profile(x,y,name,Dict()))
+    end
+
+    println("list_categories of length $(length(list_categories)):\n$list_categories")
+    #=println("l_profiles:")
+    for i in 1:length(list_categories)
+        println(l_profiles[i].name)
+        println(l_profiles[i].x)
+        println(l_profiles[i].y)
+    end=#
+
+    # add fields of l_profiles
+    title = "Performance profile for cybersecurity game methods"
+    x_axis = "seconds"
+    y_axis = "proportion of instances solved"
+    min_time = minimum([l_profiles[i].x[1] for i in 1:length(l_profiles)])
+    #max_time = maximum([l_profiles[i].x[end-1] for i in 1:length(l_profiles)])
+    #x_range = [min_time,max_time]
+    x_range = [min_time,time_limit]
+    y_range = [0,1.0]
+    dict_options = Dict()
+    profiles = Performance_profile(l_profiles, title, x_axis, y_axis, x_range, y_range, dict_options)
+
+    #return profiles
+
+    # launch Performance_profile
+    p = performance_profile(profiles, xlog=true)
+
+    # save plot to filename_save
+    savefig(filename_save)
+
+    display(p)
 end

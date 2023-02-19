@@ -1,6 +1,6 @@
-include("../basic_functions.jl")
+include("basic_functions.jl")
 include("tools_evaluate_piece.jl")
-include("../heuristique triangle+rectangle/polygon_difference.jl")
+include("polygon_difference.jl")
 
 function get_mid_angle(num_vertex, polygon)
     # retourne l'angle entre 0 et 2*pi qui dirige la bissectrice de polygon en le sommet numéro num_vertex

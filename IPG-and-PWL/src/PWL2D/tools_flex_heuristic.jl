@@ -1,5 +1,5 @@
-include("../basic_functions.jl")
-include("../heuristique triangle+rectangle/polygon_difference.jl") # utile même sans polygon_difference()
+include("basic_functions.jl")
+include("polygon_difference.jl") # utile même sans polygon_difference()
 include("polygon_subdivision.jl")
 include("polygon_difference_problems.jl")
 

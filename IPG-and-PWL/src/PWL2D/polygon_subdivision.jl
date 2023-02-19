@@ -1,4 +1,4 @@
-include("../heuristique triangle+rectangle/polygon_difference.jl")
+include("polygon_difference.jl")
 
 function emptying_polygon_list(current_region,missing_regions,polygon_list)
     # vide polygon_list dans current_region et missing_regions

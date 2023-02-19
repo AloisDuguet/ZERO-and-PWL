@@ -1,5 +1,5 @@
-include("../basic_functions.jl")
-include("../heuristique triangle+rectangle/polygon_difference.jl")
+include("basic_functions.jl")
+include("polygon_difference.jl")
 
 function remove_one_vertex_polygon(polygon)
     # retourne polygon si c'est un polygone à au moins 3 côtés

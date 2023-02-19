@@ -1,5 +1,5 @@
 include("tools_remaining_error.jl")
-include("../corridor.jl")
+include("corridor.jl")
 
 using PolygonOps, ForwardDiff, LinearAlgebra
 

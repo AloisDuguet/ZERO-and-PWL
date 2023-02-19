@@ -26,7 +26,7 @@ function separable_heuristic(f, err, f1, f2, transformation_type, dict_args)
         # reconstruit la PWL 2D à partir des deux PWL nnc 1D et du type de transformation
         polygons = build_2D_PWL(PWL1, PWL2, transformation_type, dict_args)
     else
-        # f2 n'ai pas forcément une fonction à une variable pour la transformation IV
+        # f2 n'es pas forcément une fonction à une variable pour la transformation IV
         # donc ça se passe pas pareil
         dict_args2 = Dict("domain"=>dict_args["domain"],"str_expr_f1"=>"x*x","str_expr_f2"=>"-x*x")
         polygons = separable_heuristic(f2, Absolute(delta2), x->x^2, x->-x^2, 1, dict_args2)

@@ -18,7 +18,7 @@ import time as Ltime
 # U_p = individial profit for each player and each strategy in S
 # Best_m = list of the players best reaction models
 
-def InitialStrategies(G,opt_solver=1):
+def InitialStrategies(G,opt_solver=1,REL_GAP_SOLVER=1e-7):
     ### for each player produce the optimal strategy if she was alone in the game ###
     S = [[[]] for p in range(G.m())] # list of strategies
     U_p = [[[]] for p in range(G.m())] # associated individual profit
@@ -38,22 +38,15 @@ def InitialStrategies(G,opt_solver=1):
             except:
                 print("Player ", p+1, " has no feasible solution or the problem is unbounded")
         elif G.type() == "CyberSecurity":
-            #print("shape of Q: ", np.shape(G.Q()))
-            #print("shape of Q[p]: ", np.shape(G.Q()[p]))
-            #for l in range(np.shape(G.Q()[p])[0]):
-                #print("shape of the %i-th bloc of Q[p] = "%l, np.shape(G.Q()[p][l]))
-                #print(G.Q()[p][l][:3,:3])
-                #print(G.Q()[p][l])
-            #print("just before bestreactiongurobicybersecurity")
-            S[p][0], U_p[p][0], Model_p = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins())
+            S[p][0], U_p[p][0], Model_p = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER)
         elif G.type() == "CyberSecurityNL":
-            S[p][0], U_p[p][0], Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
+            S[p][0], U_p[p][0], Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER, NL_term = G.NL_term())
         elif G.type() == "CyberSecuritySOCP":
-            S[p][0], U_p[p][0], Model_p = SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
+            S[p][0], U_p[p][0], Model_p = SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER, NL_term = G.NL_term())
         elif G.type() == "CyberSecuritygurobiNL":
-            S[p][0], U_p[p][0], Model_p = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
+            S[p][0], U_p[p][0], Model_p = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,NL_term=G.NL_term())
         # add Ds[p] to U_p[p][0] because it is removed in the BR functions gurobiNL, NL, not in gurobi and removed also in ComputeNE_MIP.
-        U_p[p][0] += Ds[p]
+        U_p[p][0] += Ds[p] # -Ds[p]/m*sum(Profile...) is not removed because sum(Profile) == 0 because the starting solution is [0 0 ... 0 0]
         MCT[p].append(S[p][0][n_markets])
         Best_m.append(Model_p)
     return S, U_p, MCT, Best_m
@@ -141,7 +134,7 @@ def SocialOptimumGurobi(m, n_I, n_C, n_constr, c, Q, A, b):
 ######################################################
 
 
-def CreateModels(m, n_I, n_C, n_constr, c, Q, A, b, problem_type = "UNK", G = None):
+def CreateModels(m, n_I, n_C, n_constr, c, Q, A, b, problem_type = "UNK", G = None,REL_GAP_SOLVER=1e-7):
     Profile = [np.array([0 for k in range(n_I[p]+n_C[p])]) for p in range(m)]
     Best_m = []
     for p in range(m):
@@ -149,13 +142,13 @@ def CreateModels(m, n_I, n_C, n_constr, c, Q, A, b, problem_type = "UNK", G = No
             return "andouille"
             _,_,Model_p = BestReactionGurobi(m,n_I[p],n_C[p],n_constr[p],c[p],Q[p],A[p],b[p],Profile,p,True)
         elif G.type() == "CyberSecurity":
-            _,_,Model_p = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p])
+            _,_,Model_p = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER) # create = True should be fine
         elif G.type() == "CyberSecurityNL":
-            _,_,Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
+            _,_,Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER, NL_term = G.NL_term()) # same
         elif G.type() == "CyberSecuritySOCP":
-            _,_,Model_p = SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
+            _,_,Model_p = SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER, NL_term = G.NL_term()) # same
         elif G.type() == "CyberSecuritygurobiNL":
-            _,_,Model_p = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None)
+            _,_,Model_p = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER) # create = True should be fine
         Best_m.append(Model_p)
     return Best_m
 
@@ -288,7 +281,7 @@ def BestReactionGurobi(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Profile,p,create
 
 # CHANGED HERE
 # Compute Best Reaction of player against the strategy 'Profile'
-def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Profile,p,create,ins, m_p = None,CE_verify=False):
+def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Profile,p,create,ins, m_p = None,CE_verify=False,REL_GAP_SOLVER=1e-7):
     if CE_verify:
         xk_Qkp = sum(Q_p[k] for k in range(m) if k!=p)
     else:
@@ -299,11 +292,12 @@ def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Pro
         # initiate model
         m_p = grb.Model("MIQPG")
         # no pritting of the output
-        m_p.setParam( 'OutputFlag', False)
+        #m_p.setParam( 'OutputFlag', False)
         m_p.setParam("Threads", 4)
-        m_p.setParam("MIPGap", 1e-9) # keep value 1e-8 to avoid some numerical issues with the 1e-6 of the SGM stopping criterion
-        m_p.setParam("FeasibilityTol", 1e-9) # do not put something less precise than 1e-7 if the stopping criterion is 1e-6
-        m_p.setParam("IntFeasTol", 1e-9)
+        m_p.setParam("MIPGap",REL_GAP_SOLVER) # keep value 1e-8 to avoid some numerical issues with the 1e-6 of the SGM stopping criterion
+        m_p.setParam('MIPGapAbs', 1e4)
+        m_p.setParam("FeasibilityTol",1e-9) # do not put something less precise than 1e-7 if the stopping criterion is 1e-6
+        m_p.setParam("IntFeasTol",1e-9)
         #m_p.setParam('BarHomogeneous', 1)
         #m_p.setParam('DualReductions',0)
         # set objective function direction
@@ -384,40 +378,41 @@ def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Pro
             m_p.setObjective(m_p.getObjective()-np.dot(xk_Qkp,m_p.getVars()))
         m_p.update()
         return None,None,m_p
-    if not CE_verify:
-        # warm start
-        for j,aux_var in enumerate(m_p.getVars()):
-            aux_var.start = Profile[p][j]
+    else:
+        if not CE_verify:
+            # warm start
+            for j,aux_var in enumerate(m_p.getVars()):
+                aux_var.start = Profile[p][j]
+                m_p.update()
+        global start_time
+        print("end of model in MILP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
+        m_p.optimize()
+        print("end of optimization in MILP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
+        try:
+            #return [x[i].x for i in range(n_I_p+n_C_p)],m_p.ObjVal, m_p
+            sol = [i.x for i in m_p.getVars()]
+            # add MCT to the objective (and mixed terms)
+            alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
+            value = m_p.ObjVal - Ds[p] + Ds[p]/m*sum(Profile[k][n_markets] for k in range(m) if k != p)
+            if n_I_p+n_C_p ==1 and type(xk_Qkp) is not np.ndarray:
+                # this is important for NE verification
+                if CE_verify:
+                    m_p.setObjective(m_p.getObjective()-xk_Qkp*x_tmp)
+                else:
+                    m_p.setObjective(m_p.getObjective()-xk_Qkp*m_p.getVars()[0])
+            else:
+                if CE_verify:
+                    m_p.setObjective(m_p.getObjective()-np.dot(x_tmp,xk_Qkp))
+                else:
+                    # this is important for NE verfication
+                    m_p.setObjective(m_p.getObjective()-np.dot(xk_Qkp,m_p.getVars()))
             m_p.update()
-    global start_time
-    ###print("end of model in MILP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
-    m_p.optimize()
-    ###print("end of optimization in MILP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
-    try:
-        #return [x[i].x for i in range(n_I_p+n_C_p)],m_p.ObjVal, m_p
-        sol = [i.x for i in m_p.getVars()]
-        # add MCT to the objective (and mixed terms)
-        alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
-        value = m_p.ObjVal - Ds[p] + Ds[p]/m*sum(Profile[k][n_markets] for k in range(m) if k != p)
-        if n_I_p+n_C_p ==1 and type(xk_Qkp) is not np.ndarray:
-            # this is important for NE verification
-            if CE_verify:
-                m_p.setObjective(m_p.getObjective()-xk_Qkp*x_tmp)
-            else:
-                m_p.setObjective(m_p.getObjective()-xk_Qkp*m_p.getVars()[0])
-        else:
-            if CE_verify:
-                m_p.setObjective(m_p.getObjective()-np.dot(x_tmp,xk_Qkp))
-            else:
-                # this is important for NE verfication
-                m_p.setObjective(m_p.getObjective()-np.dot(xk_Qkp,m_p.getVars()))
-        m_p.update()
 
-        return sol, value, m_p
-    except:
-        print("Wow! The best reaction problem has no feasible solution. The status code is: ", m_p.status)
+            return sol, value, m_p
+        except:
+            print("Wow! The best reaction problem has no feasible solution. The status code is: ", m_p.status)
 
-def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Profile,p,create,ins, m_p = None,CE_verify=False):
+def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Profile,p,create,ins, m_p = None,CE_verify=False,REL_GAP_SOLVER=1e-7,NL_term="inverse_square_root"):
     if CE_verify:
         xk_Qkp = sum(Q_p[k] for k in range(m) if k!=p)
     else:
@@ -430,9 +425,12 @@ def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,P
         # no pritting of the output
         m_p.setParam( 'OutputFlag', False)
         m_p.setParam("Threads", 4)
-        m_p.setParam("MIPGap", 1e-9)
-        #m_p.setParam("IntFeasTol", 1e-9)
-        m_p.setParam("FeasibilityTol", 1e-9) # allowed to remove numerical issues in the convergence of the SGM with value 1e-7 as opposed to 1e-6
+        m_p.setParam("MIPGap",REL_GAP_SOLVER)
+        m_p.setParam("BarQCPConvTol",REL_GAP_SOLVER)
+        m_p.setParam("BarConvTol",REL_GAP_SOLVER)
+        m_p.setParam("OptimalityTol",REL_GAP_SOLVER)
+        m_p.setParam("IntFeasTol", 1e-9)
+        m_p.setParam("FeasibilityTol",1e-9) # allowed to remove numerical issues in the convergence of the SGM with value 1e-7 as opposed to 1e-6
         #m_p.setParam('BarHomogeneous', 1)
         #m_p.setParam('DualReductions',0)
         # set objective function direction
@@ -464,12 +462,36 @@ def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,P
         # add nonlinear term (cybersecurity budget) as quadratic constraints and variables s_nl and t_nl
         alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
         nl_vars = []
-        nl_vars.append(m_p.addVar(lb = 0, vtype="C", name="s_nl"))
-        nl_vars.append(m_p.addVar(lb = 0, vtype="C", name="t_nl"))
-        m_p.addConstr(nl_vars[0]*nl_vars[0], grb.GRB.LESS_EQUAL, 1-x[n_markets])
-        m_p.addConstr(1, grb.GRB.LESS_EQUAL, nl_vars[1]*nl_vars[0])
+        if NL_term == "inverse_square_root":
+            nl_vars.append(m_p.addVar(lb = 0, ub = 1, vtype="C", name="s_nl"))
+            nl_vars.append(m_p.addVar(lb = 0, vtype="C", name="t_nl"))
+            m_p.addConstr(nl_vars[0]*nl_vars[0], grb.GRB.LESS_EQUAL, 1-x[n_markets])
+            m_p.addConstr(1, grb.GRB.LESS_EQUAL, nl_vars[1]*nl_vars[0])
+        elif NL_term == "inverse_cubic_root":
+            m_p.setParam("NonConvex", 2)
+            nl_vars.append(m_p.addVar(lb = 0, ub = 1, vtype="C", name="s_nl"))
+            nl_vars.append(m_p.addVar(lb = 0, vtype="C", name="t_nl"))
+            # for a simplification in the warmstart and in the objective, t_nl should be the second term of nl_vars.
+            nl_vars.append(m_p.addVar(lb = 0, ub = 1, vtype="C", name="s2_nl"))
+            s_nl = nl_vars[0]
+            s2_nl = nl_vars[2]
+            t_nl = nl_vars[1]
+            #m_p.addConstr(s2_nl, grb.GRB.EQUAL, s_nl*s_nl)
+            m_p.addConstr(s_nl*s_nl, grb.GRB.LESS_EQUAL, s2_nl)
+            m_p.addConstr(s2_nl*s_nl, grb.GRB.LESS_EQUAL, 1-x[n_markets])
+            m_p.addConstr(1, grb.GRB.LESS_EQUAL, s_nl*t_nl)
+        elif NL_term == "log":
+            m_p.setParam("NonConvex", 2)
+            nl_vars.append(m_p.addVar(lb = 0, ub = 1, vtype="C", name="s_nl"))
+            nl_vars.append(m_p.addVar(lb = 0, vtype="C", name="t_nl")) # the fact that t_nl is negative could lead to problems!!!
+            m_p.addConstr(s_nl == 1-x[n_markets])
+            m_p.addGenConstrLogA(s_nl, -t_nl, np.e, "log(1-x)", "FuncPieces=-1 FuncPieceError=%f"%())
+            exit(19) # it is quite tricky to chose FuncPieceError because we need to know the optimal objective value... Thus it is not implemented for now
 
-        m_p.setObjective(QuadPart - alpha*(nl_vars[1] - 1)) # contains the term for the cybersecurity budget
+        if NL_term == "log":
+            m_p.setObjective(QuadPart - alpha*nl_vars[1])
+        else:
+            m_p.setObjective(QuadPart - alpha*(nl_vars[1] - 1)) # contains the term for the cybersecurity budget
         m_p.update()
     if CE_verify and m_p!=None:
         x_tmp = np.array(m_p.getVars())
@@ -481,64 +503,85 @@ def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,P
         m_p.setObjective(m_p.getObjective()+np.dot(x_tmp,xk_Qkp))
         m_p.update()
     else:
-        m_p.setObjective(m_p.getObjective() + np.dot(x,xk_Qkp)) # before it was m_p.getVars() instead of x
+        if NL_term == "inverse_square_root":
+            m_p.setObjective(m_p.getObjective() + np.dot(m_p.getVars()[:len(m_p.getVars())-2],xk_Qkp)) # before it was m_p.getVars() instead of x
+        elif NL_term == "inverse_cubic_root":
+            m_p.setObjective(m_p.getObjective() + np.dot(m_p.getVars()[:len(m_p.getVars())-3],xk_Qkp)) # before it was m_p.getVars() instead of x
         m_p.update()
     #m_p.write("test_model_%i.lp"%(p+1))
-    if not CE_verify and True: # CHANGED HERE
-        # warm start
-        for j,aux_var in enumerate(m_p.getVars()):
-            if j < len(Profile[p]):
-                aux_var.start = Profile[p][j]
-            elif j == len(Profile[p]):
-                aux_var.start = np.sqrt(1-m_p.getVars()[n_markets].start)
-            elif j == len(Profile[p])+1:
-                aux_var.start = 1/m_p.getVars()[len(Profile[p])].start
-            m_p.update()
-    global start_time
-    #print("end of model in MIQP for NL BR --- %s seconds ---" % (Ltime.time() - 1675900000))
-    #m_p.setParam("LogToConsole", 1)
-    #m_p.setParam("OutputFlag", 1)
-    m_p.optimize()
-    ###print("end of optimization in MIQP for NL BR --- %s seconds ---" % (Ltime.time() - 1675900000))
-    try:
-        #return [x[i].x for i in range(n_I_p+n_C_p)],m_p.ObjVal, m_p
-        sol = [i.x for i in m_p.getVars()]
-        value = m_p.ObjVal - Ds[p] + Ds[p]/m*sum(Profile[k][n_markets] for k in range(m) if k != p)
-        sol = sol[:len(sol)-2] # added for the NL term
-        #print("solution of gurobiNL of value %f: \n\t\t\t\t"%(value), sol)
-        if False:
-            print("values of terms in NL BR:")
-            print("linear part: ", np.dot(c_p,sol))
-            print("quadratic part: ", - 0.5*np.dot(sol,np.dot(Q_p[p],sol)))
-            print("nonlinear part: ", - alpha*(1/np.sqrt(1-sol[n_markets])-1))
-            print("mixed part: ", np.dot(sol,xk_Qkp))
-            print("constant part: ", - Ds[p] + Ds[p]/m*sum(Profile[k][n_markets] for k in range(m) if k != p))
-            print("-Ds[p] ", -Ds[p])
-            print("sum of Profile[k][n_markets] ", sum(Profile[k][n_markets] for k in range(m) if k != p))
-            for k in range(m):
-                if k != p:
-                    print(Profile[k][n_markets])
-            total = np.dot(c_p,sol) - 0.5*np.dot(sol,np.dot(Q_p[p],sol)) - alpha*(1/np.sqrt(1-sol[n_markets])-1) + np.dot(sol,xk_Qkp) - Ds[p] + Ds[p]/m*sum(Profile[k][n_markets] for k in range(m) if k != p)
-            print("total: ", total)
-        #exit(4)
-        if n_I_p+n_C_p ==1 and type(xk_Qkp) is not np.ndarray:
-            # this is important for NE verification
-            if CE_verify:
-                m_p.setObjective(m_p.getObjective()-xk_Qkp*x_tmp)
-            else:
-                m_p.setObjective(m_p.getObjective()-xk_Qkp*m_p.getVars()[0])
-        else:
-            if CE_verify:
-                m_p.setObjective(m_p.getObjective()-np.dot(x_tmp,xk_Qkp))
-            else:
-                # this is important for NE verfication
-                m_p.setObjective(m_p.getObjective()-np.dot(xk_Qkp,m_p.getVars()[:len(x)]))
+    if create:
+        if NL_term == "inverse_square_root":
+            m_p.setObjective(m_p.getObjective()-np.dot(xk_Qkp,m_p.getVars()[:len(m_p.getVars())-2]))
+        elif NL_term == "inverse_cubic_root":
+            m_p.setObjective(m_p.getObjective()-np.dot(xk_Qkp,m_p.getVars()[:len(m_p.getVars())-3]))
         m_p.update()
+        return None,None,m_p
+    else:
+        alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
+        if not CE_verify and True: # CHANGED HERE to activate warmstart or not
+            # warm start
+            for j,aux_var in enumerate(m_p.getVars()):
+                if j < len(Profile[p]):
+                    aux_var.start = Profile[p][j]
+                elif j == len(Profile[p]):
+                    if NL_term == "inverse_square_root":
+                        aux_var.start = np.sqrt(1-m_p.getVars()[n_markets].start)
+                    elif NL_term == "inverse_cubic_root":
+                        aux_var.start = (1-m_p.getVars()[n_markets].start)**(1/3)
+                elif j == len(Profile[p])+1:
+                    aux_var.start = 1/m_p.getVars()[len(Profile[p])].start
+                m_p.update()
+        global start_time
+        print("end of model in MIQP for NL BR --- %s seconds ---" % (Ltime.time() - 1675900000))
+        #m_p.setParam("LogToConsole", 1)
+        #m_p.setParam("OutputFlag", 1)
+        m_p.optimize()
+        print("end of optimization in MIQP for NL BR --- %s seconds ---" % (Ltime.time() - 1675900000))
+        try:
+            #return [x[i].x for i in range(n_I_p+n_C_p)],m_p.ObjVal, m_p
+            sol = [i.x for i in m_p.getVars()]
+            value = m_p.ObjVal - Ds[p] + Ds[p]/m*sum(Profile[k][n_markets] for k in range(m) if k != p)
+            if NL_term == "inverse_square_root":
+                sol = sol[:len(sol)-2] # added for the NL term
+            elif NL_term == "inverse_cubic_root":
+                sol = sol[:len(sol)-3]
+            #print("solution of gurobiNL of value %f: \n\t\t\t\t"%(value), sol)
+            if False: # the NL_term has not been adapted to another option than inverse_square_root
+                print("values of terms in NL BR:")
+                print("linear part: ", np.dot(c_p,sol))
+                print("quadratic part: ", - 0.5*np.dot(sol,np.dot(Q_p[p],sol)))
+                print("nonlinear part: ", - alpha*(1/np.sqrt(1-sol[n_markets])-1))
+                print("mixed part: ", np.dot(sol,xk_Qkp))
+                print("constant part: ", - Ds[p] + Ds[p]/m*sum(Profile[k][n_markets] for k in range(m) if k != p))
+                print("-Ds[p] ", -Ds[p])
+                print("sum of Profile[k][n_markets] ", sum(Profile[k][n_markets] for k in range(m) if k != p))
+                for k in range(m):
+                    if k != p:
+                        print(Profile[k][n_markets])
+                total = np.dot(c_p,sol) - 0.5*np.dot(sol,np.dot(Q_p[p],sol)) - alpha*(1/np.sqrt(1-sol[n_markets])-1) + np.dot(sol,xk_Qkp) - Ds[p] + Ds[p]/m*sum(Profile[k][n_markets] for k in range(m) if k != p)
+                print("total: ", total)
+            #exit(4)
+            if n_I_p+n_C_p ==1 and type(xk_Qkp) is not np.ndarray:
+                # this is important for NE verification
+                if CE_verify:
+                    m_p.setObjective(m_p.getObjective()-xk_Qkp*x_tmp)
+                else:
+                    m_p.setObjective(m_p.getObjective()-xk_Qkp*m_p.getVars()[0])
+            else:
+                if CE_verify:
+                    m_p.setObjective(m_p.getObjective()-np.dot(x_tmp,xk_Qkp))
+                else:
+                    # this is important for NE verfication
+                    if NL_term == "inverse_square_root":
+                        m_p.setObjective(m_p.getObjective()-np.dot(xk_Qkp,m_p.getVars()[:len(m_p.getVars())-2]))
+                    elif NL_term == "inverse_cubic_root":
+                        m_p.setObjective(m_p.getObjective()-np.dot(xk_Qkp,m_p.getVars()[:len(m_p.getVars())-3]))
+            m_p.update()
 
-        return sol, value, m_p
-    except:
-        print(sys.exc_info())
-        print("Wow! The best reaction problem has no feasible solution. The status code is: ", m_p.status)
+            return sol, value, m_p
+        except:
+            print(sys.exc_info())
+            print("Wow! The best reaction problem has no feasible solution. The status code is: ", m_p.status)
 
 if __name__ == "__main__":
     np.random.seed(6)

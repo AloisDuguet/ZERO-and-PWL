@@ -3,13 +3,13 @@ using Gurobi # the fastest, no output with set_optimizer_attribute(model, "LogTo
 using Cbc # the second fastest, I do not know how to suppress output
 using GLPK # the slowest, no output naturally
 
-include("../functions.jl")
+include("functions.jl")
 include("tools_flex_heuristic.jl")
 include("select_new_piece.jl")
-include("../save_triangulation.jl")
-include("../plot_polygons.jl")
-include("../heuristique triangle+rectangle/polygon_difference.jl")
-include("../corridor.jl")
+include("save_triangulation.jl")
+include("plot_polygons.jl")
+include("polygon_difference.jl")
+include("corridor.jl")
 
 function flex_heuristic_procedure(f, arguments, plot_partial_pwl = false)
     # structure d'un algorithme pour trouver une pwl dans un corridor autour d'une fonction
@@ -78,7 +78,10 @@ function flex_heuristic_procedure(f, arguments, plot_partial_pwl = false)
     return polygons
 end
 
-function PWL2D_heuristic(f, str_exprf, err, domain; LP_SOLVER = "GLPK", not_rectangular_domain = false, num_func = "UNK", n_corridor = [1,1], DSR = 0.0625, LP_time_limit = 3600.0, firstv = "all", bounding_method = "eff", min_eff = 0.95, inclined_bounding = true, NPH = "mean_along_edge", eval_f_str = "PaD", n_eval_sample = 200, save_solution = false, plot_pwl = false, plot_partial_pwl = false)
+function PWL2D_heuristic(f, str_exprf, err, domain; LP_SOLVER = "GLPK", not_rectangular_domain = false,
+    num_func = "UNK", n_corridor = [1,1], DSR = 0.0625, LP_time_limit = 3600.0, firstv = "all",
+    bounding_method = "eff", min_eff = 0.95, inclined_bounding = true, NPH = "mean_along_edge",
+    eval_f_str = "PaD", n_eval_sample = 200, save_solution = false, plot_pwl = false, plot_partial_pwl = false)
     """ Easy to use function to launch function flex_heuristic_procedure, that build a piecewise linear function approximating function f with approximation error err on domain domain.
         See Article "Piecewise Linearization of Bivariate Nonlinear Functions: Minimizing the Number of Pieces under a Bounded Approximation Error" by Aloïs Duguet and Sandra Ulrich Ngueveu for more details (replace by complete citation when available).
         (add a copyright rule)

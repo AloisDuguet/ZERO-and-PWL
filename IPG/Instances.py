@@ -33,7 +33,7 @@ class Game(object):
     A: list of constraint matrices for each player i=0,..,m-1
     b: list of vectors with the rhs for the constraints of each player i=0,..,m-1
     """
-    def __init__(self, type, m = 2, n = 10, ins = 0, numb_ins = 10, K=0):
+    def __init__(self, type, m = 2, n = 10, ins = 0, numb_ins = 10, K=0, NL_term = ""):
         if type == 'Knapsack':
             m, n_I, n_C, n_constr, c, Q, A, b = Knapsack_Game(m,n,ins,numb_ins)
         elif type == 'LotSizing':
@@ -43,13 +43,13 @@ class Game(object):
         elif type == 'KEG':
             m, n_I, n_C, n_constr, c, Q, A, b = Two_KEG_RandomGame(n,ins,K)
         elif type == 'CyberSecurity':
-            m, n_I, n_C, n_constr, c, Q, C, A, b = CyberSecurityGame(ins)
+            m, n_I, n_C, n_constr, c, Q, C, A, b, NL_term = CyberSecurityGame(ins)
         elif type == 'CyberSecurityNL':
-            m, n_I, n_C, n_constr, c, Q, C, A, b = CyberSecurityGame(ins)
+            m, n_I, n_C, n_constr, c, Q, C, A, b, NL_term = CyberSecurityGame(ins)
         elif type == 'CyberSecuritySOCP':
-            m, n_I, n_C, n_constr, c, Q, C, A, b = CyberSecurityGame(ins)
+            m, n_I, n_C, n_constr, c, Q, C, A, b, NL_term = CyberSecurityGame(ins)
         elif type == 'CyberSecuritygurobiNL':
-            m, n_I, n_C, n_constr, c, Q, C, A, b = CyberSecurityGame(ins)
+            m, n_I, n_C, n_constr, c, Q, C, A, b, NL_term = CyberSecurityGame(ins)
         elif type == "empty":
             m = 0
             n_I = []
@@ -71,6 +71,7 @@ class Game(object):
         self.__type = type
         self.__ins = ins
         self.__numb_ins = numb_ins
+        self.__NL_term = NL_term
 
     # give parameters of a player
     def Player_n_I(self,p):
@@ -118,6 +119,8 @@ class Game(object):
         return self.__ins
     def numb_ins(self):
         return self.__numb_ins
+    def NL_term(self):
+        return self.__NL_term
     def b(self):
         return self.__b
     def A(self):
@@ -370,6 +373,11 @@ def read_numbers_cybersecurity(foldername):
     n_C = [int(f.readline())] # number of continuous variables
     n_players = int(f.readline()) # number of players
     n_markets = int(f.readline()) # number of markets
+    NL_term = f.readline()
+    NL_term = NL_term[:len(NL_term)-1]
+    print(foldername)
+    print(NL_term)
+    #exit(8)
     f.close()
 
     # read numbers for other players
@@ -384,13 +392,13 @@ def read_numbers_cybersecurity(foldername):
         f.close()
     #print("end of read_numbers_cybersecurity with the list of number of variables:")
     #print(n_var)
-    return n_var,n_constr,n_I,n_C,n_players,n_markets
+    return n_var,n_constr,n_I,n_C,n_players,n_markets,NL_term
 
 def CyberSecurityGame(ins):
     # ins is the foldername of the instance
 
     # read numbers (variables, constraints, number of players...) for all players
-    n_var,n_constr,n_I,n_C,n_players,n_markets = read_numbers_cybersecurity(ins)
+    n_var,n_constr,n_I,n_C,n_players,n_markets,NL_term = read_numbers_cybersecurity(ins)
 
     c = [] # linear terms of the objective functions
     Q = [] # quadratic terms of the objective functions
@@ -444,7 +452,7 @@ def CyberSecurityGame(ins):
         #print(np.shape(Q))
         #print(np.shape(np.array(Q)))
 
-    return n_players, n_I, n_C, n_constr, c, Q, C, A, b
+    return n_players, n_I, n_C, n_constr, c, Q, C, A, b, NL_term
 
 def adapt_C(p, n_players, n_markets, n_var, C):
     # C was parsed from files, but is adapted to a model without pwl function h_i (there are indices problems)

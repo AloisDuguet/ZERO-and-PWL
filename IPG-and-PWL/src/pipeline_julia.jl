@@ -1,7 +1,7 @@
 include("parse_instance.jl")
 include("generate_pwl.jl")
 include("pwl_refinement.jl")
-include("PWL2D/heuristique_avancee_flex/main.jl")
+include("PWL2D/main.jl")
 include("separable_functions_heuristic/separable_heuristic.jl")
 include("other_functions.jl")
 

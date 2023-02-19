@@ -99,9 +99,9 @@ function prepare_and_plot_triangulation_flex_heuristic(arguments, polygons, t = 
     # complète, affiche et sauvegarde le plot p ## PAS CODÉ PROPREMENT
     bonus_plot_infos = get(arguments, "bonus_plot_infos", [])
     if t != "UNK"
-        p = plot!(title="$(length(polygons)) polygones en $t secondes")
+        p = plot!(title="$(length(polygons)) polygons en $t secondes")
     else
-        p = plot!(title="$(length(polygons)) polygones")
+        p = plot!(title="$(length(polygons)) polygons")
     end
     plot_pieces(p, polygons)
 

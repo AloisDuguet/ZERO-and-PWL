@@ -4,9 +4,9 @@ using LinA
 precompile(LinA.exactLin, (Expr,Float64,Float64,LinA.ErrorType))
 using LinearAlgebra
 
-include("../basic_functions.jl")
-include("../plot_polygons.jl")
-include("../utils_intersection.jl")
+include("basic_functions.jl")
+include("plot_polygons.jl")
+include("utils_intersection.jl")
 include("generate_Z1_polygon.jl")
 
 function float_magnitude(x)

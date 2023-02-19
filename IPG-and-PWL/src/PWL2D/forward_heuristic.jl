@@ -1,6 +1,6 @@
-include("../functions.jl")
+include("functions.jl")
 include("tools_forward_heuristic.jl")
-include("../efficiency_refinement_bounding.jl")
+include("efficiency_refinement_bounding.jl")
 
 function compute_piece_by_forward_heuristic(polygon, first_vertex, forward_direction, arguments)
     # calcul d'une pièce dans le corridor partant du sommet first_vertex de polygon et s'étendant dans la direction forward_direction

@@ -1,4 +1,4 @@
-include("heuristique Lipschitz/test_functions.jl")
+include("test_functions.jl")
 
 function get_limits_and_func(num_func)
     if num_func == 1 || num_func == "L1"
