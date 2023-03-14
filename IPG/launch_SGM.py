@@ -7,7 +7,7 @@ Created on Tue Nov  8 15:35:36 2022
 """
 # don't change the line number of the following line : it should be line 10
 # (cf write_SGM_instance_filename in ../IPG-and-PWL/src/SGM_solver.jl)
-filename = "../IPG-and-PWL/SGM_files/instance_4_4_1_Abs0-0005_fixedcosttrue"
+filename = "../IPG-and-PWL/SGM_files/instance_7_10_4_Abs0-0005_fixedcosttrue"
 game_type = "CyberSecurity"
 rel_gap = 1.0e-6
 abs_gap = 5.0e-6

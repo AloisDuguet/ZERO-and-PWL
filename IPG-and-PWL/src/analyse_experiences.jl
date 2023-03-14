@@ -606,7 +606,7 @@ mutable struct category
     name::String
 end
 
-function method_comparison(exps, list_categories, title = "table"; filename_save = "")
+function method_comparison(exps, list_categories, title = "table"; filename_save = "", time_limit = 100)
     # compute number of solved instances and mean computation time for categories in list_categories
 
     # keep track of informations
@@ -637,7 +637,12 @@ function method_comparison(exps, list_categories, title = "table"; filename_save
             # if yes, add informations
             if in_category
                 computed += 1
-                if exp.outputs.solved
+                if exp.options.refinement_method == "SGM_NL_model" || exp.options.refinement_method == "SGM_SOCP_model" || exp.options.refinement_method == "SGM_gurobiNL_model"
+                    cpu_time = exp.outputs.SGM_time
+                else
+                    cpu_time = exp.outputs.cpu_time
+                end
+                if exp.outputs.solved && cpu_time <= time_limit
                     solved += 1
                     mean_time += exp.outputs.cpu_time
                     iters += exp.outputs.iter
@@ -790,12 +795,14 @@ function prepare_performance_profile_cybersecurity(filename, filename_save = "pe
             # does it meet the required characteristics?
             for characteristic in category.l_option
                 if getfield(exp.options, characteristic.option) != characteristic.option_value
+                    #println("exp does not match category $category: $exp")
                     in_category = false
                     break
                 end
             end
             # if yes, add informations
             if in_category
+                #println("exp match for category $category: $exp")
                 cpu_time = Inf
                 if exp.outputs.solved
                     if exp.options.refinement_method == "SGM_NL_model" || exp.options.refinement_method == "SGM_SOCP_model" || exp.options.refinement_method == "SGM_gurobiNL_model"
@@ -816,21 +823,30 @@ function prepare_performance_profile_cybersecurity(filename, filename_save = "pe
         x = []
         y = []
         n_exps = length(exps_by_category[i])
-        for j in 1:length(exps_by_category[i])
+        println("number of exps for category $(list_categories[i]) is $n_exps")
+        for j in 1:n_exps
             if exps_by_category[i][j] <= time_limit
                 push!(x, exps_by_category[i][j])
                 push!(y, j/n_exps)
             end
         end
         # add last point with same fraction of instances solved and time to time_limit to finish the curve in the plot
-        push!(x, time_limit)
-        push!(y, y[end])
+        if length(y) != 0
+            push!(x, time_limit)
+            push!(y, y[end])
+        else
+            push!(x, Inf)
+            push!(y, 0)
+            push!(x, time_limit)
+            push!(y, 0)
+        end
         println("adding point ($time_limit,$(y[end-1]))")
 
         name = list_categories[i].name
         # change some names to fit my slides: "full_refinement"=>"PWL-ANE", "SOCP"=>"SGM-MOSEK"
         name = replace(name, "full_refinement"=>"PWL-ANE")
         name = replace(name, "SOCP"=>"SGM-MOSEK")
+        name = replace(name, "gurobiNL"=>"SGM-gurobiNL")
         push!(l_profiles, Profile(x,y,name,Dict()))
     end
 
@@ -848,6 +864,14 @@ function prepare_performance_profile_cybersecurity(filename, filename_save = "pe
     y_axis = "proportion of instances solved"
     min_time = minimum([l_profiles[i].x[1] for i in 1:length(l_profiles)])
     #max_time = maximum([l_profiles[i].x[end-1] for i in 1:length(l_profiles)])
+
+    # correct the categories without experiences for a normal plot
+    for i in 1:length(l_profiles)
+        if l_profiles[i].x[1] == Inf # special code for this case
+            l_profiles[i].x[1] = min_time
+        end
+    end
+
     #x_range = [min_time,max_time]
     x_range = [min_time,time_limit]
     y_range = [0,1.0]

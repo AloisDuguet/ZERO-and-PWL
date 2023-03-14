@@ -43,7 +43,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
         print("rel_gap can not be below 10**-6 for numerical stability reasons. Right now rel_gap = ", rel_gap)
         exit(6)
     else:
-        REL_GAP_SOLVER = rel_gap/10
+        REL_GAP_SOLVER = min(rel_gap/10,1e-6)
     # STEP 0 - INITIALIZATION
     # initialize set of strategies
     global start_time
@@ -72,7 +72,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
     # STEP 2 - COMPUTE EQUILIBRIA OF RESTRICTED GAME
     # compute Nash equilibrium taking account M and Back
     count = 1
-    U_depend = Utilities_Poymatrix(G.m(),G.Q(),U_depend,S_new,S,Numb_stra_S)
+    U_depend = Utilities_Polymatrix(G.m(),G.Q(),U_depend,S_new,S,Numb_stra_S)
     list_best = list(range(G.m()))
     time_aux = time()
     ne = [0 for p in range(G.m()) for _ in range(Numb_stra[p]) ]
@@ -140,7 +140,9 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
             elif G.type() == "CyberSecuritygurobiNL":
                 s_p, u_max, _ = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,NL_term=G.NL_term())
             #print("end of computation of Best Response iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
-            if Profits[p]+max(abs(Profits[p])*rel_gap,abs_gap) <= u_max: # DON'T CHANGE THE 1e-5 AND THE 1e-6 WITHOUT ALSO CHANGING IT IN THE JULIA CODE
+            if Profits[p]+abs(Profits[p])*rel_gap <= u_max: # only relative version of this test, because in julia everyting is coded for only relative... Instances with a BR near 0 may have difficulties to converge.
+            #if Profits[p]+max(abs(Profits[p])*rel_gap,abs_gap) <= u_max: # DON'T CHANGE THE 1e-5 AND THE 1e-6 WITHOUT ALSO CHANGING IT IN THE JULIA CODE
+            #if abs(Profits[p]-u_max)/Profits[p] > rel_gap: # as in gurobi's MIPGap, it works with u_max and Profits[p] of different sign if rel_gap < 1
             #if Profits[p] + 10**-5 <= u_max:  # it is not the Best Response up to 1e-6 : compute and add BR (don't change the 1e-6)
                 ###print("start of adding an element in the support iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
                 print("entry in if block because Profits[%i] = %f and NL BR = %f"%(p+1,Profits[p],u_max))
@@ -149,7 +151,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
                 S_new[p].append(s_p)
                 Numb_stra_S = deepcopy(Numb_stra)
                 Numb_stra[p] = Numb_stra[p]+1
-                U_depend = Utilities_Poymatrix(G.m(),G.Q(),U_depend,S,S_new,Numb_stra_S)
+                U_depend = Utilities_Polymatrix(G.m(),G.Q(),U_depend,S,S_new,Numb_stra_S)
                 U_p, MCT, S = IndUtilities(G.m(), G.c(), G.Q(), S, U_p, MCT, S_new, G)
 
 
@@ -271,7 +273,7 @@ def IndUtilities(m, c, Q, S, U_p, MCT, S_new, G = []):
 # Numb_stra_S = number of strategies in S[p]
 # OUTPUT
 # U_depend = matrice of utilities (in fact it is a dictionary)
-def Utilities_Poymatrix(m,Q,U_depend,S,S_new,Numb_stra_S):
+def Utilities_Polymatrix(m,Q,U_depend,S,S_new,Numb_stra_S):
     for p in range(m):
         for k in range(p+1,m):
             for sp in enumerate(S_new[p]):

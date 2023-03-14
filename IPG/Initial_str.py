@@ -292,10 +292,10 @@ def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Pro
         # initiate model
         m_p = grb.Model("MIQPG")
         # no pritting of the output
-        #m_p.setParam( 'OutputFlag', False)
+        m_p.setParam( 'OutputFlag', False)
         m_p.setParam("Threads", 4)
         m_p.setParam("MIPGap",REL_GAP_SOLVER) # keep value 1e-8 to avoid some numerical issues with the 1e-6 of the SGM stopping criterion
-        m_p.setParam('MIPGapAbs', 1e4)
+        #m_p.setParam('MIPGapAbs', 1e4)
         m_p.setParam("FeasibilityTol",1e-9) # do not put something less precise than 1e-7 if the stopping criterion is 1e-6
         m_p.setParam("IntFeasTol",1e-9)
         #m_p.setParam('BarHomogeneous', 1)

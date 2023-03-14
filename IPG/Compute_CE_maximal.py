@@ -54,7 +54,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
     Numb_stra_S = [0]*G.m()
     # STEP 2 - COMPUTE Correlated EQUILIBRIA OF RESTRICTED GAME
     count = 1
-    U_depend = Utilities_Poymatrix(G.m(),G.Q(),U_depend,S_new,S,Numb_stra_S)
+    U_depend = Utilities_Polymatrix(G.m(),G.Q(),U_depend,S_new,S,Numb_stra_S)
     list_best = list(range(G.m()))
     time_aux = time()
     ce = []
@@ -109,7 +109,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
                     S_new[p].append(s_p)
                     Numb_stra_S = deepcopy(Numb_stra)
                     Numb_stra[p] = Numb_stra[p]+1
-                    U_depend = Utilities_Poymatrix(G.m(),G.Q(),U_depend,S,S_new,Numb_stra_S)
+                    U_depend = Utilities_Polymatrix(G.m(),G.Q(),U_depend,S,S_new,Numb_stra_S)
                     U_p, S = IndUtilities(G.m(), G.c(), G.Q(), S, U_p, S_new)
                     S_new = [[] for _ in range(G.m())]
                     list_best.append(p)
@@ -216,7 +216,7 @@ def IndUtilities(m, c, Q, S, U_p, S_new):
 # Numb_stra_S = number of strategies in S[p]
 # OUTPUT
 # U_depend = matrice of utilities (in fact it is a dictionary)
-def Utilities_Poymatrix(m,Q,U_depend,S,S_new,Numb_stra_S):
+def Utilities_Polymatrix(m,Q,U_depend,S,S_new,Numb_stra_S):
     for p in range(m):
         for k in range(p+1,m):
             for sp in enumerate(S_new[p]):

@@ -619,6 +619,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
         push!(outputs_SGM["sol"], sol)
 
         # compute the sup of the Nikaido-Isoda function in y
+        ratio_safety = 0.95 # value by which the refinement error delta is multiplied when NL_term == "log", to give more chances to the second iteration of the SGM to terminate
         if NL_term != "log"
             if iter == 1
                 V,Vps,all_vals = cybersecurity_NE_characterization_function(sol, params, fixed_costs, NL_term)
@@ -631,14 +632,24 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
             # reconstruct a false output of cybersecurity_NE_characterization_function, that passes the stopping criterion if it is an NL method or if err is lower than abs_tol/4
             # and that do not pass the stopping criterion in other cases
             test_NL_method = !(refinement_method != "SGM_NL_model" && refinement_method != "SGM_SOCP_model" && refinement_method != "SGM_gurobiNL_model") # NL method don't need BR computed
-            overestimated_abs_tol = maximum([profits[p]*(1+rel_gap/2)+2*err_pwlh.delta for p in 1:n_players])*rel_gap
-            underestimated_abs_tol = maximum([profits[p]*(1-rel_gap/2)+2*err_pwlh.delta for p in 1:n_players])*rel_gap
+            if refinement_method == "full_refinement" && iter >= 2
+                last_error_delta = maximum(outputs_SGM["profits"][end-1])*(1+rel_gap/2)/4*ratio_safety^(iter-1)*rel_gap
+            elseif refinement_method == "no_refinement" || iter == 1
+                last_error_delta = err_pwlh.delta
+            else
+                error("not coded for refinement_method $refinement_method")
+            end
+            #overestimated_abs_tol = maximum([profits[p]*(1+rel_gap/2)+2*err_pwlh.delta for p in 1:n_players])*rel_gap
+            #underestimated_abs_tol = maximum([profits[p]*(1-rel_gap/2)+2*err_pwlh.delta for p in 1:n_players])*rel_gap
+            overestimated_abs_tol = maximum([profits[p]*(1+rel_gap/2)+2*last_error_delta for p in 1:n_players])*rel_gap
+            underestimated_abs_tol = maximum([profits[p]*(1-rel_gap/2)+2*last_error_delta for p in 1:n_players])*rel_gap
             println("profits $profits")
             println("overestimated_abs_tol $overestimated_abs_tol")
             println("underestimated_abs_tol $underestimated_abs_tol")
-            test_PWL_approx_sufficient = (err_pwlh.delta <= underestimated_abs_tol/4) # PWL methods with err_pwlh.delta sufficiently low are guaranteed to have found a sigma-NE at first iteration
-            test_iter_PWL = (iter >= 2) && refinement_method == "full_refinement" # full_refinement is guaranteed to finish at the second iteration or before
-            if test_NL_method || test_PWL_approx_sufficient || test_iter_PWL
+            println("passing test PWL approx sufficient: err.delta=$last_error_delta <=? $(underestimated_abs_tol/4) underestimated_abs_tol/4")
+            test_PWL_approx_sufficient = (last_error_delta <= underestimated_abs_tol/4) # PWL methods with err_pwlh.delta sufficiently low are guaranteed to have found a sigma-NE at first iteration
+            #test_iter_PWL = (iter >= 2) && refinement_method == "full_refinement" # full_refinement is guaranteed to finish at the second iteration or before
+            if test_NL_method || test_PWL_approx_sufficient
                 println("entering ending if")
                 V = 0
                 Vps = [0 for p in 1:n_players]
@@ -811,42 +822,44 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
                     end=#
 
                     # refine pwl
+                    target_delta = abs_tol/4
                     if NL_term == "inverse_square_root"
                         f = x->params.alphas[p]*(1/sqrt(1-x)-1)
                     elseif NL_term == "inverse_cubic_root"
                         f = x->params.alphas[p]*(1/(1-x)^(1/3)-1)
                     elseif NL_term == "log"
                         f = x->params.alphas[p]*(-log(1-x))
+                        target_delta = abs_tol/4*ratio_safety^iter
                     end
                     # refine up to asked precision the piece containing the pure strategy
                     if refinement_method == "max_precision"
-                        # refine only the piece containing the NE with max useful precision (abs_tol/4)
-                        new_delta = min(cs_instance.cs_players[p].pwl_h.err.delta, abs_tol/4)
+                        # refine only the piece containing the NE with max useful precision (target_delta)
+                        new_delta = min(cs_instance.cs_players[p].pwl_h.err.delta, target_delta)
                         cs_instance.cs_players[p].pwl_h = refine_pwl1d(cs_instance.cs_players[p].pwl_h, S[p][i-cpt_ne+1][(n_markets+1)], Absolute(new_delta))
                         #check_delta_approx(cs_instance.cs_players[p].pwl_h)
                     elseif refinement_method == "taylor+outer"
                         # add an order 1 taylor approximation on the pure strategy as well as refine with max_precision the bits of pieces around taylor
                         # if a taylor piece is already exactly in pos, refine the longest (different) piece
-                        new_delta = min(cs_instance.cs_players[p].pwl_h.err.delta, abs_tol/4)
+                        new_delta = min(cs_instance.cs_players[p].pwl_h.err.delta, target_delta)
                         cs_instance.cs_players[p].pwl_h = add_order_1_taylor_piece(cs_instance.cs_players[p].pwl_h,
                         f, S[p][i-cpt_ne+1][(n_markets+1)], cs_instance.err_pwlh, iter, max_iter, new_delta, eps, outer_refinement = true)
                     elseif refinement_method == "taylor"
                         # add an order 1 taylor approximation on the pure strategy as well as refine with max_precision the bits of pieces around taylor
                         # if a taylor piece is already exactly in pos, refine the longest (different) piece
-                        new_delta = min(cs_instance.cs_players[p].pwl_h.err.delta, abs_tol/4)
+                        new_delta = min(cs_instance.cs_players[p].pwl_h.err.delta, target_delta)
                         cs_instance.cs_players[p].pwl_h = add_order_1_taylor_piece(cs_instance.cs_players[p].pwl_h,
                         f, S[p][i-cpt_ne+1][(n_markets+1)], cs_instance.err_pwlh, iter, max_iter, new_delta, eps, outer_refinement = false)
                     elseif refinement_method == "progressive_taylor"
-                        if abs_tol/4 < cs_instance.cs_players[p].pwl_h.err.delta
-                        	new_delta = cs_instance.cs_players[p].pwl_h.err.delta*(abs_tol/4/cs_instance.cs_players[p].pwl_h.err.delta)^(iter/max_iter)
+                        if target_delta < cs_instance.cs_players[p].pwl_h.err.delta
+                        	new_delta = cs_instance.cs_players[p].pwl_h.err.delta*(target_delta/cs_instance.cs_players[p].pwl_h.err.delta)^(iter/max_iter)
                     	else
                     		new_delta = cs_instance.cs_players[p].pwl_h.err.delta
                     	end
                         cs_instance.cs_players[p].pwl_h = add_order_1_taylor_piece(cs_instance.cs_players[p].pwl_h,
                         f, S[p][i-cpt_ne+1][(n_markets+1)], cs_instance.err_pwlh, iter, max_iter, new_delta, eps, outer_refinement = false)
                     elseif refinement_method == "progressive_taylor+outer"
-                        if abs_tol/4 < cs_instance.cs_players[p].pwl_h.err.delta
-                        	new_delta = cs_instance.cs_players[p].pwl_h.err.delta*(abs_tol/4/cs_instance.cs_players[p].pwl_h.err.delta)^(iter/max_iter)
+                        if target_delta < cs_instance.cs_players[p].pwl_h.err.delta
+                        	new_delta = cs_instance.cs_players[p].pwl_h.err.delta*(target_delta/cs_instance.cs_players[p].pwl_h.err.delta)^(iter/max_iter)
                     	else
                     		new_delta = cs_instance.cs_players[p].pwl_h.err.delta
                     	end
@@ -854,14 +867,14 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
                         f, S[p][i-cpt_ne+1][(n_markets+1)], cs_instance.err_pwlh, iter, max_iter, new_delta, eps, outer_refinement = true)
                     elseif refinement_method == "full_refinement" # refine the whole PWL function up to rel_gap/2 (in theory it will find the rel_gap-NE in the next iteration)
                         pwl_h = cs_instance.cs_players[p].pwl_h
-                        new_delta = min(pwl_h.err.delta, abs_tol/4)
+                        new_delta = min(pwl_h.err.delta, target_delta)
                         pwl_h.pwl = corrected_heuristicLin(pwl_h.expr_f, pwl_h.t1, pwl_h.t2, Absolute(new_delta))
                         cs_instance.cs_players[p].pwl_h.pwl = special_rounding_pwl(pwl_h.pwl) # round the extremes xMin and xMax to 12 decimals to avoid some problems later
                     end
                     outputs_SGM["length_pwl"][iter+1][p] = length(cs_instance.cs_players[p].pwl_h.pwl)
 
                     # check that the pwl still satisfy the delta-approx
-                    #push!(outputs_SGM["valid_pwl"][end], check_delta_approx(cs_instance.cs_players[p].pwl_h, abs_tol/4), 1e-5, NL_term)
+                    #push!(outputs_SGM["valid_pwl"][end], check_delta_approx(cs_instance.cs_players[p].pwl_h, target_delta), 1e-5, NL_term)
                     #println("new pwl:\n", cs_instance.cs_players[p].pwl_h.pwl)
                 end
             end
@@ -942,10 +955,10 @@ function benchmark_SGM_PWL_solver(; filename_instances, err_pwlhs, fixed_costss 
     # solve instances and store the output with the options of the instance in a list
     experiences = []
     # false experience to compile everything
-    SGM_PWL_solver("instance_1.txt", err_pwlh = Absolute(0.05), fixed_costs = true, refinement_method = "taylor+outer", max_iter = 2)
+    SGM_PWL_solver("instance_1.txt", err_pwlh = Absolute(0.05), fixed_costs = true, refinement_method = "full_refinement", max_iter = 2)
     SGM_PWL_solver("instance_1.txt", err_pwlh = Absolute(0.05), fixed_costs = true, refinement_method = "SGM_SOCP_model", max_iter = 2)
     if NL_terms[1] != "log"
-        SGM_PWL_solver("instance_1.txt", err_pwlh = Absolute(0.05), fixed_costs = true, refinement_method = "SGM_gurobiNL_model", max_iter = 2)
+        SGM_PWL_solver("instance_1.txt", err_pwlh = Absolute(0.05), fixed_costs = true, refinement_method = "SGM_gurobiNL_model", max_iter = 2, NL_term = "inverse_square_root")
     end
     inst = instance_queue[1]
     try
@@ -964,7 +977,7 @@ function benchmark_SGM_PWL_solver(; filename_instances, err_pwlhs, fixed_costss 
             rel_gap = inst.rel_gap, big_weights_on_NL_part = big_weights_on_NL_part, NL_term = inst.NL_term)
             # store output and options
             output.cpu_time = t
-            output.julia_time += t
+            output.julia_time += t # it was previously equal to -total_python_time
             push!(experiences, cs_experience(inst, output))
             file = open(filename_save[1:end-4]*"_intermediary.txt", "a")
             write_output_instance(file, inst, output)
@@ -1007,6 +1020,7 @@ function benchmark_SGM_PWL_solver(; filename_instances, err_pwlhs, fixed_costss 
     # give some elements of analysis
     launch_method_comparison(filename_save, experiences, refinement_methods, err_pwlhs, filename_save = filename_save[1:end-4]*"_analysis.txt")
     preliminary_analysis(experiences, err_pwlhs, fixed_costss, refinement_methods, filename_save[1:end-4]*"_analysis.txt")
+    prepare_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.png", refinement_methods = refinement_methods, errs = err_pwlhs)
 
     return experiences
 end
@@ -1134,10 +1148,13 @@ if false
     #exps_big567 = benchmark_SGM_PWL_solver(filename_instances = filename_instances_big567, err_pwlhs = errs2, refinement_methods = refinement_methods9, filename_save = "big567.txt")
     #exps_big567_bigweights = benchmark_SGM_PWL_solver(filename_instances = filename_instances_big567, err_pwlhs = errs2, refinement_methods = refinement_methods9, rel_gaps = [2e-3], filename_save = "big567_rel3_bigweights.txt", big_weights_on_NL_part = true)
 
-    exps_medium_half = benchmark_SGM_PWL_solver(filename_instances = filename_instances_half, err_pwlhs = errs2, refinement_methods = refinement_methods11, filename_save = "medium_log_half.txt")
-    exps_big567_complete = benchmark_SGM_PWL_solver(filename_instances = filename_instances_big567_complete, err_pwlhs = errs2, refinement_methods = refinement_methods11, filename_save = "big567_log_complete.txt")
+    #exps_medium_half = benchmark_SGM_PWL_solver(filename_instances = filename_instances_half, err_pwlhs = errs2, refinement_methods = refinement_methods11, filename_save = "medium_log_half.txt")
+    #exps_big567_complete = benchmark_SGM_PWL_solver(filename_instances = filename_instances_big567_complete, err_pwlhs = errs2, refinement_methods = refinement_methods11, filename_save = "big567_log_complete.txt")
+    #exps_big567_complement = benchmark_SGM_PWL_solver(filename_instances = [filename_instances_big567_complete[end]], err_pwlhs = errs2, refinement_methods = refinement_methods11, filename_save = "big567_log_complement.txt")
+    #exps_big567_complement2 = benchmark_SGM_PWL_solver(filename_instances = filename_instances_big567_complete[[end-4,end-3,end-2,end-1]], err_pwlhs = errs2, refinement_methods = refinement_methods11, filename_save = "big567_log_complement2.txt")
 
 end
+#exps_medium_test = benchmark_SGM_PWL_solver(filename_instances = filename_instances2[[1,9,10,18,19,27]], err_pwlhs = errs3, refinement_methods = refinement_methods11, filename_save = "medium_test.txt", big_weights_on_NL_part = false)
 #=
 @time SGM_PWL_solver("instance_2_2_1.txt", err_pwlh = Absolute(0.0005), fixed_costs = true, refinement_method = "full_refinement", rel_gap = 2e-6, max_iter = 5, big_weights_on_NL_part = false)
 @time SGM_PWL_solver("instance_2_2_1.txt", err_pwlh = Absolute(0.0005), fixed_costs = true, refinement_method = "SGM_SOCP_model", rel_gap = 2e-6, max_iter = 5, big_weights_on_NL_part = false)

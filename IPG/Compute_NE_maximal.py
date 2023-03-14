@@ -62,7 +62,7 @@ def IterativeSG(G,max_iter,opt_solver=1, S=[]):
     # STEP 2 - COMPUTE EQUILIBRIA OF RESTRICTED (SAMPLED) GAME
     # compute Nash equilibrium taking account M and Back
     count = 1
-    U_depend = Utilities_Poymatrix(G.m(),G.Q(),U_depend,S_new,S,Numb_stra_S)
+    U_depend = Utilities_Polymatrix(G.m(),G.Q(),U_depend,S_new,S,Numb_stra_S)
     # M_pos = [player p, best response of p, Numb_stra of current node, strategies S of current node, U_p of S, U_depend of S, new best responses from S]
     M_pos = [None,None,deepcopy(Numb_stra),deepcopy(S),deepcopy(U_p),deepcopy(U_depend),deepcopy(S_new),None,0]
     list_best = list(range(G.m()))
@@ -99,7 +99,7 @@ def IterativeSG(G,max_iter,opt_solver=1, S=[]):
             S = deepcopy(M_pre[3])
             U_depend = deepcopy(M_pre[5])
             Numb_stra_S = deepcopy(M_pre[2])
-            U_depend = Utilities_Poymatrix(G.m(),G.Q(),U_depend,S,S_new,Numb_stra_S)
+            U_depend = Utilities_Polymatrix(G.m(),G.Q(),U_depend,S,S_new,Numb_stra_S)
             U_p, S = IndUtilities(G.m(), G.c(), G.Q(), S, U_p, S_new)
             Numb_stra = [Numb_stra_S[p]+len(S_new[p]) for p in range(G.m())] # update number of strategies
             M_pos = deepcopy(M_pre)
@@ -137,7 +137,7 @@ def IterativeSG(G,max_iter,opt_solver=1, S=[]):
                     Memory.append(deepcopy(M_pos))
                     Numb_stra[p] = Numb_stra[p]+1
                     M_pre = deepcopy(M_pos)
-                    U_depend = Utilities_Poymatrix(G.m(),G.Q(),U_depend,S,S_new,Numb_stra_S)
+                    U_depend = Utilities_Polymatrix(G.m(),G.Q(),U_depend,S,S_new,Numb_stra_S)
                     U_p, S = IndUtilities(G.m(), G.c(), G.Q(), S, U_p, S_new)
                     S_new = [[] for _ in range(G.m())]
                     M_pos = [None,None,deepcopy(Numb_stra),deepcopy(S),deepcopy(U_p),deepcopy(U_depend),deepcopy(S_new),None,0]
@@ -196,7 +196,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
     # STEP 2 - COMPUTE EQUILIBRIA OF RESTRICTED GAME
     # compute Nash equilibrium taking account M and Back
     count = 1
-    U_depend = Utilities_Poymatrix(G.m(),G.Q(),U_depend,S_new,S,Numb_stra_S)
+    U_depend = Utilities_Polymatrix(G.m(),G.Q(),U_depend,S_new,S,Numb_stra_S)
     list_best = list(range(G.m()))
     time_aux = time()
     ne = [0 for p in range(G.m()) for _ in range(Numb_stra[p]) ]
@@ -232,7 +232,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[]):
                 S_new[p].append(s_p)
                 Numb_stra_S = deepcopy(Numb_stra)
                 Numb_stra[p] = Numb_stra[p]+1
-                U_depend = Utilities_Poymatrix(G.m(),G.Q(),U_depend,S,S_new,Numb_stra_S)
+                U_depend = Utilities_Polymatrix(G.m(),G.Q(),U_depend,S,S_new,Numb_stra_S)
                 U_p, S = IndUtilities(G.m(), G.c(), G.Q(), S, U_p, S_new)
                 S_new = [[] for _ in range(G.m())]
                 list_best.append(p)
@@ -289,7 +289,7 @@ def IndUtilities(m, c, Q, S, U_p, S_new):
 # Numb_stra_S = number of strategies in S[p]
 # OUTPUT
 # U_depend = matrice of utilities (in fact it is a dictionary)
-def Utilities_Poymatrix(m,Q,U_depend,S,S_new,Numb_stra_S):
+def Utilities_Polymatrix(m,Q,U_depend,S,S_new,Numb_stra_S):
     for p in range(m):
         for k in range(p+1,m):
             for sp in enumerate(S_new[p]):
