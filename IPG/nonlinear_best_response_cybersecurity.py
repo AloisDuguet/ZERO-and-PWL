@@ -18,7 +18,7 @@ def get_additional_info_for_NL_model(p, n_players):
     n_markets = int(f.readline())
     return alphas[p], nRealVarss[p], sum(nRealVarss[i] for i in range(n_players)) - nRealVarss[p], Ds, n_markets
 
-def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_p, Profile, p, create, ins, model = None,CE_verify = False,REL_GAP_SOLVER=1e-7, NL_term = "inverse_square_root"):
+def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_p, Profile, p, create, ins, model = None,CE_verify = False, NL_term = "inverse_square_root"):
     if CE_verify:
         xk_Qkp = sum(Q_p[k] for k in range(m) if k!=p)
         print("function not coded for CE_verify == ", CE_verify)
@@ -235,7 +235,7 @@ def SOCPBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
     else: # this is the case used
         xk_Qkp = sum(np.dot(Profile[k], Q_p[k]) for k in range(m) if k!=p) # np.array
 
-    print("start of model in SOCP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
+    #print("start of model in SOCP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
     opt = pyo.SolverFactory('mosek')
     if model == None:
         # retrieve alpha, nRealVars and n_markets for later
@@ -302,7 +302,7 @@ def SOCPBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
         elif NL_term == "log":
             model.t_nl = pmo.variable()
             model.cone1 = pmo.conic.primal_exponential.as_domain(x1=1,x2=model.t_nl,r=1-model.x[n_markets])
-            print("adding log conic constraint")
+            #print("adding log conic constraint")
 
         if create:
             return _,_,model
@@ -359,8 +359,8 @@ def SOCPBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
     try:
         print("SOCP BR solution: ", sol)
         print("SOCP BR optimal value: ", value)
-        print("t_quad = ", pyo.value(model.t_quad))
-        print("alpha*t_nl = ", alpha*pyo.value(model.t_nl))
+        #print("t_quad = ", pyo.value(model.t_quad))
+        #print("alpha*t_nl = ", alpha*pyo.value(model.t_nl))
         #print()
 
         return sol, value, model

@@ -777,7 +777,11 @@ function prepare_performance_profile_cybersecurity(filename, filename_save = "pe
                 for err in errs
                     charac1 = characteristic(:refinement_method, refinement_method)
                     charac2 = characteristic(:err_pwlh, err)
-                    name = string(refinement_method, "_", err.delta)
+                    if refinement_method != "sufficient_refinement"
+                        name = string(refinement_method, "_", err.delta)
+                    else
+                        name = refinement_method
+                    end
                     cat = category([charac1,charac2], name)
                     push!(list_categories, cat)
                 end
@@ -815,6 +819,7 @@ function prepare_performance_profile_cybersecurity(filename, filename_save = "pe
             end
         end
         sort!(exps_by_category[i])
+        println("Sorted times for $category:\n$(exps_by_category[i])")
     end
 
     # create profiles
@@ -824,30 +829,34 @@ function prepare_performance_profile_cybersecurity(filename, filename_save = "pe
         y = []
         n_exps = length(exps_by_category[i])
         println("number of exps for category $(list_categories[i]) is $n_exps")
-        for j in 1:n_exps
-            if exps_by_category[i][j] <= time_limit
-                push!(x, exps_by_category[i][j])
-                push!(y, j/n_exps)
+        if n_exps > 0
+            for j in 1:n_exps
+                if exps_by_category[i][j] <= time_limit
+                    push!(x, exps_by_category[i][j])
+                    push!(y, j/n_exps)
+                end
             end
-        end
-        # add last point with same fraction of instances solved and time to time_limit to finish the curve in the plot
-        if length(y) != 0
-            push!(x, time_limit)
-            push!(y, y[end])
-        else
-            push!(x, Inf)
-            push!(y, 0)
-            push!(x, time_limit)
-            push!(y, 0)
-        end
-        println("adding point ($time_limit,$(y[end-1]))")
+            # add last point with same fraction of instances solved and time to time_limit to finish the curve in the plot
+            if length(y) != 0
+                push!(x, time_limit)
+                push!(y, y[end])
+            else
+                push!(x, Inf)
+                push!(y, 0)
+                push!(x, time_limit)
+                push!(y, 0)
+            end
+            println("adding point ($time_limit,$(y[end-1]))")
 
-        name = list_categories[i].name
-        # change some names to fit my slides: "full_refinement"=>"PWL-ANE", "SOCP"=>"SGM-MOSEK"
-        name = replace(name, "full_refinement"=>"PWL-ANE")
-        name = replace(name, "SOCP"=>"SGM-MOSEK")
-        name = replace(name, "gurobiNL"=>"SGM-gurobiNL")
-        push!(l_profiles, Profile(x,y,name,Dict()))
+            name = list_categories[i].name
+            # change some names to fit my slides: "full_refinement"=>"PWL-ANE", "SOCP"=>"SGM-MOSEK"
+            #name = replace(name, "full_refinement"=>"PWL-ANE")
+            name = replace(name, "full_refinement"=>"refinement_procedure")
+            name = replace(name, "SOCP"=>"SGM-MOSEK")
+            name = replace(name, "gurobiNL"=>"SGM-gurobiNL")
+            name = replace(name, "sufficient_refinement"=>"approx_procedure")
+            push!(l_profiles, Profile(x,y,name,Dict()))
+        end
     end
 
     println("list_categories of length $(length(list_categories)):\n$list_categories")

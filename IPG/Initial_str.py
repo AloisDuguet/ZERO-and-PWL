@@ -14,11 +14,11 @@ import time as Ltime
 # G : game class (see Instances.py)
 
 # OUTPUT
-# S = list of strategies
+# S = list of strategies,ABS_GAP_SOLVER=ABS_GAP_SOLVER
 # U_p = individial profit for each player and each strategy in S
 # Best_m = list of the players best reaction models
 
-def InitialStrategies(G,opt_solver=1,REL_GAP_SOLVER=1e-7):
+def InitialStrategies(G,opt_solver=1,REL_GAP_SOLVER=1e-7,ABS_GAP_SOLVER=1e-10):
     ### for each player produce the optimal strategy if she was alone in the game ###
     S = [[[]] for p in range(G.m())] # list of strategies
     U_p = [[[]] for p in range(G.m())] # associated individual profit
@@ -38,13 +38,13 @@ def InitialStrategies(G,opt_solver=1,REL_GAP_SOLVER=1e-7):
             except:
                 print("Player ", p+1, " has no feasible solution or the problem is unbounded")
         elif G.type() == "CyberSecurity":
-            S[p][0], U_p[p][0], Model_p = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER)
+            S[p][0], U_p[p][0], Model_p = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER)
         elif G.type() == "CyberSecurityNL":
-            S[p][0], U_p[p][0], Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER, NL_term = G.NL_term())
+            S[p][0], U_p[p][0], Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None, NL_term = G.NL_term())
         elif G.type() == "CyberSecuritySOCP":
             S[p][0], U_p[p][0], Model_p = SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER, NL_term = G.NL_term())
         elif G.type() == "CyberSecuritygurobiNL":
-            S[p][0], U_p[p][0], Model_p = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,NL_term=G.NL_term())
+            S[p][0], U_p[p][0], Model_p = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term=G.NL_term())
         # add Ds[p] to U_p[p][0] because it is removed in the BR functions gurobiNL, NL, not in gurobi and removed also in ComputeNE_MIP.
         U_p[p][0] += Ds[p] # -Ds[p]/m*sum(Profile...) is not removed because sum(Profile) == 0 because the starting solution is [0 0 ... 0 0]
         MCT[p].append(S[p][0][n_markets])
@@ -134,7 +134,7 @@ def SocialOptimumGurobi(m, n_I, n_C, n_constr, c, Q, A, b):
 ######################################################
 
 
-def CreateModels(m, n_I, n_C, n_constr, c, Q, A, b, problem_type = "UNK", G = None,REL_GAP_SOLVER=1e-7):
+def CreateModels(m, n_I, n_C, n_constr, c, Q, A, b, problem_type = "UNK", G = None,REL_GAP_SOLVER=1e-7,ABS_GAP_SOLVER=1e-10):
     Profile = [np.array([0 for k in range(n_I[p]+n_C[p])]) for p in range(m)]
     Best_m = []
     for p in range(m):
@@ -144,7 +144,7 @@ def CreateModels(m, n_I, n_C, n_constr, c, Q, A, b, problem_type = "UNK", G = No
         elif G.type() == "CyberSecurity":
             _,_,Model_p = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER) # create = True should be fine
         elif G.type() == "CyberSecurityNL":
-            _,_,Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER, NL_term = G.NL_term()) # same
+            _,_,Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None, NL_term = G.NL_term()) # same
         elif G.type() == "CyberSecuritySOCP":
             _,_,Model_p = SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER, NL_term = G.NL_term()) # same
         elif G.type() == "CyberSecuritygurobiNL":
@@ -280,8 +280,8 @@ def BestReactionGurobi(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Profile,p,create
         print("Wow! The best reaction problem has no feasible solution. The status code is: ", m_p.status)
 
 # CHANGED HERE
-# Compute Best Reaction of player against the strategy 'Profile'
-def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Profile,p,create,ins, m_p = None,CE_verify=False,REL_GAP_SOLVER=1e-7):
+# Compute Best Reaction of player against the strategy 'Profile', but does not work with CyberSecurity
+def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Profile,p,create,ins, m_p = None,CE_verify=False,REL_GAP_SOLVER=1e-7,ABS_GAP_SOLVER=1e-10):
     if CE_verify:
         xk_Qkp = sum(Q_p[k] for k in range(m) if k!=p)
     else:
@@ -412,7 +412,7 @@ def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Pro
         except:
             print("Wow! The best reaction problem has no feasible solution. The status code is: ", m_p.status)
 
-def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Profile,p,create,ins, m_p = None,CE_verify=False,REL_GAP_SOLVER=1e-7,NL_term="inverse_square_root"):
+def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Profile,p,create,ins, m_p = None,CE_verify=False,REL_GAP_SOLVER=1e-7,ABS_GAP_SOLVER=1e-10,NL_term="inverse_square_root"):
     if CE_verify:
         xk_Qkp = sum(Q_p[k] for k in range(m) if k!=p)
     else:
@@ -423,7 +423,7 @@ def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,P
         # initiate model
         m_p = grb.Model("MIQPG")
         # no pritting of the output
-        m_p.setParam( 'OutputFlag', False)
+        #m_p.setParam( 'OutputFlag', False)
         m_p.setParam("Threads", 4)
         m_p.setParam("MIPGap",REL_GAP_SOLVER)
         m_p.setParam("BarQCPConvTol",REL_GAP_SOLVER)

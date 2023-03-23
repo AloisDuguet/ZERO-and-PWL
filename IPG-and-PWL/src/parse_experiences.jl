@@ -114,7 +114,7 @@ function write_output_instance(file, option, output)
     # write in file open by stream file the output_cs_instance structure output with the corresponding option_cs_instance option
     delta, eps = get_infos_err(option.err_pwlh)
     s_option = "$(option.filename_instance)$(SEP1)delta$(Float64(delta))$(SEP2)epsilon$(Float64(eps))$(SEP1)"
-    s_option = string(s_option, option.fixed_costs, SEP1, option.refinement_method, SEP1, option.max_iter, SEP1, option.rel_gap, SEP1, option.NL_term, SEP1, option.big_weights_on_NL_part, SEP1)
+    s_option = string(s_option, option.fixed_costs, SEP1, option.refinement_method, SEP1, option.max_iter, SEP1, option.rel_gap, SEP1, option.abs_gap, SEP1, option.NL_term, SEP1, option.big_weights_on_NL_part, SEP1)
     try
         if typeof(output.solution) != ErrorException && typeof(output.solution) != MethodError && typeof(output.solution) != String
             s_output = string(output.solved, SEP1, write_matrix(output.solution), SEP1, write_vector(output.profits), SEP1, output.cpu_time, SEP2, "secondes")
@@ -141,6 +141,13 @@ function load_output_instance(line)
         refinement_method = infos[4]
         max_iter = parse(Int64, infos[5])
         rel_gap = parse(Float64, infos[6])
+        abs_gap = "UNK"
+        try
+            abs_gap = parse(Float64,infos[7])
+            deleteat!(infos, 7)
+        catch e
+            println("error in load_output_instance while handling abs_gap or NL_term: $(infos[7]) as a Float64, producing error $e")
+        end
         if length(infos[7]) > 5 || infos[7] == "log" # specific case because many instances are saved without NL_term option
             NL_term =  infos[7]
             deleteat!(infos, 7)
@@ -149,7 +156,7 @@ function load_output_instance(line)
         end
         big_weights_on_NL_part = parse(Bool, infos[7])
         options = option_cs_instance(filename_instance, err_pwlh, fixed_costs,
-        refinement_method, max_iter, rel_gap, NL_term, big_weights_on_NL_part)
+        refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part)
         if !occursin("ERROR", line) && !occursin("ProcessExited", line) && !occursin("E__r__r__o__r", line)
             solved = parse(Bool, infos[8])
             solution = parse_matrix(infos[9])
@@ -206,14 +213,14 @@ function load_output_instance(line)
             end
             big_weights_on_NL_part = parse(Bool, infos[7])
             options = option_cs_instance(filename_instance, err_pwlh, fixed_costs,
-            refinement_method, max_iter, rel_gap, NL_term, big_weights_on_NL_part)
+            refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part)
             outputs = output_cs_instance(false, [[]], [], 0,
                 -1, -1, [], [], -1, -1)
             return cs_experience(options, outputs)
         catch e
             println("entering second catch of load_output_instance for error message: ", e)
             options = option_cs_instance("UNK", "UNK", false,
-            "UNK", "UNK", "UNK", "UNK", "UNK")
+            "UNK", "UNK", "UNK", "UNK", "UNK", "UNK")
             outputs = output_cs_instance(false, [[]], [], 0,
                 -1, -1, [], [], -1, -1)
             return cs_experience(options, outputs)

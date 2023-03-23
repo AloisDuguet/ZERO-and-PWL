@@ -19,7 +19,7 @@ import gurobipy as grb
 
 ###########################################################
 # SGM
-def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=10**-5):
+def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=10**-5, TIME_LIMIT = 100):
     r"""Create instances in a standard format.
     Only handle CyberSecurity problems, to handle other IPG, see https://github.com/mxmmargarida/IPG
 
@@ -29,6 +29,8 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
     max_iter: maximum number of sampled games to be solved
     opt_solver: 0 if cplex is used and 1 otherwise (use gurobi); in the paper it is always 1.
     S: intial set of strategies (optional)
+    rel_gap: relative gap allowed as stopping criterion of the main loop
+    abs_gap: absolute gap allowed as stopping criterion of the main loop
     Returns:
     -------
     ne: list of vectors indicating the Nash equilibrium associated with S
@@ -38,18 +40,23 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
     cpu_time: computational time
     """
 
+    # handle parameters for stopping criterion and solver relative gap and absolute gap
+    RATIO_STOPPING_CRITERION_SOLVER = 0.99 # ratio of abs_gap and rel_gap specific to the main loop stopping criterion, the ratio for the solver stopping criterion is 1 minus this value
     # return an error if rel_gap < 1e-6
-    if rel_gap < 10**-6:
+    if rel_gap < 10**-6 and abs_gap < 1e-6:
         print("rel_gap can not be below 10**-6 for numerical stability reasons. Right now rel_gap = ", rel_gap)
         exit(6)
     else:
-        REL_GAP_SOLVER = min(rel_gap/10,1e-6)
+        REL_GAP_SOLVER = max(rel_gap*(1-RATIO_STOPPING_CRITERION_SOLVER),1e-9)
+    # define ABS_GAP_SOLVER
+    ABS_GAP_SOLVER = abs_gap*(1-RATIO_STOPPING_CRITERION_SOLVER)
+
     # STEP 0 - INITIALIZATION
     # initialize set of strategies
     global start_time
     if S == []:
         # create initial strategies
-        S, U_p, MCT, Best_m = InitialStrategies(G,opt_solver,REL_GAP_SOLVER=REL_GAP_SOLVER)
+        S, U_p, MCT, Best_m = InitialStrategies(G,opt_solver,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER)
         #print("MCT after if S == []\n", MCT)
         #print("S after if S == []\n", S)
         #S, U_p, Best_m = InitialStrategiesII(G,opt_solver)
@@ -80,7 +87,6 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
     ne = []
     ne_previous = ne[:]
     #return U_depend,U_p,Numb_stra,ne,deviator,S
-    TIME_LIMIT = 100
     #print("start of main while loop --- %s seconds ---" % (Ltime.time() - 1675900000))
     while True and count <= max_iter and time()-time_aux<=TIME_LIMIT:
         print("\n\n Processing node ... ", count)
@@ -140,7 +146,30 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
             elif G.type() == "CyberSecuritygurobiNL":
                 s_p, u_max, _ = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,NL_term=G.NL_term())
             #print("end of computation of Best Response iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
-            if Profits[p]+abs(Profits[p])*rel_gap <= u_max: # only relative version of this test, because in julia everyting is coded for only relative... Instances with a BR near 0 may have difficulties to converge.
+
+            # criterion working with absolute, relative and mixed error, if rel_gap = 0 for absolute and abs_gap = 0 for relative
+            abs_gap_adapted = abs_gap-REL_GAP_SOLVER*abs(Profits[p]) # MOSEK (conic solver) does not allow absolute gap stopping criterion, so for all solvers relative gap is used. Thus, the absolute gap that the SGM stopping criterion uses is abs_gap minus the maximum deviation done by solver
+            if u_max-Profits[p] > max(abs_gap_adapted, RATIO_STOPPING_CRITERION_SOLVER*rel_gap*abs(Profits[p])):
+            #test_CyberSecurityNL = (G.type() == "CyberSecurity") and (u_max-Profits[p] > max(abs_gap_adapted, RATIO_STOPPING_CRITERION_SOLVER*rel_gap*abs(Profits[p])))
+            #if G.type() == "CyberSecurity":
+            #    print(u_max-Profits[p], " > ", RATIO_STOPPING_CRITERION_SOLVER*max(abs_gap, rel_gap*abs(Profits[p])), " ?", test_CyberSecurityNL)
+            #test_CyberSecuritySOCP = (G.type() == "CyberSecuritySOCP") and (u_max-Profits[p] > max(abs_gap_adapted, RATIO_STOPPING_CRITERION_SOLVER*rel_gap*abs(Profits[p])))
+            #test_CyberSecuritySOCP = (G.type() == "CyberSecuritygurobiNL") and (u_max-Profits[p] > max(abs_gap_adapted, RATIO_STOPPING_CRITERION_SOLVER*rel_gap*abs(Profits[p])))
+            #if G.type() != "CyberSecurity" and G.type() != "CyberSecuritySOCP" and G.type() != "CyberSecuritygurobiNL":
+            #    print("error: G.type() == ", G.type(), " not coded for the stopping criterion of the SGM")
+            #    print("You probably just need to add a line similar to test_CyberSecurity or test_CyberSecuritySOCP")
+            #    exit(25)
+            #if G.type() == "CyberSecuritySOCP":
+            #    print("abs_gap_adapted = ", abs_gap_adapted)
+            #    print(u_max-Profits[p], " > ", max(abs_gap_adapted, RATIO_STOPPING_CRITERION_SOLVER*rel_gap*abs(Profits[p])), " ?", test_CyberSecuritySOCP)
+            #if abs_gap_adapted <= 0 and G.type() == "CyberSecuritySOCP" and u_max-Profits[p] < max(abs_gap, RATIO_STOPPING_CRITERION_SOLVER*rel_gap*abs(Profits[p])):
+            #    print("\t-----> Error in SGM because SOCP solver used and relative stopping criterion of SOCP solver is bigger than the allowed absolute gap for SGM.\nIncrease abs_gap is a way to solve this error")
+            #    print("Profits[%f] = "%p, Profits[p])
+            #    print("REL_GAP_SOLVER*abs(Profits[p]) = ", REL_GAP_SOLVER*abs(Profits[p]))
+            #    exit(21) # number is unimportant as long as it is different from others
+            #if test_CyberSecurityNL or test_CyberSecuritySOCP or test_CyberSecurityNL: # criterion different depending on G.type() because of solver stopping criterion differences
+
+            #if Profits[p]+abs(Profits[p])*rel_gap <= u_max: # only relative version of this test, because in julia everyting is coded for only relative... Instances with a BR near 0 may have difficulties to converge.
             #if Profits[p]+max(abs(Profits[p])*rel_gap,abs_gap) <= u_max: # DON'T CHANGE THE 1e-5 AND THE 1e-6 WITHOUT ALSO CHANGING IT IN THE JULIA CODE
             #if abs(Profits[p]-u_max)/Profits[p] > rel_gap: # as in gurobi's MIPGap, it works with u_max and Profits[p] of different sign if rel_gap < 1
             #if Profits[p] + 10**-5 <= u_max:  # it is not the Best Response up to 1e-6 : compute and add BR (don't change the 1e-6)
@@ -596,10 +625,10 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
     m_p.setParam("Threads", 4)
     m_p.setParam("MIPGap",REL_GAP_SOLVER)
     m_p.setParam("IntFeasTol", 1e-9)
-    m_p.setParam("FeasibilityTol", 1e-7)
+    m_p.setParam("FeasibilityTol", 1e-9)
     # no pritting of the output
     m_p.setParam( 'OutputFlag', False)
-    m_p.setParam("TimeLimit", 200)
+    m_p.setParam("TimeLimit", 100)
     # set objective function direction
     m_p.ModelSense = 1 # minimize (1)
     m_p.update()

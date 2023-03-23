@@ -7,10 +7,10 @@ Created on Tue Nov  8 15:35:36 2022
 """
 # don't change the line number of the following line : it should be line 10
 # (cf write_SGM_instance_filename in ../IPG-and-PWL/src/SGM_solver.jl)
-filename = "../IPG-and-PWL/SGM_files/instance_7_10_4_Abs0-0005_fixedcosttrue"
-game_type = "CyberSecurity"
-rel_gap = 1.0e-6
-abs_gap = 5.0e-6
+filename = "../IPG-and-PWL/SGM_files/instance_4_10_7_Abs2-5e-5_fixedcosttrue"
+game_type = "CyberSecuritygurobiNL"
+rel_gap = 0.0
+abs_gap = 0.0001
 
 import time as Ltime
 start_time = Ltime.time()
@@ -32,7 +32,6 @@ if game_type == "CyberSecurity":
 else:
     S = []
 # solve with SGM
-REL_GAP_SOLVER = rel_gap/10
 print("start of SGM --- %s seconds ---" % (Ltime.time() - 1675900000))
 #ne, Profits_SGM,S,num_iter_done,cpu_time_not_dfs = Compute_NE.IterativeSG_NOT_DFS(G,max_iter)
 ne, Profits_SGM,S,num_iter_done,cpu_time_not_dfs = Compute_NE.IterativeSG_NOT_DFS(G,max_iter,1,S,rel_gap,abs_gap)
@@ -42,9 +41,9 @@ SGM_cpu_time = Ltime.time() - SGM_start_time
 save_results_SGM(filename, ne, Profits_SGM, S, num_iter_done, SGM_cpu_time)
 ###print("end of save_results_SGM --- %s seconds ---" % (Ltime.time() - 1675900000))
 #print("-----> save_results_SGM execution time: ", Ltime.time()-SGM_cpu_time-SGM_start_time)
-print(ne)
-print(Profits_SGM)
-print(cpu_time_not_dfs, " seconds in the SGM")
+#print(ne)
+#print(Profits_SGM)
+#print(cpu_time_not_dfs, " seconds in the SGM")
 
 #[[24.022497, 98.341273, 0.916109], [22.023038, 93.341724, 0.916109]]
 #[[24.022858, 98.341573, 0.916109], [22.022918, 93.341623, 0.916109]]

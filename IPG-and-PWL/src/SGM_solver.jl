@@ -20,6 +20,7 @@ mutable struct option_cs_instance
     refinement_method
     max_iter
     rel_gap
+    abs_gap
     NL_term
     big_weights_on_NL_part
 end
@@ -404,8 +405,8 @@ function save_MNE_distance_variation(sols, option, output, filename = "MNE_dista
     return variations
 end
 
-function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_costs = false, refinement_method = "max_precision",
-    max_iter = 6, rel_gap = 2e-6, abs_gap = 1e-5, big_weights_on_NL_part = false, NL_term = "log")
+function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_costs = true, refinement_method = "full_refinement",
+    max_iter = 6, rel_gap = 2e-6, abs_gap = 1e-4, big_weights_on_NL_part = false, NL_term = "log")
     # prepare the instance of PWL approximation of a cybersecurity instance and launch the SGM solver
     # refinement_method is the method used to refine the PWL. It can be "taylor" for the order 1 taylor piece, and "max_precision" to refine the piece(s) containing the pure strategy to rel_gap
 
@@ -618,60 +619,67 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
         # save sol
         push!(outputs_SGM["sol"], sol)
 
-        # compute the sup of the Nikaido-Isoda function in y
-        ratio_safety = 0.95 # value by which the refinement error delta is multiplied when NL_term == "log", to give more chances to the second iteration of the SGM to terminate
-        if NL_term != "log"
-            if iter == 1
-                V,Vps,all_vals = cybersecurity_NE_characterization_function(sol, params, fixed_costs, NL_term)
-            elseif refinement_method != "SGM_NL_model" && refinement_method != "SGM_SOCP_model" && refinement_method != "SGM_gurobiNL_model"
-                check_convergence_time = @elapsed V,Vps,all_vals = cybersecurity_NE_characterization_function(sol, params, fixed_costs, NL_term)
-                #time_to_remove += check_convergence_time
-            end
-        elseif NL_term == "log"
-            println("entering computation of BR in julia at iteration $iter with refinement_method $refinement_method")
-            # reconstruct a false output of cybersecurity_NE_characterization_function, that passes the stopping criterion if it is an NL method or if err is lower than abs_tol/4
-            # and that do not pass the stopping criterion in other cases
-            test_NL_method = !(refinement_method != "SGM_NL_model" && refinement_method != "SGM_SOCP_model" && refinement_method != "SGM_gurobiNL_model") # NL method don't need BR computed
-            if refinement_method == "full_refinement" && iter >= 2
-                last_error_delta = maximum(outputs_SGM["profits"][end-1])*(1+rel_gap/2)/4*ratio_safety^(iter-1)*rel_gap
-            elseif refinement_method == "no_refinement" || iter == 1
-                last_error_delta = err_pwlh.delta
-            else
-                error("not coded for refinement_method $refinement_method")
-            end
-            #overestimated_abs_tol = maximum([profits[p]*(1+rel_gap/2)+2*err_pwlh.delta for p in 1:n_players])*rel_gap
-            #underestimated_abs_tol = maximum([profits[p]*(1-rel_gap/2)+2*err_pwlh.delta for p in 1:n_players])*rel_gap
-            overestimated_abs_tol = maximum([profits[p]*(1+rel_gap/2)+2*last_error_delta for p in 1:n_players])*rel_gap
-            underestimated_abs_tol = maximum([profits[p]*(1-rel_gap/2)+2*last_error_delta for p in 1:n_players])*rel_gap
-            println("profits $profits")
-            println("overestimated_abs_tol $overestimated_abs_tol")
-            println("underestimated_abs_tol $underestimated_abs_tol")
-            println("passing test PWL approx sufficient: err.delta=$last_error_delta <=? $(underestimated_abs_tol/4) underestimated_abs_tol/4")
-            test_PWL_approx_sufficient = (last_error_delta <= underestimated_abs_tol/4) # PWL methods with err_pwlh.delta sufficiently low are guaranteed to have found a sigma-NE at first iteration
-            #test_iter_PWL = (iter >= 2) && refinement_method == "full_refinement" # full_refinement is guaranteed to finish at the second iteration or before
-            if test_NL_method || test_PWL_approx_sufficient
-                println("entering ending if")
-                V = 0
-                Vps = [0 for p in 1:n_players]
-                all_vals = []
-                for p in 1:n_players
-                    parameters = [sol[i] for i in 1:n_players if i != p]
-                    push!(all_vals, evaluate_cybersecurity_objective_value(sol[p], parameters, p, params, fixed_costs, NL_term))
-                    push!(all_vals, all_vals[end])
+        # handling the possible differences of types of stopping criterion in SGM and in SGM_PWL_solver
+        if abs_gap != 0 && rel_gap == 0
+            # absolute-absolute  (SGM has an absolute stopping criterion)
+            error("abs_gap != 0 and rel_gap == 0 case not implemented yet, use SGM_PWL_absolute_direct_solver instead may be what you want")
+        elseif rel_gap != 0
+            # absolute-relative (SGM has a relative stopping criterion)
+            # compute the sup of the Nikaido-Isoda function in y
+            ratio_safety = 0.95 # value by which the refinement error delta is multiplied when NL_term == "log", to give more chances to the second iteration of the SGM to terminate
+            if NL_term != "log"
+                if iter == 1
+                    V,Vps,all_vals = cybersecurity_NE_characterization_function(sol, params, fixed_costs, NL_term)
+                elseif refinement_method != "SGM_NL_model" && refinement_method != "SGM_SOCP_model" && refinement_method != "SGM_gurobiNL_model"
+                    check_convergence_time = @elapsed V,Vps,all_vals = cybersecurity_NE_characterization_function(sol, params, fixed_costs, NL_term)
+                    #time_to_remove += check_convergence_time
                 end
-            else # stopping criterion should NOT pass
-                println("entering continuing if")
-                val = 1e8
-                V = val
-                Vps = [val for p in 1:n_players]
-                all_vals = []
-                for p in 1:n_players
-                    parameters = [sol[i] for i in 1:n_players if i != p]
-                    push!(all_vals, evaluate_cybersecurity_objective_value(sol[p], parameters, p, params, fixed_costs, NL_term))
-                    push!(all_vals, all_vals[end]+val) # 1e8 instead of "UNK" because maybe a numerical test is done
+            elseif NL_term == "log"
+                println("entering computation of BR in julia at iteration $iter with refinement_method $refinement_method")
+                # reconstruct a false output of cybersecurity_NE_characterization_function, that passes the stopping criterion if it is an NL method or if err is lower than abs_tol/4
+                # and that do not pass the stopping criterion in other cases
+                test_NL_method = !(refinement_method != "SGM_NL_model" && refinement_method != "SGM_SOCP_model" && refinement_method != "SGM_gurobiNL_model") # NL method don't need BR computed
+                if refinement_method == "full_refinement" && iter >= 2
+                    last_error_delta = maximum(outputs_SGM["profits"][end-1])*(1+rel_gap/2)/4*ratio_safety^(iter-1)*rel_gap
+                elseif refinement_method == "no_refinement" || iter == 1
+                    last_error_delta = err_pwlh.delta
+                else
+                    error("not coded for refinement_method $refinement_method")
                 end
+                #overestimated_abs_tol = maximum([profits[p]*(1+rel_gap/2)+2*err_pwlh.delta for p in 1:n_players])*rel_gap
+                #underestimated_abs_tol = maximum([profits[p]*(1-rel_gap/2)+2*err_pwlh.delta for p in 1:n_players])*rel_gap
+                overestimated_abs_tol = maximum([profits[p]*(1+rel_gap/2)+2*last_error_delta for p in 1:n_players])*rel_gap
+                underestimated_abs_tol = maximum([profits[p]*(1-rel_gap/2)+2*last_error_delta for p in 1:n_players])*rel_gap
+                println("profits $profits")
+                println("overestimated_abs_tol $overestimated_abs_tol")
+                println("underestimated_abs_tol $underestimated_abs_tol")
+                println("passing test PWL approx sufficient: err.delta=$last_error_delta <=? $(underestimated_abs_tol/4) underestimated_abs_tol/4")
+                test_PWL_approx_sufficient = (last_error_delta <= underestimated_abs_tol/4) # PWL methods with err_pwlh.delta sufficiently low are guaranteed to have found a sigma-NE at first iteration
+                #test_iter_PWL = (iter >= 2) && refinement_method == "full_refinement" # full_refinement is guaranteed to finish at the second iteration or before
+                if test_NL_method || test_PWL_approx_sufficient
+                    println("entering ending if")
+                    V = 0
+                    Vps = [0 for p in 1:n_players]
+                    all_vals = []
+                    for p in 1:n_players
+                        parameters = [sol[i] for i in 1:n_players if i != p]
+                        push!(all_vals, evaluate_cybersecurity_objective_value(sol[p], parameters, p, params, fixed_costs, NL_term))
+                        push!(all_vals, all_vals[end])
+                    end
+                else # stopping criterion should NOT pass
+                    println("entering continuing if")
+                    val = 1e8
+                    V = val
+                    Vps = [val for p in 1:n_players]
+                    all_vals = []
+                    for p in 1:n_players
+                        parameters = [sol[i] for i in 1:n_players if i != p]
+                        push!(all_vals, evaluate_cybersecurity_objective_value(sol[p], parameters, p, params, fixed_costs, NL_term))
+                        push!(all_vals, all_vals[end]+val) # 1e8 instead of "UNK" because maybe a numerical test is done
+                    end
+                end
+                println("V, Vps and all_vals:\n$V\n$Vps\n$all_vals")
             end
-            println("V, Vps and all_vals:\n$V\n$Vps\n$all_vals")
         end
 
         #=# check that the NL model in python finds the same as here
@@ -777,7 +785,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
             println("profits:\n$profits\nall_vals:\n$(outputs_SGM["all_vals"])")
             length_pwls = [length(cs_instance.cs_players[p].pwl_h.pwl) for p in 1:n_players]
             output = output_cs_instance(true, outputs_SGM["sol"][end], profits, -1, iter, max_delta, length_pwls,compute_MNE_distance_variation(outputs_SGM["sol"]), total_SGM_time, -total_python_time)
-            options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, NL_term, big_weights_on_NL_part)
+            options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part)
             save_MNE_distance_variation(outputs_SGM["sol"], options, output)
             return cs_instance, Vs, iter, outputs_SGM, output
         elseif max_delta > 1e11
@@ -921,7 +929,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
     println("profits:\n$profits\nall_vals:\n$(outputs_SGM["all_vals"])")
     length_pwls = [length(cs_instance.cs_players[p].pwl_h.pwl) for p in 1:n_players]
     max_delta = maximum([abs(Vs[end][2][i]) for i in 1:n_players])
-    options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, NL_term, big_weights_on_NL_part)
+    options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part)
     output = output_cs_instance(false, outputs_SGM["sol"][end], profits, -1, max_iter, max_delta, length_pwls,[], total_SGM_time, -total_python_time)
     variations = save_MNE_distance_variation(outputs_SGM["sol"], options, output)
     output = output_cs_instance(false, outputs_SGM["sol"][end], profits, time_to_remove, max_iter, max_delta, length_pwls,variations, total_SGM_time, -total_python_time)
@@ -929,7 +937,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
 end
 
 function benchmark_SGM_PWL_solver(; filename_instances, err_pwlhs, fixed_costss = [true], refinement_methods = ["taylor","max_precision"],
-    max_iters = [5], rel_gaps = [2e-6], filename_save = "last_experiences.txt", big_weights_on_NL_part = false, NL_terms = ["log"])
+    max_iters = [5], rel_gaps = [2e-6], abs_gaps = [1e-4], filename_save = "last_experiences.txt", big_weights_on_NL_part = false, NL_terms = ["log"])
     # build, solve, and retrieve solution to instances defined with the cartesian products of the options
 
     # build instances and store them in list instance_queue
@@ -942,8 +950,10 @@ function benchmark_SGM_PWL_solver(; filename_instances, err_pwlhs, fixed_costss 
                     #    if err_pwlh != err_pwlhs[1]
                     for max_iter in max_iters
                         for rel_gap in rel_gaps
-                            for NL_term in NL_terms
-                                push!(instance_queue, option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, NL_term, big_weights_on_NL_part))
+                            for abs_gap in abs_gaps
+                                for NL_term in NL_terms
+                                    push!(instance_queue, option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part))
+                                end
                             end
                         end
                     end
@@ -1068,7 +1078,7 @@ end
 filename_instances_big567_complete = []
 for i in 5:7
     for j in 2:10
-        for k in 1:5
+        for k in 1:10
             push!(filename_instances_big567_complete, "instance_$(i)_$(j)_$(k).txt")
         end
     end
