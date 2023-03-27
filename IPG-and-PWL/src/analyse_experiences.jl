@@ -77,7 +77,12 @@ function compare_cs_experience(experiences, option, option_values, filename = ""
                     index = indices[i]
                     solveds[i] += experiences[index].outputs.solved
                     count[i] += 1
-                    push!(cpu_times[i], experiences[index].outputs.cpu_time)
+                    if experiences[index].options.refinement_method == "SGM_SOCP_model" || experiences[index].options.refinement_method == "SGM_gurobiNL_model"
+                        cpu_time = experiences[index].outputs.SGM_time
+                    else
+                        cpu_time = experiences[index].outputs.SGM_time + experiences[index].outputs.julia_time
+                    end
+                    push!(cpu_times[i], cpu_time)
                     push!(iters[i], experiences[index].outputs.iter)
                 end
             end
@@ -302,6 +307,7 @@ function relaunch_exp(experiences, number, complete_output = false)
         t = @elapsed cs_instance, Vs, iter, outputs_SGM, output = SGM_PWL_solver(options.filename_instance,err_pwlh=options.err_pwlh,fixed_costs=options.fixed_costs,
         refinement_method=options.refinement_method,max_iter=options.max_iter,rel_gap=options.rel_gap,big_weights_on_NL_part=options.big_weights_on_NL_part)
         output.cpu_time = t
+        output.julia_time += t # it was previously equal to -total_python_time
         if !complete_output
             return cs_experience(options,output)
         else
@@ -640,11 +646,11 @@ function method_comparison(exps, list_categories, title = "table"; filename_save
                 if exp.options.refinement_method == "SGM_NL_model" || exp.options.refinement_method == "SGM_SOCP_model" || exp.options.refinement_method == "SGM_gurobiNL_model"
                     cpu_time = exp.outputs.SGM_time
                 else
-                    cpu_time = exp.outputs.cpu_time
+                    cpu_time = exp.outputs.SGM_time + exp.outputs.julia_time
                 end
                 if exp.outputs.solved && cpu_time <= time_limit
                     solved += 1
-                    mean_time += exp.outputs.cpu_time
+                    mean_time += cpu_time
                     iters += exp.outputs.iter
                 end
             end
@@ -758,7 +764,7 @@ function performance_profile(profiles; xlog = false)
 end
 
 function prepare_performance_profile_cybersecurity(filename, filename_save = "performance_profile.png", list_categories = []; refinement_methods = ["full_refinement","SGM_SOCP_model"],
-    errs = [Absolute(0.5),Absolute(0.05),Absolute(0.005),Absolute(0.0005)], time_limit=100)
+    errs = [Absolute(0.5),Absolute(0.05),Absolute(0.005),Absolute(0.0005)], time_limit=900)
     # prepare profiles for a call to function performance_profile
     # the performace profile will be:
     # computation time in x
@@ -812,7 +818,7 @@ function prepare_performance_profile_cybersecurity(filename, filename_save = "pe
                     if exp.options.refinement_method == "SGM_NL_model" || exp.options.refinement_method == "SGM_SOCP_model" || exp.options.refinement_method == "SGM_gurobiNL_model"
                         cpu_time = exp.outputs.SGM_time
                     else
-                        cpu_time = exp.outputs.cpu_time
+                        cpu_time = exp.outputs.SGM_time + exp.outputs.julia_time
                     end
                 end
                 push!(exps_by_category[i], cpu_time)
@@ -851,10 +857,10 @@ function prepare_performance_profile_cybersecurity(filename, filename_save = "pe
             name = list_categories[i].name
             # change some names to fit my slides: "full_refinement"=>"PWL-ANE", "SOCP"=>"SGM-MOSEK"
             #name = replace(name, "full_refinement"=>"PWL-ANE")
-            name = replace(name, "full_refinement"=>"refinement_procedure")
+            name = replace(name, "full_refinement"=>"2-level_approximation")
             name = replace(name, "SOCP"=>"SGM-MOSEK")
             name = replace(name, "gurobiNL"=>"SGM-gurobiNL")
-            name = replace(name, "sufficient_refinement"=>"approx_procedure")
+            name = replace(name, "sufficient_refinement"=>"direct_approximation")
             push!(l_profiles, Profile(x,y,name,Dict()))
         end
     end

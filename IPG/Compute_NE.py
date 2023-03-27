@@ -19,7 +19,7 @@ import gurobipy as grb
 
 ###########################################################
 # SGM
-def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=10**-5, TIME_LIMIT = 100):
+def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=10**-5, TIME_LIMIT = 900):
     r"""Create instances in a standard format.
     Only handle CyberSecurity problems, to handle other IPG, see https://github.com/mxmmargarida/IPG
 
@@ -90,7 +90,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
     #print("start of main while loop --- %s seconds ---" % (Ltime.time() - 1675900000))
     while True and count <= max_iter and time()-time_aux<=TIME_LIMIT:
         print("\n\n Processing node ... ", count)
-        print("Computing equilibria.... \n")
+        ##print("Computing equilibria.... \n")
         ne_previous = ne[:]
         #signal.signal(signal.SIGALRM, signal_handler)
         #signal.alarm(3600-int(time()-time_aux))   #  seconds
@@ -107,7 +107,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
             #print("Time limit exceeded")
         #    print("an error occured during ComputeNE:\n", e)
         #    exit(4) # error during ComputeNE
-        print(" Equilibrium computed successfully")
+        ##print(" Equilibrium computed successfully")
 
 
         aux = True # no player has incentive to deviate
@@ -149,7 +149,18 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
 
             # criterion working with absolute, relative and mixed error, if rel_gap = 0 for absolute and abs_gap = 0 for relative
             abs_gap_adapted = abs_gap-REL_GAP_SOLVER*abs(Profits[p]) # MOSEK (conic solver) does not allow absolute gap stopping criterion, so for all solvers relative gap is used. Thus, the absolute gap that the SGM stopping criterion uses is abs_gap minus the maximum deviation done by solver
-            if u_max-Profits[p] > max(abs_gap_adapted, RATIO_STOPPING_CRITERION_SOLVER*rel_gap*abs(Profits[p])):
+
+            # bool_new_strategy is a boolean with value True if the new strategy s_p is not already in the set of strategies S[p]
+            bool_new_strategy = True
+            for s in S[p]:
+                norm_diff = sum(abs(s_p[i]-s[i]) for i in range(len(s_p)))
+                if norm_diff <= 1e-12:
+                    # we consider the strategies to be the same
+                    bool_new_strategy = False
+                    print("\n\t\t\t\t\t\t\t\t-----\talready picked strategy -> considering that the abs gap is satisfied\t-----\n")
+                    break
+
+            if u_max-Profits[p] > max(abs_gap_adapted, RATIO_STOPPING_CRITERION_SOLVER*rel_gap*abs(Profits[p])) and bool_new_strategy:
             #test_CyberSecurityNL = (G.type() == "CyberSecurity") and (u_max-Profits[p] > max(abs_gap_adapted, RATIO_STOPPING_CRITERION_SOLVER*rel_gap*abs(Profits[p])))
             #if G.type() == "CyberSecurity":
             #    print(u_max-Profits[p], " > ", RATIO_STOPPING_CRITERION_SOLVER*max(abs_gap, rel_gap*abs(Profits[p])), " ?", test_CyberSecurityNL)
@@ -619,7 +630,7 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
     # define and solve an MIP model to solve a normal-form finite game
     #print "\n\n Solving Problem with Supports: ", A_supp
     #print("start of ComputeNE_MIP --- %s seconds ---" % (Ltime.time() - 1675900000))
-    print("start of model in ComputeNE_MIP --- %s seconds ---" % (Ltime.time() - 1675900000))
+    ##print("start of model in ComputeNE_MIP --- %s seconds ---" % (Ltime.time() - 1675900000))
     # initiate model
     m_p = grb.Model("ComputeNE_MIP")
     m_p.setParam("Threads", 4)
@@ -628,7 +639,7 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
     m_p.setParam("FeasibilityTol", 1e-9)
     # no pritting of the output
     m_p.setParam( 'OutputFlag', False)
-    m_p.setParam("TimeLimit", 100)
+    m_p.setParam("TimeLimit", 900)
     # set objective function direction
     m_p.ModelSense = 1 # minimize (1)
     m_p.update()
@@ -696,8 +707,8 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
             m_p.addConstr(U_p[p][sp]+grb.quicksum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p] <= v[p]) # for inequality constraints, because sp not in A_supp[p]
             # played strategies (sigma[p][sp] > 0) should be equal (less already done) to v[p]
             #print("<= v[p] added")
-            if p == 0 and sp == 0:
-                print("M = ", M)
+            ##if p == 0 and sp == 0:
+                ##print("M = ", M)
             #print("player %i strategy %i: U_p[p][sp] = %f"%(p,sp,U_p[p][sp]))
             m_p.addConstr(U_p[p][sp]+grb.quicksum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p] >= v[p] - M*(1-activ[p][sp])) # for equality constraints because sp in A_supp[p]
             #value = U_p[p][sp] + sum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p]
@@ -737,9 +748,9 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
     #    print("trying to add warmstart for variable ", key)
     #    key.start = warmstart_MIP[key]
 
-    print("end of model in ComputeNE_MIP --- %s seconds ---" % (Ltime.time() - 1675900000))
+    ##print("end of model in ComputeNE_MIP --- %s seconds ---" % (Ltime.time() - 1675900000))
     m_p.optimize()
-    print("end of optim in ComputeNE_MIP --- %s seconds ---" % (Ltime.time() - 1675900000))
+    ##print("end of optim in ComputeNE_MIP --- %s seconds ---" % (Ltime.time() - 1675900000))
     print("\t\t\t\t\t\twith number of strategies by players: ", Numb_stra)
     ne = []
     Profits = []

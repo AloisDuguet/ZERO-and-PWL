@@ -27,7 +27,7 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
         xk_Qkp = sum(np.dot(Profile[k], Q_p[k]) for k in range(m) if k!=p) # np.array
 
     bool_quad_formulation = False
-    print("start of model in NL BR --- %s seconds ---" % (Ltime.time() - 1675900000))
+    ##print("start of model in NL BR --- %s seconds ---" % (Ltime.time() - 1675900000))
     #if model == None:
     if True:
         # retrieve alpha, nRealVars and n_markets for later
@@ -184,9 +184,9 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
     ##opt = pyo.SolverFactory('ipopt') # ipopt can not handle integer variables
     #opt = pyo.SolverFactory('bonmin')
     global start_time
-    print("end of model in NL BR --- %s seconds ---" % (Ltime.time() - 1675900000))
+    ##print("end of model in NL BR --- %s seconds ---" % (Ltime.time() - 1675900000))
     results = opt.solve(model)
-    print("end of optimization in NL BR --- %s seconds ---" % (Ltime.time() - 1675900000))
+    ##print("end of optimization in NL BR --- %s seconds ---" % (Ltime.time() - 1675900000))
 
     if results.solver.status == SolverStatus.ok and results.solver.termination_condition == TerminationCondition.optimal:
         sol = [pyo.value(model.x[i]) for i in range(nRealVars)]
@@ -345,20 +345,20 @@ def SOCPBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
             - Ds[p] + Ds[p]/m*sum(Profile[k][n_markets] for k in range(m) if k != p)
             ,sense=pyo.maximize)
 
-    print("start of optimization in SOCP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
+    ##print("start of optimization in SOCP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
     opt.solve(model, options = {'dparam.intpnt_co_tol_pfeas': 1e-9,
     #'dparam.intpnt_co_tol_dfeas': REl_GAP_SOLVER,
     'dparam.intpnt_co_tol_rel_gap': REL_GAP_SOLVER,
     'dparam.basis_tol_x': 1e-9,
     'iparam.num_threads': 4})
-    print("end of optimization in SOCP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
+    ##print("end of optimization in SOCP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
 
     sol = [pyo.value(model.x[i]) for i in range(nRealVars)]
     value = pyo.value(model.OBJ)
 
     try:
-        print("SOCP BR solution: ", sol)
-        print("SOCP BR optimal value: ", value)
+        ##print("SOCP BR solution: ", sol)
+        ##print("SOCP BR optimal value: ", value)
         #print("t_quad = ", pyo.value(model.t_quad))
         #print("alpha*t_nl = ", alpha*pyo.value(model.t_nl))
         #print()
