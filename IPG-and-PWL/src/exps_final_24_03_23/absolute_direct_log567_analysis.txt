@@ -1,9 +1,9 @@
-methods	%solved	#inst	time	iter	
-SOCP	0.926	270	7.97	1.0	
+methods				%solved	#inst	time	iter	
+SOCP				0.926	270	7.97	1.0	
 sufficient_refinement_0.05	0	0	undef	undef	
 sufficient_refinement_2.5e-5	0.911	270	7.52	1.0	
-full_refinement_0.05	0.911	270	4.16	1.0	
-full_refinement_2.5e-5	0	0	undef	undef	
+full_refinement_0.05		0.911	270	4.16	1.0	
+full_refinement_2.5e-5		0	0	undef	undef	
 
 
 \begin{table}[]

@@ -1,4 +1,5 @@
 using Plots
+using LaTeXStrings
 
 function find_comparable_experiences(i, experiences, option, option_values)
     # find the set of indices of experiences which have the same setting than experiences[i] except for option which is in option_values
@@ -784,7 +785,159 @@ function prepare_performance_profile_cybersecurity(filename, filename_save = "pe
                     charac1 = characteristic(:refinement_method, refinement_method)
                     charac2 = characteristic(:err_pwlh, err)
                     if refinement_method != "sufficient_refinement"
-                        name = string(refinement_method, "_", err.delta)
+                        name = string(refinement_method, " ", err.delta)
+                    else
+                        name = refinement_method
+                    end
+                    cat = category([charac1,charac2], name)
+                    push!(list_categories, cat)
+                end
+            end
+        end
+    end
+
+    # last_solved keep the max time necessary to solve all instances of all experiences, to adjust the time shown in the plot
+    last_solved = 0
+
+    # find all experiences for each category
+    exps_by_category = [[] for i in 1:length(list_categories)]
+    for i in 1:length(list_categories)
+        category = list_categories[i]
+        println(category)
+        for exp in exps
+            in_category = true
+            # does it meet the required characteristics?
+            for characteristic in category.l_option
+                if getfield(exp.options, characteristic.option) != characteristic.option_value
+                    #println("exp does not match category $category: $exp")
+                    in_category = false
+                    break
+                end
+            end
+            # if yes, add informations
+            if in_category
+                #println("exp match for category $category: $exp")
+                cpu_time = Inf
+                if exp.outputs.solved
+                    if exp.options.refinement_method == "SGM_NL_model" || exp.options.refinement_method == "SGM_SOCP_model" || exp.options.refinement_method == "SGM_gurobiNL_model"
+                        cpu_time = exp.outputs.SGM_time
+                    else
+                        cpu_time = exp.outputs.SGM_time + exp.outputs.julia_time
+                    end
+                end
+                push!(exps_by_category[i], cpu_time)
+            end
+        end
+        sort!(exps_by_category[i])
+        println("Sorted times for $category:\n$(exps_by_category[i])")
+        # update last_solved
+        if length(exps_by_category[i]) > 0
+            last_solved = max(exps_by_category[i][end],last_solved)
+        end
+    end
+
+    # create profiles
+    l_profiles = []
+    for i in 1:length(list_categories)
+        x = []
+        y = []
+        n_exps = length(exps_by_category[i])
+        println("number of exps for category $(list_categories[i]) is $n_exps")
+        if n_exps > 0
+            for j in 1:n_exps
+                if exps_by_category[i][j] <= time_limit
+                    push!(x, exps_by_category[i][j])
+                    push!(y, (j-1)/n_exps)
+                    push!(x, exps_by_category[i][j])
+                    push!(y, j/n_exps)
+                end
+            end
+            # add last point with same fraction of instances solved and time to time_limit to finish the curve in the plot
+            if length(y) != 0
+                push!(x, time_limit)
+                push!(y, y[end])
+            else
+                push!(x, Inf)
+                push!(y, 0)
+                push!(x, time_limit)
+                push!(y, 0)
+            end
+            println("adding point ($time_limit,$(y[end-1]))")
+
+            name = list_categories[i].name
+            # change some names to fit my slides: "full_refinement"=>"PWL-ANE", "SOCP"=>"SGM-MOSEK"
+            #name = replace(name, "full_refinement"=>"PWL-ANE")
+            name = replace(name, "full_refinement"=>"2-level approximation")
+            name = replace(name, "SOCP"=>"SGM-MOSEK")
+            name = replace(name, "gurobiNL"=>"SGM-gurobiQP")
+            name = replace(name, "sufficient_refinement"=>"direct approximation")
+            push!(l_profiles, Profile(x,y,name,Dict()))
+        end
+    end
+
+    println("list_categories of length $(length(list_categories)):\n$list_categories")
+    #=println("l_profiles:")
+    for i in 1:length(list_categories)
+        println(l_profiles[i].name)
+        println(l_profiles[i].x)
+        println(l_profiles[i].y)
+    end=#
+
+    # add fields of l_profiles
+    title = "Performance profile for cybersecurity game methods"
+    x_axis = "seconds"
+    y_axis = "proportion of instances solved"
+    min_time = minimum([l_profiles[i].x[1] for i in 1:length(l_profiles)])
+    #max_time = maximum([l_profiles[i].x[end-1] for i in 1:length(l_profiles)])
+
+    # correct the categories without experiences for a normal plot
+    for i in 1:length(l_profiles)
+        if l_profiles[i].x[1] == Inf # special code for this case
+            l_profiles[i].x[1] = min_time
+        end
+    end
+
+    #x_range = [min_time,max_time]
+    x_range = [min_time,min(time_limit,last_solved)]
+    println("\n\nlast solved instance needed $last_solved seconds\n\n")
+    y_range = [0,1.0]
+    dict_options = Dict()
+    #profiles = Performance_profile(l_profiles, title, x_axis, y_axis, x_range, y_range, dict_options)
+    profiles = Performance_profile(l_profiles, "", x_axis, y_axis, x_range, y_range, dict_options)
+
+    #return profiles
+
+    # launch Performance_profile
+    p = performance_profile(profiles, xlog=true)
+
+    # save plot to filename_save
+    savefig(filename_save)
+
+    display(p)
+end
+
+function prepare_real_performance_profile_cybersecurity(filename, filename_save = "performance_profile.png", list_categories = []; refinement_methods = ["full_refinement","SGM_SOCP_model"],
+    errs = [Absolute(0.5),Absolute(0.05),Absolute(0.005),Absolute(0.0005)], time_limit=900)
+    # prepare profiles for a call to function performance_profile
+    # the performace profile will be:
+    # computation time in x
+    # #solved in y
+
+    exps = load_all_outputs(filename)
+
+    # create list_categories if not given
+    if list_categories == []
+        for refinement_method in refinement_methods
+            if refinement_method[1:4] == "SGM_"
+                # it is a NL version, adding only one
+                cat = category([characteristic(:refinement_method,refinement_method)], split(refinement_method, "_")[2])
+                push!(list_categories, cat)
+            else
+                for err in errs
+                    charac1 = characteristic(:refinement_method, refinement_method)
+                    charac2 = characteristic(:err_pwlh, err)
+                    if refinement_method != "sufficient_refinement"
+                        name = string(refinement_method, " ", err.delta)
                     else
                         name = refinement_method
                     end
@@ -824,9 +977,66 @@ function prepare_performance_profile_cybersecurity(filename, filename_save = "pe
                 push!(exps_by_category[i], cpu_time)
             end
         end
-        sort!(exps_by_category[i])
-        println("Sorted times for $category:\n$(exps_by_category[i])")
     end
+
+    # delete empty categories
+    new_categories = []
+    new_exps_by_category = []
+    for i in 1:length(list_categories)
+        if length(exps_by_category[i]) > 0
+            println("size of category $i: $(length(exps_by_category[i]))")
+            push!(new_categories, list_categories[i])
+            push!(new_exps_by_category, exps_by_category[i])
+        end
+    end
+    list_categories = deepcopy(new_categories)
+    exps_by_category = deepcopy(new_exps_by_category)
+
+    # check that all remaining categories have the same number of exps
+    n_exps = length(exps_by_category[1])
+    println("number of exps by solver: ", n_exps)
+    for i in 2:length(list_categories)
+        if length(exps_by_category[i]) != n_exps
+            error("all categories don't have the same number of exps: ", [length(exps_by_categories[j]) for j in 1:length(list_categories)])
+        end
+    end
+
+    #return exps_by_category,list_categories
+
+    # divide times by best time among solvers for each instance
+    for j in 1:n_exps
+        min_time = Inf
+        for i in 1:length(list_categories)
+            #print("$j-$i ")
+            #print(min_time)
+            #print(exps_by_category[i][j])
+            min_time = min(min_time,exps_by_category[i][j])
+            if exps_by_category[i][j] == NaN || min_time == NaN
+                println("\n\n\n")
+                println("$j-$i ")
+                println(min_time)
+                println(exps_by_category[i][j])
+            end
+        end
+        if min_time != Inf
+            for i in 1:length(list_categories)
+                exps_by_category[i][j] /= min_time
+            end
+        end
+    end
+
+    # sort after ratios have been computed instead of times
+    # last_solved keep the max time necessary to solve all instances of all experiences, to adjust the time shown in the plot
+    last_solved = 0
+    for i in 1:length(list_categories)
+        sort!(exps_by_category[i])
+        println("Sorted ratios for $category:\n$(exps_by_category[i])")
+        if length(exps_by_category[i]) > 0
+            println("max between $(exps_by_category[i][end]) and $last_solved")
+            last_solved = max(maximum([exps_by_category[i][j] for j in 1:n_exps if exps_by_category[i][j] != Inf]),last_solved)
+        end
+    end
+
 
     # create profiles
     l_profiles = []
@@ -838,6 +1048,8 @@ function prepare_performance_profile_cybersecurity(filename, filename_save = "pe
         if n_exps > 0
             for j in 1:n_exps
                 if exps_by_category[i][j] <= time_limit
+                    push!(x, exps_by_category[i][j])
+                    push!(y, (j-1)/n_exps)
                     push!(x, exps_by_category[i][j])
                     push!(y, j/n_exps)
                 end
@@ -857,10 +1069,10 @@ function prepare_performance_profile_cybersecurity(filename, filename_save = "pe
             name = list_categories[i].name
             # change some names to fit my slides: "full_refinement"=>"PWL-ANE", "SOCP"=>"SGM-MOSEK"
             #name = replace(name, "full_refinement"=>"PWL-ANE")
-            name = replace(name, "full_refinement"=>"2-level_approximation")
+            name = replace(name, "full_refinement"=>"2-level approximation")
             name = replace(name, "SOCP"=>"SGM-MOSEK")
-            name = replace(name, "gurobiNL"=>"SGM-gurobiNL")
-            name = replace(name, "sufficient_refinement"=>"direct_approximation")
+            name = replace(name, "gurobiNL"=>"SGM-gurobiQP")
+            name = replace(name, "sufficient_refinement"=>"direct approximation")
             push!(l_profiles, Profile(x,y,name,Dict()))
         end
     end
@@ -875,8 +1087,8 @@ function prepare_performance_profile_cybersecurity(filename, filename_save = "pe
 
     # add fields of l_profiles
     title = "Performance profile for cybersecurity game methods"
-    x_axis = "seconds"
-    y_axis = "proportion of instances solved"
+    x_axis = L"\tau"
+    y_axis = L"P\,(r_{p,s} \leq \tau)"
     min_time = minimum([l_profiles[i].x[1] for i in 1:length(l_profiles)])
     #max_time = maximum([l_profiles[i].x[end-1] for i in 1:length(l_profiles)])
 
@@ -888,10 +1100,12 @@ function prepare_performance_profile_cybersecurity(filename, filename_save = "pe
     end
 
     #x_range = [min_time,max_time]
-    x_range = [min_time,time_limit]
+    x_range = [min_time,min(time_limit,last_solved)]
+    println("\nlast solved instance had a performance ratio of $last_solved")
     y_range = [0,1.0]
     dict_options = Dict()
-    profiles = Performance_profile(l_profiles, title, x_axis, y_axis, x_range, y_range, dict_options)
+    #profiles = Performance_profile(l_profiles, title, x_axis, y_axis, x_range, y_range, dict_options)
+    profiles = Performance_profile(l_profiles, "", x_axis, y_axis, x_range, y_range, dict_options)
 
     #return profiles
 

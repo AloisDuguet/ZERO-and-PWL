@@ -346,11 +346,15 @@ def SOCPBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
             ,sense=pyo.maximize)
 
     ##print("start of optimization in SOCP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
-    opt.solve(model, options = {'dparam.intpnt_co_tol_pfeas': 1e-9,
-    #'dparam.intpnt_co_tol_dfeas': REl_GAP_SOLVER,
-    'dparam.intpnt_co_tol_rel_gap': REL_GAP_SOLVER,
-    'dparam.basis_tol_x': 1e-9,
+    opt.solve(model, options = {
+    ##'dparam.intpnt_co_tol_pfeas': 1e-9, # FeasibilityTol for gurobi for constraints
+    ##'dparam.intpnt_co_tol_rel_gap': REL_GAP_SOLVER,
+    ##'dparam.basis_tol_x': 1e-9, # # FeasibilityTol for gurobi for variable bounds
+    'dparam.mio_tol_abs_gap': 1e-5,
+    'dparam.mio_tol_abs_relax_int': 1e-9,
+    'dparam.mio_tol_feas': 1e-9,
     'iparam.num_threads': 4})
+    #opt.solve(model, options = {'dparam.mio_tol_rel_gap': 1e-9,})
     ##print("end of optimization in SOCP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
 
     sol = [pyo.value(model.x[i]) for i in range(nRealVars)]

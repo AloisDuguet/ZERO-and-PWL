@@ -1,9 +1,9 @@
-methods	%solved	#inst	time	iter	
-gurobiNL	0.922	270	4.67	1.0	
+methods				%solved	#inst	time	iter	
+gurobiNL			0.922	270	4.67	1.0	
 sufficient_refinement_0.05	0	0	undef	undef	
 sufficient_refinement_2.5e-5	0.907	270	8.27	1.0	
-full_refinement_0.05	0.915	270	4.87	1.0	
-full_refinement_2.5e-5	0	0	undef	undef	
+full_refinement_0.05		0.915	270	4.87	1.0	
+full_refinement_2.5e-5		0	0	undef	undef	
 
 
 \begin{table}[]

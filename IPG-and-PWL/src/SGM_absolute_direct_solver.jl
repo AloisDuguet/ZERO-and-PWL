@@ -421,7 +421,7 @@ end
 #out1 = SGM_PWL_absolute_direct_solver("instance_6_4_8.txt", refinement_method = "full_refinement")
 #out1 = SGM_PWL_absolute_direct_solver("instance_6_5_2.txt", refinement_method = "SGM_SOCP_model")
 
-if true # final experiments
+if false # final experiments
     # instances: 2 to 4 and 5 to 7 players, 10 instances by sizes
     # full refinement is implemented without check because a big interest of approximation procedure is to not need any NL solver
     # exps log absolute MOSEK vs sufficient refinement vs full refinement
@@ -432,6 +432,7 @@ if true # final experiments
     benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "absolute_direct_root234.txt")
     benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "absolute_direct_root567.txt")
 end
+###prepare_real_performance_profile_cybersecurity("exps_final_24_03_23/absolute_direct_log234.txt",refinement_methods=["SGM_SOCP_model","sufficient_refinement","full_refinement"],errs=[Absolute(0.05),Absolute(2.5e-5)])
 
 #=filename_saves = ["absolute_direct_log234.txt", "absolute_direct_log567.txt", "absolute_direct_root234.txt", "absolute_direct_root567.txt"]
 refinement_methods_log = ["SGM_SOCP_model","sufficient_refinement","full_refinement"]

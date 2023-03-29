@@ -2,6 +2,7 @@ from Instances import *
 from Initial_str import *
 from nonlinear_best_response_cybersecurity import *
 from tools_parse import *
+from check_SOCP import *
 # control time
 from time import time
 from copy import deepcopy
@@ -143,6 +144,14 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
                 s_p, u_max, _ = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,NL_term=G.NL_term())
             elif G.type() == "CyberSecuritySOCP":
                 s_p, u_max, _ = SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,NL_term=G.NL_term())
+                s_p_check, u_max_check, _ = check_SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,NL_term=G.NL_term())
+                print("-----> Just after BR:")
+                print("value SOCP: ", u_max, "\nvalue check SOCP: ", u_max_check)
+                check_diff = abs(u_max-u_max_check)
+                print("difference between values: ", check_diff)
+                print("sol SOCP: ", s_p, "\nsol check SOCP: ", s_p_check)
+                if check_diff > abs_gap:
+                    print("for an abs_gap of ", abs_gap, ", check_diff was found too big (cf last line)")
             elif G.type() == "CyberSecuritygurobiNL":
                 s_p, u_max, _ = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,NL_term=G.NL_term())
             #print("end of computation of Best Response iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
@@ -224,6 +233,14 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
                 #print("end of adding an element in the support iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
             else:
                 print("stopping criterion passed for player %i with Profits[%i] = %f and NL BR = %f"%(p+1,p+1,Profits[p],u_max))
+                if G.type() == "CyberSecuritySOCP":
+                    s_p_check, u_max_check, _ = check_SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,NL_term=G.NL_term())
+                    print("sol SOCP: ", u_max, "\nsol check SOCP: ", u_max_check)
+                    check_diff = abs(u_max-u_max_check)
+                    print("difference between values: ", check_diff)
+                    if check_diff > abs_gap:
+                        print("for an abs_gap of ", abs_gap, ", check_diff was found too big (cf last line)")
+                        exit(15)
             aux_p = aux_p+1
         if aux:
             if time()-time_aux:
