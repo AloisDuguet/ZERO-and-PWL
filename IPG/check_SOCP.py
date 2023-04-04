@@ -31,8 +31,8 @@ def get_symmetric(Q):
             symQ[i,j] = (Q[i,j]+Q[j,i])/2
             symQ[j,i] = (Q[i,j]+Q[j,i])/2
     return symQ
-    
-def check_SOCPBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_p, Profile, p, create, ins, model = None,CE_verify = False,REL_GAP_SOLVER=1e-7, NL_term = "inverse_square_root"):
+
+def check_SOCPBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_p, Profile, p, create, ins, model = None,CE_verify = False,REL_GAP_SOLVER=1e-7, ABS_GAP_SOLVER=1e-10, NL_term = "inverse_square_root"):
 
     import pyomo.kernel as pmo
     from scipy.linalg import sqrtm

@@ -345,7 +345,9 @@ function benchmark_SGM_absolute_direct_solver(; filename_instances, fixed_costss
     experiences = []
     # false experience to compile everything
     SGM_PWL_absolute_direct_solver("instance_1.txt", fixed_costs = true, refinement_method = "sufficient_refinement")
+    SGM_PWL_absolute_direct_solver("instance_1.txt", fixed_costs = true, refinement_method = "full_refinement")
     SGM_PWL_absolute_direct_solver("instance_1.txt", fixed_costs = true, refinement_method = "SGM_SOCP_model")
+    SGM_PWL_absolute_direct_solver("instance_1.txt", fixed_costs = true, refinement_method = "SGM_gurobiNL_model", NL_term = "inverse_square_root")
     inst = instance_queue[1]
     try
         SGM_PWL_absolute_direct_solver(inst.filename_instance, fixed_costs = inst.fixed_costs, refinement_method = inst.refinement_method,
@@ -403,9 +405,13 @@ function benchmark_SGM_absolute_direct_solver(; filename_instances, fixed_costss
     end
 
     # give some elements of analysis
-    launch_method_comparison(filename_save, experiences, refinement_methods, err_pwlhs, filename_save = filename_save[1:end-4]*"_analysis.txt")
-    preliminary_analysis(experiences, err_pwlhs, fixed_costss, refinement_methods, filename_save[1:end-4]*"_analysis.txt")
-    prepare_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.png", refinement_methods = refinement_methods, errs = err_pwlhs)
+    try
+        launch_method_comparison(filename_save, experiences, refinement_methods, err_pwlhs, filename_save = filename_save[1:end-4]*"_analysis.txt")
+        preliminary_analysis(experiences, err_pwlhs, fixed_costss, refinement_methods, filename_save[1:end-4]*"_analysis.txt")
+        prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.png", refinement_methods = refinement_methods, errs = err_pwlhs)
+    catch e
+        println("error during analysis of the benchmark")
+    end
 
     return experiences
 end
@@ -420,6 +426,8 @@ end
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "absolute_direct_log234.txt")
 #out1 = SGM_PWL_absolute_direct_solver("instance_6_4_8.txt", refinement_method = "full_refinement")
 #out1 = SGM_PWL_absolute_direct_solver("instance_6_5_2.txt", refinement_method = "SGM_SOCP_model")
+
+
 
 if false # final experiments
     # instances: 2 to 4 and 5 to 7 players, 10 instances by sizes

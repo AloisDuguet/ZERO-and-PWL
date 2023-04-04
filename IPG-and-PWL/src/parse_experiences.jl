@@ -205,7 +205,14 @@ function load_output_instance(line)
             refinement_method = infos[4]
             max_iter = parse(Int64, infos[5])
             rel_gap = parse(Float64, infos[6])
-            if length(infos[7]) > 5 # specific case because many instances are saved without NL_term option
+            abs_gap = "UNK"
+            try
+                abs_gap = parse(Float64,infos[7])
+                deleteat!(infos, 7)
+            catch e
+                println("error in load_output_instance while handling abs_gap or NL_term: $(infos[7]) as a Float64, producing error $e")
+            end
+            if length(infos[7]) > 5 || infos[7] == "log" # specific case because many instances are saved without NL_term option
                 NL_term =  infos[7]
                 deleteat!(infos, 7)
             else
@@ -214,8 +221,8 @@ function load_output_instance(line)
             big_weights_on_NL_part = parse(Bool, infos[7])
             options = option_cs_instance(filename_instance, err_pwlh, fixed_costs,
             refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part)
-            outputs = output_cs_instance(false, [[]], [], 0,
-                -1, -1, [], [], -1, -1)
+            outputs = output_cs_instance(false, [[]], [], Inf,
+                -1, -1, [], [], Inf, Inf)
             return cs_experience(options, outputs)
         catch e
             println("entering second catch of load_output_instance for error message: ", e)

@@ -42,7 +42,7 @@ def InitialStrategies(G,opt_solver=1,REL_GAP_SOLVER=1e-7,ABS_GAP_SOLVER=1e-10):
         elif G.type() == "CyberSecurityNL":
             S[p][0], U_p[p][0], Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None, NL_term = G.NL_term())
         elif G.type() == "CyberSecuritySOCP":
-            S[p][0], U_p[p][0], Model_p = SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER, NL_term = G.NL_term())
+            S[p][0], U_p[p][0], Model_p = SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER, ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term = G.NL_term())
         elif G.type() == "CyberSecuritygurobiNL":
             S[p][0], U_p[p][0], Model_p = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term=G.NL_term())
         # add Ds[p] to U_p[p][0] because it is removed in the BR functions gurobiNL, NL, not in gurobi and removed also in ComputeNE_MIP.
@@ -142,13 +142,13 @@ def CreateModels(m, n_I, n_C, n_constr, c, Q, A, b, problem_type = "UNK", G = No
             return "andouille"
             _,_,Model_p = BestReactionGurobi(m,n_I[p],n_C[p],n_constr[p],c[p],Q[p],A[p],b[p],Profile,p,True)
         elif G.type() == "CyberSecurity":
-            _,_,Model_p = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER) # create = True should be fine
+            _,_,Model_p = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER) # create = True should be fine
         elif G.type() == "CyberSecurityNL":
             _,_,Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None, NL_term = G.NL_term()) # same
         elif G.type() == "CyberSecuritySOCP":
-            _,_,Model_p = SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER, NL_term = G.NL_term()) # same
+            _,_,Model_p = SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER, NL_term = G.NL_term()) # same
         elif G.type() == "CyberSecuritygurobiNL":
-            _,_,Model_p = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER) # create = True should be fine
+            _,_,Model_p = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER) # create = True should be fine
         Best_m.append(Model_p)
     return Best_m
 
@@ -292,9 +292,10 @@ def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Pro
         # initiate model
         m_p = grb.Model("MIQPG")
         # no pritting of the output
-        #m_p.setParam( 'OutputFlag', False)
+        m_p.setParam( 'OutputFlag', False)
         m_p.setParam("Threads", 4)
-        m_p.setParam("MIPGap",REL_GAP_SOLVER) # keep value 1e-8 to avoid some numerical issues with the 1e-6 of the SGM stopping criterion
+        m_p.setParam("MIPGap",REL_GAP_SOLVER) # keep value 1e-10 to avoid interferences with MIPGapAbs
+        m_p.setParam("MIPGapAbs",ABS_GAP_SOLVER)
         #m_p.setParam('MIPGapAbs', 1e4)
         m_p.setParam("FeasibilityTol",1e-9) # do not put something less precise than 1e-7 if the stopping criterion is 1e-6
         m_p.setParam("IntFeasTol",1e-9)
@@ -425,10 +426,8 @@ def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,P
         # no pritting of the output
         m_p.setParam( 'OutputFlag', False)
         m_p.setParam("Threads", 4)
-        m_p.setParam("MIPGap",REL_GAP_SOLVER)
-        m_p.setParam("BarQCPConvTol",REL_GAP_SOLVER)
-        m_p.setParam("BarConvTol",REL_GAP_SOLVER)
-        m_p.setParam("OptimalityTol",REL_GAP_SOLVER)
+        m_p.setParam("MIPGap",REL_GAP_SOLVER)# keep value 1e-10 to avoid interferences with MIPGapAbs
+        m_p.setParam("MIPGapAbs",ABS_GAP_SOLVER)
         m_p.setParam("IntFeasTol", 1e-9)
         m_p.setParam("FeasibilityTol",1e-9) # allowed to remove numerical issues in the convergence of the SGM with value 1e-7 as opposed to 1e-6
         #m_p.setParam('BarHomogeneous', 1)
@@ -481,6 +480,7 @@ def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,P
             m_p.addConstr(s2_nl*s_nl, grb.GRB.LESS_EQUAL, 1-x[n_markets])
             m_p.addConstr(1, grb.GRB.LESS_EQUAL, s_nl*t_nl)
         elif NL_term == "log":
+            exit(17) # GurobiNL not coded for "log"
             m_p.setParam("NonConvex", 2)
             nl_vars.append(m_p.addVar(lb = 0, ub = 1, vtype="C", name="s_nl"))
             nl_vars.append(m_p.addVar(lb = 0, vtype="C", name="t_nl")) # the fact that t_nl is negative could lead to problems!!!

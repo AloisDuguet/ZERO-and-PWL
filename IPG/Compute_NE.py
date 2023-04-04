@@ -42,13 +42,16 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
     """
 
     # handle parameters for stopping criterion and solver relative gap and absolute gap
-    RATIO_STOPPING_CRITERION_SOLVER = 0.99 # ratio of abs_gap and rel_gap specific to the main loop stopping criterion, the ratio for the solver stopping criterion is 1 minus this value
+    if rel_gap != 0:
+        RATIO_STOPPING_CRITERION_SOLVER = 0.99 # ratio of abs_gap and rel_gap specific to the main loop stopping criterion, the ratio for the solver stopping criterion is 1 minus this value
+    else:
+        RATIO_STOPPING_CRITERION_SOLVER = 0.8 # case abs_gap != 0
     # return an error if rel_gap < 1e-6
     if rel_gap < 10**-6 and abs_gap < 1e-6:
         print("rel_gap can not be below 10**-6 for numerical stability reasons. Right now rel_gap = ", rel_gap)
         exit(6)
     else:
-        REL_GAP_SOLVER = max(rel_gap*(1-RATIO_STOPPING_CRITERION_SOLVER),1e-9)
+        REL_GAP_SOLVER = max(rel_gap*(1-RATIO_STOPPING_CRITERION_SOLVER),1e-12)
     # define ABS_GAP_SOLVER
     ABS_GAP_SOLVER = abs_gap*(1-RATIO_STOPPING_CRITERION_SOLVER)
 
@@ -99,7 +102,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
             #print("MCT before starting Compute_NE_NOT_DFS\n", MCT)
             ###print("start of ComputeNE_NOT_DFS iteration %i --- %s seconds ---" %(count, Ltime.time() - 1675900000))
             #ne, Profits = ComputeNE_NOT_DFS(U_depend,U_p,MCT,G.m(),G.n_I(),G.n_C(),Numb_stra,opt_solver,ne,deviator)
-        ne, Profits = ComputeNE_new(G,U_depend,U_p,MCT,G.m(),G.n_I(),G.n_C(),Numb_stra,warmstart_MIP,opt_solver,ne,deviator,Best_m,REL_GAP_SOLVER=REL_GAP_SOLVER)
+        ne, Profits = ComputeNE_new(G,U_depend,U_p,MCT,G.m(),G.n_I(),G.n_C(),Numb_stra,warmstart_MIP,opt_solver,ne,deviator,Best_m,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER)
             ###print("end of ComputeNE_NOT_DFS iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
             ### modify ###
             #return ne,Profits,S,count,time()-time_aux
@@ -139,21 +142,22 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
             if G.type() != "CyberSecurity" and G.type() != "CyberSecurityNL" and G.type() != "CyberSecuritySOCP" and G.type() != "CyberSecuritygurobiNL" :
                 s_p, u_max, _ = BestReactionGurobi(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,Best_m[p])
             elif G.type() == "CyberSecurity":
-                s_p, u_max, _ = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER)
+                s_p, u_max, _ = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER)
             elif G.type() == "CyberSecurityNL":
-                s_p, u_max, _ = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,NL_term=G.NL_term())
+                s_p, u_max, _ = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term=G.NL_term())
             elif G.type() == "CyberSecuritySOCP":
-                s_p, u_max, _ = SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,NL_term=G.NL_term())
-                s_p_check, u_max_check, _ = check_SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,NL_term=G.NL_term())
-                print("-----> Just after BR:")
-                print("value SOCP: ", u_max, "\nvalue check SOCP: ", u_max_check)
-                check_diff = abs(u_max-u_max_check)
-                print("difference between values: ", check_diff)
-                print("sol SOCP: ", s_p, "\nsol check SOCP: ", s_p_check)
-                if check_diff > abs_gap:
-                    print("for an abs_gap of ", abs_gap, ", check_diff was found too big (cf last line)")
+                s_p, u_max, _ = SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term=G.NL_term())
+                if False:
+                    s_p_check, u_max_check, _ = check_SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term=G.NL_term())
+                    print("-----> Just after BR:")
+                    print("value SOCP: ", u_max, "\nvalue check SOCP: ", u_max_check)
+                    check_diff = abs(u_max-u_max_check)
+                    print("difference between values: ", check_diff)
+                    print("sol SOCP: ", s_p, "\nsol check SOCP: ", s_p_check)
+                    if check_diff > abs_gap:
+                        print("for an abs_gap of ", abs_gap, ", check_diff was found too big (cf last line)")
             elif G.type() == "CyberSecuritygurobiNL":
-                s_p, u_max, _ = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,NL_term=G.NL_term())
+                s_p, u_max, _ = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term=G.NL_term())
             #print("end of computation of Best Response iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
 
             # criterion working with absolute, relative and mixed error, if rel_gap = 0 for absolute and abs_gap = 0 for relative
@@ -169,7 +173,9 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
                     print("\n\t\t\t\t\t\t\t\t-----\talready picked strategy -> considering that the abs gap is satisfied\t-----\n")
                     break
 
-            if u_max-Profits[p] > max(abs_gap_adapted, RATIO_STOPPING_CRITERION_SOLVER*rel_gap*abs(Profits[p])) and bool_new_strategy:
+            if u_max-Profits[p] > max(abs_gap*RATIO_STOPPING_CRITERION_SOLVER, RATIO_STOPPING_CRITERION_SOLVER*rel_gap*abs(Profits[p])) and bool_new_strategy:
+            #if u_max-Profits[p] > max(abs_gap_adapted, RATIO_STOPPING_CRITERION_SOLVER*rel_gap*abs(Profits[p])) and bool_new_strategy:
+
             #test_CyberSecurityNL = (G.type() == "CyberSecurity") and (u_max-Profits[p] > max(abs_gap_adapted, RATIO_STOPPING_CRITERION_SOLVER*rel_gap*abs(Profits[p])))
             #if G.type() == "CyberSecurity":
             #    print(u_max-Profits[p], " > ", RATIO_STOPPING_CRITERION_SOLVER*max(abs_gap, rel_gap*abs(Profits[p])), " ?", test_CyberSecurityNL)
@@ -233,8 +239,8 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
                 #print("end of adding an element in the support iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
             else:
                 print("stopping criterion passed for player %i with Profits[%i] = %f and NL BR = %f"%(p+1,p+1,Profits[p],u_max))
-                if G.type() == "CyberSecuritySOCP":
-                    s_p_check, u_max_check, _ = check_SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,NL_term=G.NL_term())
+                if G.type() == "CyberSecuritySOCP" and False:
+                    s_p_check, u_max_check, _ = check_SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term=G.NL_term())
                     print("sol SOCP: ", u_max, "\nsol check SOCP: ", u_max_check)
                     check_diff = abs(u_max-u_max_check)
                     print("difference between values: ", check_diff)
@@ -610,7 +616,7 @@ def FeasibilityProblem_Gurobi(m,A_supp, U_depend,U_p,MCT,Numb_stra,m_p = None):
                 Profits.append(v[p].x)
         return ne, Profits
 
-def ComputeNE_new(G,U_depend,U_p,MCT,m,n_I,n_C,Numb_stra,warmstart_MIP,opt_solver,ne_previous,deviator,Best_m,REL_GAP_SOLVER=1e-7):
+def ComputeNE_new(G,U_depend,U_p,MCT,m,n_I,n_C,Numb_stra,warmstart_MIP,opt_solver,ne_previous,deviator,Best_m,REL_GAP_SOLVER=1e-7,ABS_GAP_SOLVER=1e-10):
     # prepare ComputeNE_MIP, an MIP model to find the NE to a normal-form finite game
 
     # prepare A_supp with all strategies for each player
@@ -620,7 +626,7 @@ def ComputeNE_new(G,U_depend,U_p,MCT,m,n_I,n_C,Numb_stra,warmstart_MIP,opt_solve
         for sp in range(Numb_stra[p]):
             A_supp[p].append(sp)
     # launch MIP
-    ne,Profits = ComputeNE_MIP(G,m,A_supp,U_depend,U_p,MCT,Numb_stra,warmstart_MIP,Best_m,REL_GAP_SOLVER=REL_GAP_SOLVER)
+    ne,Profits = ComputeNE_MIP(G,m,A_supp,U_depend,U_p,MCT,Numb_stra,warmstart_MIP,Best_m,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER)
     print("ComputeNE_MIP finished:\nne = ", ne, "\nProfits = ", Profits)
     return ne,Profits
 
@@ -643,7 +649,7 @@ def check_relax_infeasibility_solution(filename):
         line = f.readline()
     return True
 
-def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Best_m, REL_GAP_SOLVER=1e-7):
+def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Best_m, REL_GAP_SOLVER=1e-7, ABS_GAP_SOLVER=1e-10):
     # define and solve an MIP model to solve a normal-form finite game
     #print "\n\n Solving Problem with Supports: ", A_supp
     #print("start of ComputeNE_MIP --- %s seconds ---" % (Ltime.time() - 1675900000))
@@ -652,6 +658,7 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
     m_p = grb.Model("ComputeNE_MIP")
     m_p.setParam("Threads", 4)
     m_p.setParam("MIPGap",REL_GAP_SOLVER)
+    m_p.setParam("MIPGapAbs",ABS_GAP_SOLVER)
     m_p.setParam("IntFeasTol", 1e-9)
     m_p.setParam("FeasibilityTol", 1e-9)
     # no pritting of the output
@@ -794,7 +801,9 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
         bool_check = check_relax_infeasibility_solution("debug.sol")
         print("end of checking artificial variables values with output ", bool_check)
     if m_p.status not in [3,4]:
+        #rebuild_profits = []
         for p, sp in enumerate(Numb_stra):
+            #rebuild_profits.append(0)
             for j in range(sp):
                 if False:
                     if sigma[p][j].x > 0:
@@ -812,6 +821,7 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
                     #print(round(sigma[p][j].x,9))
                     #ne.append(round(sigma[p][j].x,9))
                     ne.append(sigma[p][j].x)
+                    #rebuild_profits[p] += sigma[p][j].x*(U_p[p][j]     )
                 else:
                     ne.append(0)
             Profits.append(v[p].x)
@@ -822,7 +832,6 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
             warmstart_MIP["v_%i"%p] = v[p].x
         #print(warmstart_MIP)
     return ne, Profits
-
 
 #######################################################################################################################
 

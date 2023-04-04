@@ -997,7 +997,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
     println("number of exps by solver: ", n_exps)
     for i in 2:length(list_categories)
         if length(exps_by_category[i]) != n_exps
-            error("all categories don't have the same number of exps: ", [length(exps_by_category[j]) for j in 1:length(list_categories)])
+            error("all categories don't have the same number of exps: ", [length(exps_by_categories[j]) for j in 1:length(list_categories)])
         end
     end
 

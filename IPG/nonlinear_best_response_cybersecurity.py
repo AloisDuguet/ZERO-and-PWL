@@ -223,7 +223,7 @@ def get_symmetric(Q):
             symQ[j,i] = (Q[i,j]+Q[j,i])/2
     return symQ
 
-def SOCPBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_p, Profile, p, create, ins, model = None,CE_verify = False,REL_GAP_SOLVER=1e-7, NL_term = "inverse_square_root"):
+def SOCPBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_p, Profile, p, create, ins, model = None,CE_verify = False,REL_GAP_SOLVER=1e-7, ABS_GAP_SOLVER=1e-10, NL_term = "inverse_square_root"):
 
     import pyomo.kernel as pmo
     from scipy.linalg import sqrtm
@@ -350,7 +350,8 @@ def SOCPBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
     ##'dparam.intpnt_co_tol_pfeas': 1e-9, # FeasibilityTol for gurobi for constraints
     ##'dparam.intpnt_co_tol_rel_gap': REL_GAP_SOLVER,
     ##'dparam.basis_tol_x': 1e-9, # # FeasibilityTol for gurobi for variable bounds
-    'dparam.mio_tol_abs_gap': 1e-5,
+    'dparam.mio_tol_rel_gap': REL_GAP_SOLVER,
+    'dparam.mio_tol_abs_gap': ABS_GAP_SOLVER,
     'dparam.mio_tol_abs_relax_int': 1e-9,
     'dparam.mio_tol_feas': 1e-9,
     'iparam.num_threads': 4})
