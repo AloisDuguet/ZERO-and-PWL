@@ -427,35 +427,39 @@ end
 #out1 = SGM_PWL_absolute_direct_solver("instance_6_4_8.txt", refinement_method = "full_refinement")
 #out1 = SGM_PWL_absolute_direct_solver("instance_6_5_2.txt", refinement_method = "SGM_SOCP_model")
 
+#benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances[[1,2,3,4,5]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "nb_iter_log234.txt")
+#benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "nb_iter_root234.txt")
+#benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[i for i in 1:10:length(filename_instances_big567_complete)]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "nb_iter_log567.txt")
 
+#benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "test_iteration_number/absolute_direct_root234.txt")
 
 if false # final experiments
     # instances: 2 to 4 and 5 to 7 players, 10 instances by sizes
     # full refinement is implemented without check because a big interest of approximation procedure is to not need any NL solver
     # exps log absolute MOSEK vs sufficient refinement vs full refinement
-    benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "absolute_direct_log234.txt")
-    benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "absolute_direct_log567.txt")
+    benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "test_iteration_number/absolute_direct_log234.txt")
+    benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "test_iteration_number/absolute_direct_log567.txt")
 
     # exps square root gurobiNL vs sufficient refinement vs full refinement
-    benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "absolute_direct_root234.txt")
-    benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "absolute_direct_root567.txt")
+    benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "test_iteration_number/absolute_direct_root234.txt")
+    benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "test_iteration_number/absolute_direct_root567.txt")
 end
 ###prepare_real_performance_profile_cybersecurity("exps_final_24_03_23/absolute_direct_log234.txt",refinement_methods=["SGM_SOCP_model","sufficient_refinement","full_refinement"],errs=[Absolute(0.05),Absolute(2.5e-5)])
 
-#=filename_saves = ["absolute_direct_log234.txt", "absolute_direct_log567.txt", "absolute_direct_root234.txt", "absolute_direct_root567.txt"]
+filename_saves = ["absolute_direct_log234.txt", "absolute_direct_log567.txt", "absolute_direct_root234.txt", "absolute_direct_root567.txt"]
 refinement_methods_log = ["SGM_SOCP_model","sufficient_refinement","full_refinement"]
 refinement_methods_root = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"]
-err_pwlhs = [Absolute(0.05), Absolute(2.5e-4)]
+err_pwlhs = [Absolute(0.05), Absolute(2.5e-5)]
 
 filename_save = filename_saves[1]
-prepare_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.png", refinement_methods = refinement_methods_log, errs = err_pwlhs)
+prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.png", refinement_methods = refinement_methods_log, errs = err_pwlhs)
 filename_save = filename_saves[2]
-prepare_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.png", refinement_methods = refinement_methods_log, errs = err_pwlhs)
+prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.png", refinement_methods = refinement_methods_log, errs = err_pwlhs)
 filename_save = filename_saves[3]
-prepare_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.png", refinement_methods = refinement_methods_root, errs = err_pwlhs)
+prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.png", refinement_methods = refinement_methods_root, errs = err_pwlhs)
 filename_save = filename_saves[4]
-prepare_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.png", refinement_methods = refinement_methods_root, errs = err_pwlhs)
-=#
+prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.png", refinement_methods = refinement_methods_root, errs = err_pwlhs)
+
 
 #=log234old = load_all_outputs("exps_19_03_23/absolute_direct_log567.txt")
 log234 = load_all_outputs("exps_19_03_23/absolute_direct_log567.txt")

@@ -1,7 +1,7 @@
 using Clipper
 using AngleBetweenVectors
 using LinA
-precompile(LinA.exactLin, (Expr,Float64,Float64,LinA.ErrorType))
+precompile(LinA.ExactLin, (Expr,Float64,Float64,LinA.ErrorType))
 using LinearAlgebra
 
 include("basic_functions.jl")

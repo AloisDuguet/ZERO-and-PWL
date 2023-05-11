@@ -41,6 +41,14 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
     cpu_time: computational time
     """
 
+    # to facilitate the parsing of the number of iteration: (works with another writing in file at the usual exit)
+    file = open("save_number_of_iteration", "a")
+    if G.type() == "CyberSecuritygurobiNL" or G.type() == "CyberSecuritySOCP":
+        file.write("\n")
+    #file.write("count = %d\t%s"%(count,G.type()))
+    file.write("_")
+    file.close()
+
     # handle parameters for stopping criterion and solver relative gap and absolute gap
     if rel_gap != 0:
         RATIO_STOPPING_CRITERION_SOLVER = 0.99 # ratio of abs_gap and rel_gap specific to the main loop stopping criterion, the ratio for the solver stopping criterion is 1 minus this value
@@ -147,15 +155,6 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
                 s_p, u_max, _ = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term=G.NL_term())
             elif G.type() == "CyberSecuritySOCP":
                 s_p, u_max, _ = SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term=G.NL_term())
-                if False:
-                    s_p_check, u_max_check, _ = check_SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term=G.NL_term())
-                    print("-----> Just after BR:")
-                    print("value SOCP: ", u_max, "\nvalue check SOCP: ", u_max_check)
-                    check_diff = abs(u_max-u_max_check)
-                    print("difference between values: ", check_diff)
-                    print("sol SOCP: ", s_p, "\nsol check SOCP: ", s_p_check)
-                    if check_diff > abs_gap:
-                        print("for an abs_gap of ", abs_gap, ", check_diff was found too big (cf last line)")
             elif G.type() == "CyberSecuritygurobiNL":
                 s_p, u_max, _ = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term=G.NL_term())
             #print("end of computation of Best Response iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
@@ -251,6 +250,12 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
         if aux:
             if time()-time_aux:
                 print("usual return")
+                file = open("save_number_of_iteration", "a")
+                #if G.type() == "CyberSecuritygurobiNL" or G.type() == "CyberSecuritySOCP":
+                #    file.write("\n")
+                #file.write("count = %d\t%s"%(count,G.type()))
+                file.write("%d "%count)
+                file.close()
                 return ne, Profits, S,count,time()-time_aux
             else:
                 exit(5) # time limit reached during the iteration that proved the solution of the SGM
@@ -633,16 +638,13 @@ def ComputeNE_new(G,U_depend,U_p,MCT,m,n_I,n_C,Numb_stra,warmstart_MIP,opt_solve
 def check_relax_infeasibility_solution(filename):
     # check if all artificial variables ArtP_R{x} and ArtN_R{x} are 0
     # if not, raise an error
-    # if yes, life is happy
+    # if yes, life is pure joy
 
     f = open(filename, "r")
     line = f.readline()
     while len(line) >= 1:
         if line[:3] == "Art":
-            #print(line)
-            #print(line.split())
             val = float(line.split()[1])
-            #print("val = ", val)
             if val >= 1e-9: # the numerical value should be the FeasibilityTol parameter
                 print("there is a value of artificial variable that is nonzero:\nval = ", val, "\n", line)
                 exit(9) #specific exit number for problem in ComputeNE_MIP
@@ -651,7 +653,6 @@ def check_relax_infeasibility_solution(filename):
 
 def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Best_m, REL_GAP_SOLVER=1e-7, ABS_GAP_SOLVER=1e-10):
     # define and solve an MIP model to solve a normal-form finite game
-    #print "\n\n Solving Problem with Supports: ", A_supp
     #print("start of ComputeNE_MIP --- %s seconds ---" % (Ltime.time() - 1675900000))
     ##print("start of model in ComputeNE_MIP --- %s seconds ---" % (Ltime.time() - 1675900000))
     # initiate model
@@ -667,26 +668,11 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
     # set objective function direction
     m_p.ModelSense = 1 # minimize (1)
     m_p.update()
-    #print("adding variables")
     # probability variables
     sigma = [{sp:m_p.addVar(lb=0,ub=1,vtype="C",name="sigma_"+str(p)+"_"+str(sp)) for sp in A_supp[p]} for p in range(m)]
     m_p.update()
-    #print("sigma added")
     # activation of strategies with binary variables
     activ = [{sp:m_p.addVar(lb=0,vtype="B",name="activ_"+str(p)+"_"+str(sp)) for sp in A_supp[p]} for p in range(m)]
-    #print("activ added")
-    ########################################################################################################
-    ############# WHEN FEASIBILITY PROBLEM HAS MORE THAN ONE SOLUTION ######################################
-    ###### MAXIMIZE THE NUMBER OF VARIABLES WITH POSITIVE PROBABILITY ######################################
-    # aux = [m_p.addVar(obj = 1, lb=0,vtype="C",name="aux_"+str(p)) for p in range(m)] # aux <= sigma_p_sp
-    # m_p.update()
-    # for p, sp in enumerate(A_supp):
-    #     for s in sp:
-    #         m_p.addConstr(aux[p] <= sigma[p][s])
-    #         m_p.update()
-    ########################################################################################################
-    ########################################################################################################
-
     # profit variables
     v = [m_p.addVar(lb=-1*grb.GRB.INFINITY,vtype="C",name="v_"+str(p)) for p in range(m)]
     m_p.update()
@@ -708,49 +694,28 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
                 bonus = 1
         else:
             k_p = len(Best_m[p].getVars()) # does not work with pyomo models.
-        m_p.addConstr(grb.quicksum(activ[p].values()) <= k_p+1+bonus)
+        #WARNING: this upper bound is valid only for separable games, i.e. a game where the payoff can be decomposed into a sum of multiplication of univariate function
+        m_p.addConstr(grb.quicksum(activ[p].values()) <= k_p+1+bonus) # limit the number of active strategies by thr upper bound on the number of active strategies shown in Carvalho18 (not valid anytime: needs to be a separable game)
         m_p.update()
     # compute the parts of the big-M that do not depend on the player and/or the strategy
     M1 = max([max(U_p[pp][spp] for spp in A_supp[pp]) for pp in range(m)])
-    #print("M1 = ", M1)
-    M2 = (m-1)*max(U_depend[pp][k][(spp,sk)] for pp in range(m) for spp in A_supp[pp] for k in range(m) if k != pp for sk in A_supp[k])
-    #print("M2 = ", M2)
-    #print("Ds = ", Ds)
-    M3 = (m-1)*max(Ds[pp] for pp in range(m))/m
-    #print("M3 = ", M3)
-    M4 = min([min(U_p[pp][spp] for spp in A_supp[pp]) for pp in range(m)])
-    M5 = (m-1)*min(U_depend[pp][k][(spp,sk)] for pp in range(m) for spp in A_supp[pp] for k in range(m) if k != pp for sk in A_supp[k])
+    M2 = (m-1)*max(U_depend[pp][k][(spp,sk)] for pp in range(m) for spp in A_supp[pp] for k in range(m) if k != pp for sk in A_supp[k]) # m-1 multiplier because sum(sigma[k][sk]) forall k forall sk == m-1
+    M3 = (m-1)*max(Ds[pp] for pp in range(m))/m # m-1 multiplier because sum(sigma[k][sk]) forall k forall sk == m-1; MCT[k][sk] does not appear because it is less than 1
+    M4 = min([min(U_p[pp][spp] for spp in A_supp[pp]) for pp in range(m)]) # check if useful if min is negative and bigger than max in absolute value
+    M5 = (m-1)*min(U_depend[pp][k][(spp,sk)] for pp in range(m) for spp in A_supp[pp] for k in range(m) if k != pp for sk in A_supp[k]) # check if useful if min is negative and bigger than max in absolute value
     M0 = abs(M1) + abs(M2) + abs(M3) + abs(M4) + abs(M5)
-    #print("sigma==1 constraints added")
     for p, S_p in enumerate(Numb_stra):
-        #print("player ", p)
         M = M0 + Ds[p]
-        #M += 10000
         for sp in range(S_p):
             # all strategies should be less than v[p] the max payoff of a strategy of player p
             m_p.addConstr(U_p[p][sp]+grb.quicksum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p] <= v[p]) # for inequality constraints, because sp not in A_supp[p]
-            # played strategies (sigma[p][sp] > 0) should be equal (less already done) to v[p]
-            #print("<= v[p] added")
-            ##if p == 0 and sp == 0:
-                ##print("M = ", M)
-            #print("player %i strategy %i: U_p[p][sp] = %f"%(p,sp,U_p[p][sp]))
+            # computation of M: A >= vp - M <=> M >= vp - A
+            # we know that A in [A-,A+], and vp <= A+ because it is equal to one of the A
+            # thus, M should satisfy M >= max(vp - A) = max(vp) - min(A) = A+ - A-
+            # A+ <= M1+M2+M3, A- >= M4+M5 => A+ - A- <= M1+M2+M3-M4-M5+M0 <= abs(M1)+abs(M2)+abs(M3)+abs(M4)+abs(M5)
             m_p.addConstr(U_p[p][sp]+grb.quicksum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p] >= v[p] - M*(1-activ[p][sp])) # for equality constraints because sp in A_supp[p]
-            #value = U_p[p][sp] + sum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p]
-            #print("player %i strategy %i has a value of ", value)
-            # deactivate strategies if activ[p][sp] == 0
-            #print(">= v[p] added")
             m_p.addConstr(sigma[p][sp] <= activ[p][sp])
             m_p.update()
-            #if sp in A_supp[p]:
-            #    #print("player %i strategy %i"%(p,sp))
-            #    #print(MCT)
-            #    m_p.addConstr(U_p[p][sp]+grb.quicksum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p] == v[p]) # for equality constraints because sp in A_supp[p]
-            #    m_p.update() # because U_depend contains the mixed terms xkQkpxp
-            #else:
-            #    m_p.addConstr(U_p[p][sp]+grb.quicksum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p] <= v[p]) # for inequality constraints, because sp not in A_supp[p]
-            #    m_p.update()
-    #m_p.write("apagar.lp")
-    #print("constraints added")
     m_p.setObjective(grb.LinExpr(grb.quicksum(sum(activ[p][sp] for sp in range(Numb_stra[p])) for p in range(m))))
     m_p.update()
     # warmstart (should be really helpful since each iteration only add one strategy)
@@ -759,7 +724,6 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
     #    activ[0][0].start = 0
     #    print("after adding a warmstart to variable activ[0][0]")
 
-    #print(len(warmstart_MIP))
     if len(warmstart_MIP) > 0:
         for p in range(m):
             for key in activ[p]:
@@ -800,6 +764,7 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
         print("debug.sol should be written now")
         bool_check = check_relax_infeasibility_solution("debug.sol")
         print("end of checking artificial variables values with output ", bool_check)
+        # if bool_check == True, m_p.status == 2 and the next if is executed
     if m_p.status not in [3,4]:
         #rebuild_profits = []
         for p, sp in enumerate(Numb_stra):
@@ -821,10 +786,25 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
                     #print(round(sigma[p][j].x,9))
                     #ne.append(round(sigma[p][j].x,9))
                     ne.append(sigma[p][j].x)
-                    #rebuild_profits[p] += sigma[p][j].x*(U_p[p][j]     )
+                    #print("player ", p, " strategy", j)
+                    #print(rebuild_profits[p])
+                    #print(sigma[p][j].x)
+                    #print(Ds[p])
+                    #for k in range(m):
+                    #    if k != p:
+                    #        for sk in A_supp[k]:
+                    #            print(sigma[k][sk].x)
+                    #rebuild_profits[p] += sigma[p][j].x*(U_p[p][j] + sum(sigma[k][sk].x*(U_depend[p][k][(j,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p])
                 else:
                     ne.append(0)
             Profits.append(v[p].x)
+            #val = v[p].x-rebuild_profits[p]
+            #print("difference between variables v[p] values and recomputed payoff_p values: ", val)
+            #if val > ABS_GAP_SOLVER:
+            #    exit(8)
+            #else:
+                #2*2
+                #Profits[p] = rebuild_profits[p]
         for p in range(m):
             for key in activ[p]:
                 warmstart_MIP["activ_%i_%i"%(p,key)] = activ[p][key].x

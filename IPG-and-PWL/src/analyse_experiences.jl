@@ -721,7 +721,7 @@ end
 
 struct Profile # informations on one curve of a performance profile
     x # list of values for axis x
-    y # list of valeus for axis y
+    y # list of values for axis y
     name # name of the profile (method name)
     dict_options # In case I forgot some things
 end
@@ -764,6 +764,7 @@ function performance_profile(profiles; xlog = false)
     return p
 end
 
+# it is not the real version to get the perf profile, see function "prepare_real_performance_profile_cybersecurity"
 function prepare_performance_profile_cybersecurity(filename, filename_save = "performance_profile.png", list_categories = []; refinement_methods = ["full_refinement","SGM_SOCP_model"],
     errs = [Absolute(0.5),Absolute(0.05),Absolute(0.005),Absolute(0.0005)], time_limit=900)
     # prepare profiles for a call to function performance_profile
@@ -923,6 +924,9 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
     # computation time in x
     # #solved in y
 
+    println("\n-----")
+    println(filename)
+
     exps = load_all_outputs(filename)
 
     # create list_categories if not given
@@ -952,7 +956,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
     exps_by_category = [[] for i in 1:length(list_categories)]
     for i in 1:length(list_categories)
         category = list_categories[i]
-        println(category)
+        #println(category)
         for exp in exps
             in_category = true
             # does it meet the required characteristics?
@@ -1003,6 +1007,24 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
 
     #return exps_by_category,list_categories
 
+    # compute mean time by solver, with failed not counted
+    tot_mean = 0
+    tot_solved = 0
+    for i in 1:length(list_categories)
+        c = list_categories[i]
+        exps = exps_by_category[i]
+        println()
+        println("category: $(c.name)")
+        solved = 100*round(sum(exps[j] < Inf for j in 1:length(exps))/n_exps, digits=3)
+        tot_solved += sum(exps[j] < Inf for j in 1:length(exps))
+        println("%solved: $(solved)")
+        mean_time = round(sum(exps[j] for j in 1:length(exps) if exps[j] < Inf)/sum(exp < Inf for exp in exps), digits=2)
+        tot_mean += sum(exps[j] for j in 1:length(exps) if exps[j] < Inf)
+        println("mean time: $(mean_time)")
+    end
+    println("total solved: $(100*round(tot_solved/n_exps/3,digits=3))")
+    println("total mean time: $(round(tot_mean/tot_solved, digits=2))")
+
     # divide times by best time among solvers for each instance
     for j in 1:n_exps
         min_time = Inf
@@ -1012,10 +1034,10 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
             #print(exps_by_category[i][j])
             min_time = min(min_time,exps_by_category[i][j])
             if exps_by_category[i][j] == NaN || min_time == NaN
-                println("\n\n\n")
-                println("$j-$i ")
-                println(min_time)
-                println(exps_by_category[i][j])
+                #println("\n\n\n")
+                #println("$j-$i ")
+                #println(min_time)
+                #println(exps_by_category[i][j])
             end
         end
         if min_time != Inf
@@ -1030,9 +1052,9 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
     last_solved = 0
     for i in 1:length(list_categories)
         sort!(exps_by_category[i])
-        println("Sorted ratios for $category:\n$(exps_by_category[i])")
+        #println("Sorted ratios for $category:\n$(exps_by_category[i])")
         if length(exps_by_category[i]) > 0
-            println("max between $(exps_by_category[i][end]) and $last_solved")
+            #println("max between $(exps_by_category[i][end]) and $last_solved")
             last_solved = max(maximum([exps_by_category[i][j] for j in 1:n_exps if exps_by_category[i][j] != Inf]),last_solved)
         end
     end
@@ -1064,7 +1086,13 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
                 push!(x, time_limit)
                 push!(y, 0)
             end
-            println("adding point ($time_limit,$(y[end-1]))")
+            #println("adding point ($time_limit,$(y[end-1]))")
+
+            # print values:
+            #println("data points of curve for method $(list_categories[i].name)")
+            #=for j in 1:length(x)
+                println("($(x[j]),$(y[j]))")
+            end=#
 
             name = list_categories[i].name
             # change some names to fit my slides: "full_refinement"=>"PWL-ANE", "SOCP"=>"SGM-MOSEK"
@@ -1077,7 +1105,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
         end
     end
 
-    println("list_categories of length $(length(list_categories)):\n$list_categories")
+    #println("list_categories of length $(length(list_categories)):\n$list_categories")
     #=println("l_profiles:")
     for i in 1:length(list_categories)
         println(l_profiles[i].name)
