@@ -742,9 +742,10 @@ function performance_profile(profiles; xlog = false)
 
     # general informations
     p = plot(legend=:bottomright)
-    title!(p,profiles.title)
-    xlabel!(p,profiles.x_axis)
-    ylabel!(p,profiles.y_axis)
+    plot_font = "Computer Modern"
+    title!(p,profiles.title, fontfamily = plot_font)
+    xlabel!(p,profiles.x_axis, fontfamily = plot_font)
+    ylabel!(p,profiles.y_axis, fontfamily = plot_font)
     xlims!(p,profiles.x_range[1], profiles.x_range[2])
     ylims!(p,profiles.y_range[1], profiles.y_range[2])
     #=lc for linecolor
@@ -754,9 +755,16 @@ function performance_profile(profiles; xlog = false)
     ma for markeralpha=#
 
     # add profiles
+    cpt = 0
+    lss = [:solid,:dot,:dash]
     for profile in profiles.profiles
+        cpt += 1
+        ls = lss[cpt]
         if xlog
-            plot!(p,profile.x, profile.y, label = profile.name, xaxis=:log)
+            println("\n\n\n---------------------- using xlog $xlog -----------------------\n\n\n")
+            #plot!(p,profile.x, profile.y, label = profile.name, xaxis=:log) # simplest
+            plot!(p,profile.x, profile.y, label = profile.name, fontfamily = plot_font, linewidth = 1.5, thickness_scaling = 1.8, xaxis=:log, linestyle = ls, foreground_color_grid = :white) # tailored for the article
+            #plot!(p,profile.x, profile.y, label = profile.name, fontfamily = "Computer Modern", tickfontsize = 15, guidefontsize = 20, xaxis=:log, linewidth = 3, linestyle = ls) # tailored for the article
         else
             plot!(p,profile.x, profile.y, label = profile.name)
         end
@@ -953,6 +961,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
     end
 
     # find all experiences for each category
+    max_julia_time = 0
     exps_by_category = [[] for i in 1:length(list_categories)]
     for i in 1:length(list_categories)
         category = list_categories[i]
@@ -972,6 +981,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
                 #println("exp match for category $category: $exp")
                 cpu_time = Inf
                 if exp.outputs.solved
+                    max_julia_time = max(exp.outputs.julia_time,max_julia_time)
                     if exp.options.refinement_method == "SGM_NL_model" || exp.options.refinement_method == "SGM_SOCP_model" || exp.options.refinement_method == "SGM_gurobiNL_model"
                         cpu_time = exp.outputs.SGM_time
                     else
@@ -982,6 +992,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
             end
         end
     end
+    println("\n\n----- max julia time is $max_julia_time seconds -----\n\n")
 
     # delete empty categories
     new_categories = []
@@ -1010,6 +1021,10 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
     # compute mean time by solver, with failed not counted
     tot_mean = 0
     tot_solved = 0
+    #pp = histogram()
+    geom_total_mean = 0 # because it will be computed with sum of logs
+    total_count_non_inf = 0
+    total_below10 = 0
     for i in 1:length(list_categories)
         c = list_categories[i]
         exps = exps_by_category[i]
@@ -1018,12 +1033,47 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
         solved = 100*round(sum(exps[j] < Inf for j in 1:length(exps))/n_exps, digits=3)
         tot_solved += sum(exps[j] < Inf for j in 1:length(exps))
         println("%solved: $(solved)")
-        mean_time = round(sum(exps[j] for j in 1:length(exps) if exps[j] < Inf)/sum(exp < Inf for exp in exps), digits=2)
+        sum_non_inf = sum(log(exps[j]) for j in 1:length(exps) if exps[j] < Inf)
+        count_non_inf = sum(exp < Inf for exp in exps)
+        total_count_non_inf += count_non_inf
+        mean_time = round(sum(exps[j] for j in 1:length(exps) if exps[j] < Inf)/count_non_inf, digits=2)
+        geom_mean_time = round(exp(sum_non_inf/count_non_inf), digits=2)
         tot_mean += sum(exps[j] for j in 1:length(exps) if exps[j] < Inf)
+        geom_total_mean += sum_non_inf
+        exps2 = deepcopy(exps)
+        exps2 = sort(exps2)
+        below10 = count(exps[j] < 10 for j in 1:length(exps))
+        total_below10 += below10
+        println("number of instances below 10 seconds: $below10")
+        max_exp = length(exps)-sum(exps[j] == Inf for j in 1:length(exps))
+        exps2 = exps2[1:(max_exp)]
+        println("maximum time of solved instance: $(exps2[end])")
+        #pp = histogram!(pp, exps2, bins = [0.1,3,5,10,20,30,50,100,900])
         println("mean time: $(mean_time)")
+        println("geometric mean time: $(geom_mean_time)")
     end
+    #savefig(pp,"repartition_times_indicator_exps.txt")
+    #display(pp)
     println("total solved: $(100*round(tot_solved/n_exps/3,digits=3))")
     println("total mean time: $(round(tot_mean/tot_solved, digits=2))")
+    println("total geometric mean time: $(round(exp(geom_total_mean/total_count_non_inf), digits=2))")
+    println(total_below10)
+    println("total number of instances below 10 seconds: $(total_below10/810)")
+
+    p = plot(legend = :bottomright, title = filename[32:length(filename)-4])
+    for i in 1:length(list_categories)
+        c = list_categories[i]
+        exps = copy(exps_by_category[i])
+        x = sort(exps)
+        name = c.name
+        name = replace(name, "full_refinement"=>"2-level approximation")
+        name = replace(name, "SOCP"=>"SGM-ExpCone")
+        name = replace(name, "gurobiNL"=>"SGM-MIQP")
+        name = replace(name, "sufficient_refinement"=>"direct approximation")
+        p = plot!(x,LinRange(0,1,270), xlabel = "seconds", ylabel = "cumulative frequency", label = "$name")
+    end
+    #display(p)
+    #return p
 
     # divide times by best time among solvers for each instance
     for j in 1:n_exps
@@ -1076,7 +1126,13 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
                     push!(y, j/n_exps)
                 end
             end
+            #val = minimum([j for j in 1:n_exps if x[j] > 1])
+            #println("proportion of best instances for $(list_categories[i].name): ($(x[val]),$(y[val]))")
+            val = sum(exps_by_category[i][j] == 1 for j in 1:n_exps)/n_exps
+            #println(exps_by_category[i])
+            println("proportion of best instances for $(list_categories[i].name): $val")
             # add last point with same fraction of instances solved and time to time_limit to finish the curve in the plot
+            println(x[end],"\t",y[end])
             if length(y) != 0
                 push!(x, time_limit)
                 push!(y, y[end])
@@ -1098,11 +1154,21 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
             # change some names to fit my slides: "full_refinement"=>"PWL-ANE", "SOCP"=>"SGM-MOSEK"
             #name = replace(name, "full_refinement"=>"PWL-ANE")
             name = replace(name, "full_refinement"=>"2-level approximation")
-            name = replace(name, "SOCP"=>"SGM-MOSEK")
-            name = replace(name, "gurobiNL"=>"SGM-gurobiQP")
+            name = replace(name, "SOCP"=>"SGM-ExpCone")
+            name = replace(name, "gurobiNL"=>"SGM-MIQP")
             name = replace(name, "sufficient_refinement"=>"direct approximation")
             push!(l_profiles, Profile(x,y,name,Dict()))
         end
+    end
+
+    # info for article: when does the perf profile of direct-approximation beat SGM-MOSEK?
+    for i in 1:length(l_profiles[1].x)
+        xnl = l_profiles[1].x
+        ynl = l_profiles[1].y
+        xdir = l_profiles[2].x
+        ydir = l_profiles[2].y
+
+        #println("($(xnl[i]),$(ynl[i]))\t($(xdir[i]),$(ydir[i]))")
     end
 
     #println("list_categories of length $(length(list_categories)):\n$list_categories")

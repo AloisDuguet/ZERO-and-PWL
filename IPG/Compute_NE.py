@@ -698,14 +698,15 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
         m_p.addConstr(grb.quicksum(activ[p].values()) <= k_p+1+bonus) # limit the number of active strategies by thr upper bound on the number of active strategies shown in Carvalho18 (not valid anytime: needs to be a separable game)
         m_p.update()
     # compute the parts of the big-M that do not depend on the player and/or the strategy
-    M1 = max([max(U_p[pp][spp] for spp in A_supp[pp]) for pp in range(m)])
-    M2 = (m-1)*max(U_depend[pp][k][(spp,sk)] for pp in range(m) for spp in A_supp[pp] for k in range(m) if k != pp for sk in A_supp[k]) # m-1 multiplier because sum(sigma[k][sk]) forall k forall sk == m-1
-    M3 = (m-1)*max(Ds[pp] for pp in range(m))/m # m-1 multiplier because sum(sigma[k][sk]) forall k forall sk == m-1; MCT[k][sk] does not appear because it is less than 1
-    M4 = min([min(U_p[pp][spp] for spp in A_supp[pp]) for pp in range(m)]) # check if useful if min is negative and bigger than max in absolute value
-    M5 = (m-1)*min(U_depend[pp][k][(spp,sk)] for pp in range(m) for spp in A_supp[pp] for k in range(m) if k != pp for sk in A_supp[k]) # check if useful if min is negative and bigger than max in absolute value
-    M0 = abs(M1) + abs(M2) + abs(M3) + abs(M4) + abs(M5)
+
+    ##M1 = max([max(U_p[pp][spp] for spp in A_supp[pp]) for pp in range(m)])
+    ##M2 = (m-1)*max(U_depend[pp][k][(spp,sk)] for pp in range(m) for spp in A_supp[pp] for k in range(m) if k != pp for sk in A_supp[k]) # m-1 multiplier because sum(sigma[k][sk]) forall k forall sk == m-1
+    ##M3 = (m-1)*max(Ds[pp] for pp in range(m))/m # m-1 multiplier because sum(sigma[k][sk]) forall k forall sk == m-1; MCT[k][sk] does not appear because it is less than 1
+    ##M4 = min([min(U_p[pp][spp] for spp in A_supp[pp]) for pp in range(m)]) # check if useful if min is negative and bigger than max in absolute value
+    ##M5 = (m-1)*min(U_depend[pp][k][(spp,sk)] for pp in range(m) for spp in A_supp[pp] for k in range(m) if k != pp for sk in A_supp[k]) # check if useful if min is negative and bigger than max in absolute value
+    ##M0 = abs(M1) + abs(M2) + abs(M3) + abs(M4) + abs(M5)
     for p, S_p in enumerate(Numb_stra):
-        M = M0 + Ds[p]
+        ##M = M0 + Ds[p]
         for sp in range(S_p):
             # all strategies should be less than v[p] the max payoff of a strategy of player p
             m_p.addConstr(U_p[p][sp]+grb.quicksum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p] <= v[p]) # for inequality constraints, because sp not in A_supp[p]
@@ -713,7 +714,10 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
             # we know that A in [A-,A+], and vp <= A+ because it is equal to one of the A
             # thus, M should satisfy M >= max(vp - A) = max(vp) - min(A) = A+ - A-
             # A+ <= M1+M2+M3, A- >= M4+M5 => A+ - A- <= M1+M2+M3-M4-M5+M0 <= abs(M1)+abs(M2)+abs(M3)+abs(M4)+abs(M5)
-            m_p.addConstr(U_p[p][sp]+grb.quicksum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p] >= v[p] - M*(1-activ[p][sp])) # for equality constraints because sp in A_supp[p]
+
+            # indicator constraint:
+            m_p.addGenConstrIndicator(activ[p][sp], True, U_p[p][sp]+grb.quicksum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p] >= v[p], name = "indicator_constraint_%d_%d"%(p,sp))
+            ##m_p.addConstr(U_p[p][sp]+grb.quicksum(sigma[k][sk]*(U_depend[p][k][(sp,sk)]+Ds[p]/m*MCT[k][sk]) for k in range(m) if k != p for sk in A_supp[k]) - Ds[p] >= v[p] - M*(1-activ[p][sp])) # for equality constraints because sp in A_supp[p]
             m_p.addConstr(sigma[p][sp] <= activ[p][sp])
             m_p.update()
     m_p.setObjective(grb.LinExpr(grb.quicksum(sum(activ[p][sp] for sp in range(Numb_stra[p])) for p in range(m))))
@@ -765,6 +769,8 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
         bool_check = check_relax_infeasibility_solution("debug.sol")
         print("end of checking artificial variables values with output ", bool_check)
         # if bool_check == True, m_p.status == 2 and the next if is executed
+    if m_p.status == 9: # time limit
+        exit(10)
     if m_p.status not in [3,4]:
         #rebuild_profits = []
         for p, sp in enumerate(Numb_stra):

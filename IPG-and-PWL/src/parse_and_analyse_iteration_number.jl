@@ -14,10 +14,15 @@ function parse_iterations(filename)
     iters = zeros(Int64,length(lines),4)
     for (i,line) in enumerate(lines)
         temp = []
+        line = replace(line, "__"=>"_ _")
+        line = replace(line, "__"=>"_ _")
+        #println(line)
         spl = split(line)
+        #println(spl)
         for s in spl
             if length(s) == 1 # SGM failed
-                push!(temp, Inf)
+                push!(temp, 2^32)
+                #println("fail: ", s)
             else
                 push!(temp, parse(Int64,s[2:end]))
             end
@@ -26,7 +31,8 @@ function parse_iterations(filename)
             iters[i,:] = temp
         elseif length(temp) == 3
             iters[i,1:3] = temp
-            iters[i,4] = Inf
+            iters[i,4] = 2^32
+            #println(iters[i,:])
         else
             error("length of temp == $(length(temp)) which I did not foresee")
         end
@@ -37,39 +43,73 @@ end
 function analyse_iterations(filename)
     # return some statistics on the iterations found in file filename
 
+    println("file parse is $filename")
     iters = parse_iterations(filename)
 
     # build basic statistics
     means = []
     vars = []
-    n = size(iters)[1]
+    #n = size(iters)[1]
     for i in 1:3
-        push!(means, sum(iters[:,i])/n)
-        push!(vars, sum((iters[:,i].-means[i]).^2)/n)
+        values = [iters[j,i] for j in 1:size(iters)[1] if iters[j,i] < 2^31]
+        n = length(values)
+        push!(means, sum(values)/n)
+        push!(vars, sum((values.-means[i]).^2)/n)
+        vars[end] = sqrt(vars[end])
     end
 
     # build specific statistics (mean by procedure with respect to the mean on all procedures and equivalent variance)
     spec_means = []
     spec_vars = []
-    mean_inst = zeros(size(iters)[1])
+    mean_inst = []
+    new_iters = []
     for i in 1:size(iters)[1]
-        mean_inst[i] = sum(iters[i,1:3])/3
+        if maximum(iters[i,:]) < 2^31
+            valuess = iters[i,1:3]
+            push!(new_iters, iters[i,:])
+            push!(mean_inst,sum(valuess)/3)
+        end
     end
-    iters_scaled = zeros(size(iters)[1])
-    n = length(iters)
+    #iters_scaled = zeros(size(new_iters)[1])
+    n = length(new_iters)
     for i in 1:3
-        push!(spec_means, sum(iters[:,i].-mean_inst)/n)
-        push!(spec_vars, sum((iters[:,i].-mean_inst.-spec_means[i]).^2)/n)
+        push!(spec_means, sum(new_iters[k][i]-mean_inst[k] for k in 1:n)/n)
+        push!(spec_vars, sqrt(sum([new_iters[k][i]-mean_inst[k]-spec_means[i] for k in 1:n].^2)/n))
     end
-    println("means: $means\nvariances: $vars")
     println("specific means: $spec_means\nspecific variances: $spec_vars")
+
+    println("means: $means\nvariances: $vars\n")
     return means, vars
 end
 
-analyse_iterations("final_exps_05_04_23/number of iterations/root234_iterations.txt")
 
-# root234
-# means: Any[15.814814814814815, 16.22962962962963, 16.214814814814815]
-# variances: Any[48.66200274348423, 50.258381344307274, 49.7686694101509]
-# specific means: Any[-0.06790123456790127, 0.03580246913580245, 0.03209876543209874]
-# specific variances: Any[0.09810432860844376, 0.028621018137479044, 0.025974698978814215]
+#analyse_iterations("indicator_exps/log234_iterations.txt")
+#analyse_iterations("indicator_exps/root234_iterations.txt")
+#analyse_iterations("indicator_exps/log567_iterations.txt")
+#analyse_iterations("indicator_exps/root567_iterations.txt")
+
+#=
+file parse is indicator_exps/log234_iterations.txt
+specific means: Any[-0.4419753086419753, 0.2691358024691357, 0.1728395061728394]
+specific variances: [1.4277264032432508, 1.2788216646078712, 0.736303582777701]
+means: Any[15.614814814814816, 16.325925925925926, 16.22962962962963]
+variances: Any[6.719220837969992, 7.489083046902466, 7.08774711188859]
+
+file parse is indicator_exps/root234_iterations.txt
+specific means: Any[-0.31111111111111134, 0.148148148148148, 0.16296296296296275]
+specific variances: [0.8536534893242053, 0.6115038020019387, 0.4569836093388796]
+means: Any[15.803703703703704, 16.262962962962963, 16.27777777777778]
+variances: Any[6.8881530869490355, 7.224015921609345, 7.250585331841905]
+
+file parse is indicator_exps/log567_iterations.txt
+specific means: Any[-1.090277777777778, 0.5722222222222221, 0.5180555555555556]
+specific variances: [8.428989763984651, 6.599408409700422, 7.34914003010548]
+means: Any[38.43650793650794, 40.36220472440945, 41.325490196078434]
+variances: Any[17.16076922821076, 19.439658016554908, 20.959904235087084]
+
+file parse is indicator_exps/root567_iterations.txt
+specific means: Any[-0.8717948717948716, 0.869095816464238, 0.0026990553306345416]
+specific variances: [7.157141821609977, 6.8086403153005435, 6.858376604355734]
+means: Any[38.498039215686276, 40.3125, 39.5843137254902]
+variances: Any[16.78675353350196, 19.129390835831654, 18.230542918883756]
+=#

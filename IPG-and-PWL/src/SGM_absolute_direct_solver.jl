@@ -1,8 +1,10 @@
+include("SGM_model_to_csv_auto.jl")
 include("SGM_solver.jl")
 
 function SGM_PWL_absolute_direct_solver(filename_instance; fixed_costs = true, refinement_method = "sufficient_refinement",
-    rel_gap = 0, abs_gap = 1e-4, err_pwlh = Absolute(2.5e-5), big_weights_on_NL_part = false, NL_term = "log")
+    rel_gap = 0, abs_gap = 1e-4, err_pwlh = Absolute(2.5e-5), big_weights_on_NL_part = false, NL_term = "log", PWL_general_constraint = false)
     # specific case of SGM_PWL_solver if first refinement of PWL is sufficient and SGM stopping criterion is absolute
+     # PWL_general_constraint == false for log SOS2 model for the PWL function, true for using Model.addGenConstrPWL() in python code with gurobipy
 
     #println("before if\nrefinement_method: $refinement_method\nerr_pwlh: $err_pwlh")
     # setting err_pwlh to the maximum sufficient value
@@ -67,13 +69,19 @@ function SGM_PWL_absolute_direct_solver(filename_instance; fixed_costs = true, r
         #println("player $p and fixed costs:\n$(params.fcost)")
         if refinement_method != "SGM_NL_model" && refinement_method != "SGM_SOCP_model" && refinement_method != "SGM_gurobiNL_model"
             #pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,LinA.exactLin(expr_h[p],t1,t2,err))
-            pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,corrected_heuristicLin(expr_h[p],t1,t2,err))
+            @time pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,corrected_heuristicLin(expr_h[p],t1,t2,err))
             pwl_h.pwl = special_rounding_pwl(pwl_h.pwl) # round the extremes xMin and xMax to 12 decimals to avoid some problems later
             #println("\nh_$p approximated on [$t1,$t2] by $(length(pwl_h.pwl)) pieces\n$pwl_h\n")
             println("\nh_$p approximated on [$t1,$t2] by $(length(pwl_h.pwl)) pieces")
-            model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_model_to_csv(p, n_players, n_markets, params.Qbar[p,:], max_s_is[p],
-            params.cs[p], pwl_h.pwl, params.Qs[p], params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:],
-            "../SGM_files/"*filename_save,fixed_costs,params.fcost[p,:], NL_term)
+            if !PWL_general_constraint
+                model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_model_to_csv(p, n_players, n_markets, params.Qbar[p,:], max_s_is[p],
+                params.cs[p], pwl_h.pwl, params.Qs[p], params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:],
+                "../SGM_files/"*filename_save,fixed_costs,params.fcost[p,:], NL_term)
+            else
+                model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_model_to_csv_auto(p, n_players, n_markets, params.Qbar[p,:], max_s_is[p],
+                params.cs[p], pwl_h.pwl, params.Qs[p], params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:],
+                "../SGM_files/"*filename_save,fixed_costs,params.fcost[p,:], NL_term)
+            end
         else
             err_nullified = Absolute(params.alphas[p])
             pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,corrected_heuristicLin(expr_h[p],t1,t2,err_nullified))
@@ -229,11 +237,19 @@ function SGM_PWL_absolute_direct_solver(filename_instance; fixed_costs = true, r
             # launch again the creation of files with matrices with the new pwl
             if refinement_method != "SGM_NL_model" && refinement_method != "SGM_SOCP_model" && refinement_method != "SGM_gurobiNL_model"
                 println("solution sol[p] = $(sol[p]) of value $(profits[p])")
-                model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_model_to_csv(p, n_players, n_markets, params.Qbar[p,:],
-                max_s_is[p], params.cs[p], cs_instance.cs_players[p].pwl_h.pwl, params.Qs[p], params.Cs[p],
-                params.constant_values[p], params.linear_terms_in_spi[p,:], "../SGM_files/"*filename_save,fixed_costs,
-                params.fcost[p,:], NL_term, warmstart = sol[p]) # HERE TO ACTIVATE WARMSTART
-                #params.fcost[p,:]) # HERE TO DEACTIVATE WARMSTART
+                if !PWL_general_constraint
+                    model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_model_to_csv(p, n_players, n_markets, params.Qbar[p,:],
+                    max_s_is[p], params.cs[p], cs_instance.cs_players[p].pwl_h.pwl, params.Qs[p], params.Cs[p],
+                    params.constant_values[p], params.linear_terms_in_spi[p,:], "../SGM_files/"*filename_save,fixed_costs,
+                    params.fcost[p,:], NL_term, warmstart = sol[p]) # HERE TO ACTIVATE WARMSTART
+                    #params.fcost[p,:]) # HERE TO DEACTIVATE WARMSTART
+                else
+                    model,IntegerIndexes,l_coefs,r_coefs, ordvar = SGM_model_to_csv_auto(p, n_players, n_markets, params.Qbar[p,:],
+                    max_s_is[p], params.cs[p], cs_instance.cs_players[p].pwl_h.pwl, params.Qs[p], params.Cs[p],
+                    params.constant_values[p], params.linear_terms_in_spi[p,:], "../SGM_files/"*filename_save,fixed_costs,
+                    params.fcost[p,:], NL_term, warmstart = sol[p]) # HERE TO ACTIVATE WARMSTART
+                    #params.fcost[p,:]) # HERE TO DEACTIVATE WARMSTART
+                end
             end
         end
 
@@ -431,36 +447,32 @@ end
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "nb_iter_root234.txt")
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[i for i in 1:10:length(filename_instances_big567_complete)]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "nb_iter_log567.txt")
 
-#benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "test_iteration_number/absolute_direct_root234.txt")
+#benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "indicator_exps/absolute_direct_root234.txt")
 
 if false # final experiments
-    # instances: 2 to 4 and 5 to 7 players, 10 instances by sizes
-    # full refinement is implemented without check because a big interest of approximation procedure is to not need any NL solver
-    # exps log absolute MOSEK vs sufficient refinement vs full refinement
-    benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "test_iteration_number/absolute_direct_log234.txt")
-    benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "test_iteration_number/absolute_direct_log567.txt")
-
-    # exps square root gurobiNL vs sufficient refinement vs full refinement
-    benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "test_iteration_number/absolute_direct_root234.txt")
-    benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "test_iteration_number/absolute_direct_root567.txt")
-end
+    #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "indicator_exps/absolute_direct_log234.txt")
+    #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "indicator_exps/absolute_direct_root234.txt")
+    benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "indicator_exps/absolute_direct_log567.txt")
+    benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "indicator_exps/absolute_direct_root567.txt")
+    end
 ###prepare_real_performance_profile_cybersecurity("exps_final_24_03_23/absolute_direct_log234.txt",refinement_methods=["SGM_SOCP_model","sufficient_refinement","full_refinement"],errs=[Absolute(0.05),Absolute(2.5e-5)])
 
-filename_saves = ["absolute_direct_log234.txt", "absolute_direct_log567.txt", "absolute_direct_root234.txt", "absolute_direct_root567.txt"]
+filename_saves = ["indicator_exps/absolute_direct_log234.txt", "indicator_exps/absolute_direct_log567.txt", "indicator_exps/absolute_direct_root234.txt", "indicator_exps/absolute_direct_root567.txt"]
 refinement_methods_log = ["SGM_SOCP_model","sufficient_refinement","full_refinement"]
 refinement_methods_root = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"]
 err_pwlhs = [Absolute(0.05), Absolute(2.5e-5)]
 
 filename_save = filename_saves[1]
-prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.png", refinement_methods = refinement_methods_log, errs = err_pwlhs)
+p1 = prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-5]*"_perf_profile.pdf", refinement_methods = refinement_methods_log, errs = err_pwlhs)
 filename_save = filename_saves[2]
-prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.png", refinement_methods = refinement_methods_log, errs = err_pwlhs)
+p2 = prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-5]*"_perf_profile.pdf", refinement_methods = refinement_methods_log, errs = err_pwlhs)
 filename_save = filename_saves[3]
-prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.png", refinement_methods = refinement_methods_root, errs = err_pwlhs)
+p3 = prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-5]*"_perf_profile.pdf", refinement_methods = refinement_methods_root, errs = err_pwlhs)
 filename_save = filename_saves[4]
-prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.png", refinement_methods = refinement_methods_root, errs = err_pwlhs)
-
-
+p4 = prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-5]*"_perf_profile.pdf", refinement_methods = refinement_methods_root, errs = err_pwlhs)
+p = plot!(p1,p2,p3,p4, layout = (2,2))
+display(p)
+#savefig(p,"cumulative frequency")
 #=log234old = load_all_outputs("exps_19_03_23/absolute_direct_log567.txt")
 log234 = load_all_outputs("exps_19_03_23/absolute_direct_log567.txt")
 
