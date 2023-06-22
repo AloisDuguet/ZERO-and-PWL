@@ -68,14 +68,14 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
     global start_time
     if S == []:
         # create initial strategies
-        S, U_p, MCT, Best_m, val_PWLs = InitialStrategies(G,opt_solver,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER)
+        S, U_p, MCT, Best_m = InitialStrategies(G,opt_solver,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER)
         #print("MCT after if S == []\n", MCT)
         #print("S after if S == []\n", S)
         #S, U_p, Best_m = InitialStrategiesII(G,opt_solver)
     else:
         # compute values for initial strategies in S
-        U_p, MCT, S = IndUtilities(G.m(), G.c(), G.Q(), [[] for _ in range(G.m())], [[] for _ in range(G.m())], [[] for _ in range(G.m())], S, G, [0 for i in range(G.m())])
-        Best_m, val_PWLs = CreateModels(G.m(), G.n_I(), G.n_C(), G.n_constr(), G.c(), G.Q(), G.A(), G.b(), G.type(), G, REL_GAP_SOLVER=REL_GAP_SOLVER)
+        U_p, MCT, S = IndUtilities(G.m(), G.c(), G.Q(), [[] for _ in range(G.m())], [[] for _ in range(G.m())], [[] for _ in range(G.m())], S, G)
+        Best_m = CreateModels(G.m(), G.n_I(), G.n_C(), G.n_constr(), G.c(), G.Q(), G.A(), G.b(), G.type(), G, REL_GAP_SOLVER=REL_GAP_SOLVER)
         #Best_m = [[] for p in range(G.m())]
         #print("MCT after else of if S == []\n", MCT)
     #print("after initialization of SGM with indUtilities and CreateModels --- %s seconds ---" % (Ltime.time() - 1675900000))
@@ -152,7 +152,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
             elif G.type() == "CyberSecurity":
                 s_p, u_max, _ = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER)
             elif G.type() == "CyberSecurityPWLgen":
-                s_p, u_max, _, val_PWLs[p] = BestReactionGurobiCyberSecurityPWLgen(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER)
+                s_p, u_max, _ = BestReactionGurobiCyberSecurityPWLgen(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER)
             elif G.type() == "CyberSecurityNL":
                 s_p, u_max, _ = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term=G.NL_term())
             elif G.type() == "CyberSecuritySOCP":
@@ -201,14 +201,14 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
             #if abs(Profits[p]-u_max)/Profits[p] > rel_gap: # as in gurobi's MIPGap, it works with u_max and Profits[p] of different sign if rel_gap < 1
             #if Profits[p] + 10**-5 <= u_max:  # it is not the Best Response up to 1e-6 : compute and add BR (don't change the 1e-6)
                 ###print("start of adding an element in the support iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
-                print("entry in if block because Profits[%i] = %f and BR = %f"%(p+1,Profits[p],u_max))
+                print("entry in if block because Profits[%i] = %f and NL BR = %f"%(p+1,Profits[p],u_max))
                 print("adding to player %i the strategy "%(p+1), s_p, "\n\n")
                 aux = False
                 S_new[p].append(s_p)
                 Numb_stra_S = deepcopy(Numb_stra)
                 Numb_stra[p] = Numb_stra[p]+1
                 U_depend = Utilities_Polymatrix(G.m(),G.Q(),U_depend,S,S_new,Numb_stra_S)
-                U_p, MCT, S = IndUtilities(G.m(), G.c(), G.Q(), S, U_p, MCT, S_new, G, val_PWLs)
+                U_p, MCT, S = IndUtilities(G.m(), G.c(), G.Q(), S, U_p, MCT, S_new, G)
 
 
                 # check if new strategy s_p is already inside S[p]
@@ -239,7 +239,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
                 deviator = p
                 #print("end of adding an element in the support iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
             else:
-                print("stopping criterion passed for player %i with Profits[%i] = %f and BR = %f"%(p+1,p+1,Profits[p],u_max))
+                print("stopping criterion passed for player %i with Profits[%i] = %f and NL BR = %f"%(p+1,p+1,Profits[p],u_max))
                 if G.type() == "CyberSecuritySOCP" and False:
                     s_p_check, u_max_check, _ = check_SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term=G.NL_term())
                     print("sol SOCP: ", u_max, "\nsol check SOCP: ", u_max_check)
@@ -286,7 +286,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
 # OUTPUT
 # U_p = list of players individual profits
 # S = new set of strategies
-def IndUtilities(m, c, Q, S, U_p, MCT, S_new, G = [], val_PWLs = []):
+def IndUtilities(m, c, Q, S, U_p, MCT, S_new, G = []):
     for p in range(m):
         for s in S_new[p]:
             if G != [] and (G.type() == "CyberSecurityNL" or G.type() == "CyberSecuritySOCP" or G.type() == "CyberSecuritygurobiNL"): # why is there a G != [] test?
@@ -314,18 +314,12 @@ def IndUtilities(m, c, Q, S, U_p, MCT, S_new, G = [], val_PWLs = []):
                         print("nonlinear part: ", - alpha*(-np.log(1-s[n_markets])))
                     print("U_p = ", U_p[p])
                     print("MCT: ", MCT[p])
-            elif G != [] and G.type() == "CyberSecurity":
-                alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
-                U_p[p].append(float(np.dot(c[p],s) - 0.5*np.dot(s,np.dot(Q[p][p],s))))
-                MCT[p].append(s[n_markets])
-            elif G != [] and G.type() == "CyberSecurityPWLgen":
+            elif G != [] and (G.type() == "CyberSecurity" or G.type() == "CyberSecurityPWLgen"):
                 alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
                 #print(len(c))
                 #print(len(s))
                 #print(len(Q[p][p]))
-                print(val_PWLs)
-                U_p[p].append(float(np.dot(c[p],s) - 0.5*np.dot(s,np.dot(Q[p][p],s))) + val_PWLs[p])
-                print("U_p[%i] = "%p, U_p[p][len(U_p[p])-1])
+                U_p[p].append(float(np.dot(c[p],s) - 0.5*np.dot(s,np.dot(Q[p][p],s))))
                 MCT[p].append(s[n_markets])
             else:
                 U_p[p].append(float(np.dot(c[p],s) - 0.5*np.dot(s,np.dot(Q[p][p],s))))
@@ -335,8 +329,6 @@ def IndUtilities(m, c, Q, S, U_p, MCT, S_new, G = [], val_PWLs = []):
     return U_p,MCT,S
 
 #######################################################################################################################
-
-
 
 #######################################################
 ##        POLYMATRIX PART OF THE PROFITS             ##
@@ -359,15 +351,11 @@ def Utilities_Polymatrix(m,Q,U_depend,S,S_new,Numb_stra_S):
         for k in range(p+1,m):
             for sp in enumerate(S_new[p]):
                 for sk in enumerate(S[k]+S_new[k]):
-                    print("adding U_depend[%i][%i][.] = "%(p,k), float(np.dot(sk[1],np.dot(Q[p][k],sp[1]))))
-                    print("adding U_depend[%i][%i][.] = "%(k,p), float(np.dot(sp[1],np.dot(Q[p][k],sk[1]))))
                     U_depend[p][k][(Numb_stra_S[p]+sp[0],sk[0])] = float(np.dot(sk[1],np.dot(Q[p][k],sp[1])))
                     U_depend[k][p][(sk[0],Numb_stra_S[p]+sp[0])] = float(np.dot(sp[1],np.dot(Q[k][p],sk[1])))
         for k in range(p):
             for sp in enumerate(S_new[p]):
                 for sk in enumerate(S[k]):
-                    print("adding U_depend[%i][%i][.] = "%(p,k), float(np.dot(sk[1],np.dot(Q[p][k],sp[1]))))
-                    print("adding U_depend[%i][%i][.] = "%(k,p), float(np.dot(sp[1],np.dot(Q[p][k],sk[1]))))
                     U_depend[p][k][(Numb_stra_S[p]+sp[0],sk[0])] = float(np.dot(sk[1],np.dot(Q[p][k],sp[1])))
                     U_depend[k][p][(sk[0],Numb_stra_S[p]+sp[0])] = float(np.dot(sp[1],np.dot(Q[k][p],sk[1])))
     return U_depend

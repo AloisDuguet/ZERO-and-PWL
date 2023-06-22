@@ -21,24 +21,23 @@ function SGM_model_to_csv_auto(player_index, n_players, n_j, Qb_i, max_s_i, c, p
      end
 
      # add variables for approximated terms
-     ###func_h_s_i = @variable(model, h_s_i, lower_bound = 0) # number 2n_j+2 if fixed_costs==true, number n_j+2 if fixed_costs==false
+     func_h_s_i = @variable(model, h_s_i, lower_bound = 0) # number 2n_j+2 if fixed_costs==true, number n_j+2 if fixed_costs==false
 
      # write PWL to file so that python code generates the PWL function with the corresponding general constraint of gurobi
      xpts = [] # list of x values
      ypts = [] # list of y values
-     # change the sign of ypts because it should be a -PWL(x) inside the objective function
      for i in 1:length(pwl1d)-1
          push!(xpts, pwl1d[i].xMin)
-         push!(ypts, -pwl1d[i].fct(xpts[end]))
+         push!(ypts, pwl1d[i].fct(xpts[end]))
          if pwl1d[i+1].fct(pwl1d[i+1].xMin) != pwl1d[i].fct(pwl1d[i].xMax) # discontinuous between pieces i and i+1
              push!(xpts, pwl1d[i].xMax)
-             push!(ypts, -pwl1d[i].fct(pwl1d[i].xMax))
+             push!(ypts, pwl1d[i].fct(pwl1d[i].xMax))
          end
      end
      push!(xpts, pwl1d[end].xMin)
-     push!(ypts, -pwl1d[end].fct(xpts[end]))
+     push!(ypts, pwl1d[end].fct(xpts[end]))
      push!(xpts, pwl1d[end].xMax)
-     push!(ypts, -pwl1d[end].fct(xpts[end]))
+     push!(ypts, pwl1d[end].fct(xpts[end]))
      file = open(filename[1:end-4]*"_PWL_xpts_$player_index.txt", "w")
      for i in 1:length(xpts)
          println(file, xpts[i])
@@ -52,11 +51,9 @@ function SGM_model_to_csv_auto(player_index, n_players, n_j, Qb_i, max_s_i, c, p
 
      # add the objective function
      if fixed_costs
-         ###@objective(model, Max, -h_s_i + sum(c[k]*Q_i[k] for k in 1:n_j) + c[end]*s_i - sum(fcost[j]*activate_fixed_cost[j] for j in 1:n_j))
-         @objective(model, Max, sum(c[k]*Q_i[k] for k in 1:n_j) + c[end]*s_i - sum(fcost[j]*activate_fixed_cost[j] for j in 1:n_j))
+         @objective(model, Max, -h_s_i + sum(c[k]*Q_i[k] for k in 1:n_j) + c[end]*s_i - sum(fcost[j]*activate_fixed_cost[j] for j in 1:n_j))
      else
-         ###@objective(model, Max, -h_s_i + sum(c[k]*Q_i[k] for k in 1:n_j) + c[end]*s_i)
-         @objective(model, Max, sum(c[k]*Q_i[k] for k in 1:n_j) + c[end]*s_i)
+         @objective(model, Max, -h_s_i + sum(c[k]*Q_i[k] for k in 1:n_j) + c[end]*s_i)
      end
 
      # check validity of model by printing it
@@ -268,13 +265,13 @@ function SGM_model_to_csv_auto(player_index, n_players, n_j, Qb_i, max_s_i, c, p
          for i in 1:length(warmstart)
              println(file, warmstart[i])
          end
-         #=val_s_i = warmstart[n_j+1]
+         val_s_i = warmstart[n_j+1]
          for i in 1:length(pwl1d)
              if pwl1d[i].xMin <= val_s_i <= pwl1d[i].xMax
                  println(file, pwl1d[i].fct(val_s_i))
                  break
              end
-         end=#
+         end
          close(file)
      else
          # erase everything from file warmstart to say that there is no warmstart

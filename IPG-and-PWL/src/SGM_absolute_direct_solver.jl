@@ -368,8 +368,8 @@ function benchmark_SGM_absolute_direct_solver(; filename_instances, fixed_costss
     # solve instances and store the output with the options of the instance in a list
     experiences = []
     # false experience to compile everything
-    SGM_PWL_absolute_direct_solver("instance_1.txt", fixed_costs = true, refinement_method = "full_refinement", PWL_general_constraint = PWL_general_constraint)
     SGM_PWL_absolute_direct_solver("instance_1.txt", fixed_costs = true, refinement_method = "sufficient_refinement")
+    SGM_PWL_absolute_direct_solver("instance_1.txt", fixed_costs = true, refinement_method = "full_refinement", PWL_general_constraint = PWL_general_constraint)
     SGM_PWL_absolute_direct_solver("instance_1.txt", fixed_costs = true, refinement_method = "SGM_SOCP_model")
     SGM_PWL_absolute_direct_solver("instance_1.txt", fixed_costs = true, refinement_method = "SGM_gurobiNL_model", NL_term = "inverse_square_root")
     inst = instance_queue[1]
@@ -460,7 +460,7 @@ end
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[i for i in 1:10:length(filename_instances_big567_complete)]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "nb_iter_log567.txt")
 
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "indicator_exps/absolute_direct_root234.txt")
-benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances[[1]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "PWLgen/test.txt", PWL_general_constraint = true)
+benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances[[1,2,90,91,180,181,270]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "PWLgen/test.txt", PWL_general_constraint = true)
 
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "PWLgen/log234.txt", PWL_general_constraint = true)
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "PWLgen/root234.txt", PWL_general_constraint = true)
@@ -503,6 +503,7 @@ filename_save = filename_PWLgen[4]
 p4 = prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-5]*"_perf_profile.pdf", refinement_methods = refinement_methods_root_PWLgen, errs = err_pwlhs)
 =#
 
+# HERE:
 #=filename_PWLgen = ["PWLgen/test_log234.txt","PWLgen/test_root234.txt","PWLgen/log567.txt","PWLgen/test_root567.txt"]
 err_pwlhs = [Absolute(0.05), Absolute(2.5e-5)]
 refinement_methods_log_PWLgen = ["SGM_SOCP_model","sufficient_refinementPWLgen","full_refinementPWLgen","sufficient_refinement","full_refinement"]
