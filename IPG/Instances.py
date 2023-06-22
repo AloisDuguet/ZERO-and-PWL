@@ -44,6 +44,8 @@ class Game(object):
             m, n_I, n_C, n_constr, c, Q, A, b = Two_KEG_RandomGame(n,ins,K)
         elif type == 'CyberSecurity':
             m, n_I, n_C, n_constr, c, Q, C, A, b, NL_term = CyberSecurityGame(ins)
+        elif type == 'CyberSecurityPWLgen':
+            m, n_I, n_C, n_constr, c, Q, C, A, b, NL_term = CyberSecurityGame(ins)
         elif type == 'CyberSecurityNL':
             m, n_I, n_C, n_constr, c, Q, C, A, b, NL_term = CyberSecurityGame(ins)
         elif type == 'CyberSecuritySOCP':
@@ -522,6 +524,17 @@ def read_list(filename):
     line = f.readline()
     while len(line) >= 1:
         l.append(int(line.split()[0]))
+        line = f.readline()
+    return l
+
+def read_list_float(filename):
+    # read a file with one integer entry by line
+    # return a list with the elements in the same order
+    f = open(filename)
+    l = []
+    line = f.readline()
+    while len(line) >= 1:
+        l.append(float(line.split()[0]))
         line = f.readline()
     return l
 

@@ -756,14 +756,14 @@ function performance_profile(profiles; xlog = false)
 
     # add profiles
     cpt = 0
-    lss = [:solid,:dot,:dash]
+    lss = [:solid,:dot,:dash,:dot,:dash]
     for profile in profiles.profiles
         cpt += 1
         ls = lss[cpt]
         if xlog
             println("\n\n\n---------------------- using xlog $xlog -----------------------\n\n\n")
             #plot!(p,profile.x, profile.y, label = profile.name, xaxis=:log) # simplest
-            plot!(p,profile.x, profile.y, label = profile.name, fontfamily = plot_font, linewidth = 1.5, thickness_scaling = 1.8, xaxis=:log, linestyle = ls, foreground_color_grid = :white) # tailored for the article
+            plot!(p,profile.x, profile.y, label = profile.name, fontfamily = plot_font, linewidth = 1.5, thickness_scaling = 1.6, xaxis=:log, linestyle = ls, foreground_color_grid = :white) # tailored for the article
             #plot!(p,profile.x, profile.y, label = profile.name, fontfamily = "Computer Modern", tickfontsize = 15, guidefontsize = 20, xaxis=:log, linewidth = 3, linestyle = ls) # tailored for the article
         else
             plot!(p,profile.x, profile.y, label = profile.name)
@@ -948,7 +948,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
                 for err in errs
                     charac1 = characteristic(:refinement_method, refinement_method)
                     charac2 = characteristic(:err_pwlh, err)
-                    if refinement_method != "sufficient_refinement"
+                    if refinement_method != "sufficient_refinement" && refinement_method != "sufficient_refinementPWLgen"
                         name = string(refinement_method, " ", err.delta)
                     else
                         name = refinement_method
@@ -1006,6 +1006,16 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
     end
     list_categories = deepcopy(new_categories)
     exps_by_category = deepcopy(new_exps_by_category)
+
+    # particular case of copy paste creating doubles of "SGM_SOCP_model" exps
+    for i in 1:length(list_categories)
+        if length(exps_by_category[i]) == 540
+            exps_by_category[i] = exps_by_category[i][1:270]
+        end
+        if length(exps_by_category[i]) == 464
+            exps_by_category[i] = exps_by_category[i][1:232]
+        end
+    end
 
     # check that all remaining categories have the same number of exps
     n_exps = length(exps_by_category[1])
@@ -1066,9 +1076,11 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
         exps = copy(exps_by_category[i])
         x = sort(exps)
         name = c.name
+        name = replace(name, "full_refinementPWLgen"=>"2-level approximation autoPWL")
         name = replace(name, "full_refinement"=>"2-level approximation")
         name = replace(name, "SOCP"=>"SGM-ExpCone")
         name = replace(name, "gurobiNL"=>"SGM-MIQP")
+        name = replace(name, "sufficient_refinementPWLgen"=>"direct approximation autoPWL")
         name = replace(name, "sufficient_refinement"=>"direct approximation")
         p = plot!(x,LinRange(0,1,270), xlabel = "seconds", ylabel = "cumulative frequency", label = "$name")
     end
@@ -1153,6 +1165,8 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
             name = list_categories[i].name
             # change some names to fit my slides: "full_refinement"=>"PWL-ANE", "SOCP"=>"SGM-MOSEK"
             #name = replace(name, "full_refinement"=>"PWL-ANE")
+            name = replace(name, "full_refinementPWLgen"=>"2-level approximation autoPWL")
+            name = replace(name, "sufficient_refinementPWLgen"=>"direct approximation autoPWL")
             name = replace(name, "full_refinement"=>"2-level approximation")
             name = replace(name, "SOCP"=>"SGM-ExpCone")
             name = replace(name, "gurobiNL"=>"SGM-MIQP")

@@ -30,15 +30,18 @@ def InitialStrategies(G,opt_solver=1,REL_GAP_SOLVER=1e-7,ABS_GAP_SOLVER=1e-10):
     alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(0, G.m())
     # Best reaction models
     Best_m = []
+    val_PWLs = [0 for i in range(G.m())]
     for p in range(G.m()):
 
-        if G.type() != "CyberSecurity" and G.type() != "CyberSecurityNL" and G.type() != "CyberSecuritySOCP" and G.type() != "CyberSecuritygurobiNL":
+        if G.type() != "CyberSecurity" and G.type() != "CyberSecurityPWLgen" and G.type() != "CyberSecurityNL" and G.type() != "CyberSecuritySOCP" and G.type() != "CyberSecuritygurobiNL":
             try:
                 S[p][0], U_p[p][0], Model_p = BestReactionGurobi(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False)
             except:
                 print("Player ", p+1, " has no feasible solution or the problem is unbounded")
         elif G.type() == "CyberSecurity":
             S[p][0], U_p[p][0], Model_p = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER)
+        elif G.type() == "CyberSecurityPWLgen":
+            S[p][0], U_p[p][0], Model_p, val_PWLs[p] = BestReactionGurobiCyberSecurityPWLgen(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER)
         elif G.type() == "CyberSecurityNL":
             S[p][0], U_p[p][0], Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None, NL_term = G.NL_term())
         elif G.type() == "CyberSecuritySOCP":
@@ -49,7 +52,7 @@ def InitialStrategies(G,opt_solver=1,REL_GAP_SOLVER=1e-7,ABS_GAP_SOLVER=1e-10):
         U_p[p][0] += Ds[p] # -Ds[p]/m*sum(Profile...) is not removed because sum(Profile) == 0 because the starting solution is [0 0 ... 0 0]
         MCT[p].append(S[p][0][n_markets])
         Best_m.append(Model_p)
-    return S, U_p, MCT, Best_m
+    return S, U_p, MCT, Best_m, val_PWLs
 
 #######################################################################################################################
 #### ALTERNATIVE INITIALIZATION: social optimum or potential #######################################################################
@@ -137,12 +140,15 @@ def SocialOptimumGurobi(m, n_I, n_C, n_constr, c, Q, A, b):
 def CreateModels(m, n_I, n_C, n_constr, c, Q, A, b, problem_type = "UNK", G = None,REL_GAP_SOLVER=1e-7,ABS_GAP_SOLVER=1e-10):
     Profile = [np.array([0 for k in range(n_I[p]+n_C[p])]) for p in range(m)]
     Best_m = []
+    val_PWLs = [0 for i in range(G.m())]
     for p in range(m):
-        if problem_type != "CyberSecurity" and G.type() != "CyberSecurityNL":
+        if G.type() != "CyberSecurity" and G.type() != "CyberSecurityPWLgen" and G.type() != "CyberSecurityNL":
             return "andouille"
             _,_,Model_p = BestReactionGurobi(m,n_I[p],n_C[p],n_constr[p],c[p],Q[p],A[p],b[p],Profile,p,True)
         elif G.type() == "CyberSecurity":
             _,_,Model_p = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER) # create = True should be fine
+        elif G.type() == "CyberSecurityPWLgen":
+            _,_,Model_p, val_PWLs[p] = BestReactionGurobiCyberSecurityPWLgen(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER) # create = True should be fine
         elif G.type() == "CyberSecurityNL":
             _,_,Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None, NL_term = G.NL_term()) # same
         elif G.type() == "CyberSecuritySOCP":
@@ -150,7 +156,7 @@ def CreateModels(m, n_I, n_C, n_constr, c, Q, A, b, problem_type = "UNK", G = No
         elif G.type() == "CyberSecuritygurobiNL":
             _,_,Model_p = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER) # create = True should be fine
         Best_m.append(Model_p)
-    return Best_m
+    return Best_m, val_PWLs
 
 ##################################################################################
 ##############     RESTRICTED STRATEGY METHOD      ###############################
@@ -410,6 +416,210 @@ def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Pro
             m_p.update()
 
             return sol, value, m_p
+        except:
+            print("Wow! The best reaction problem has no feasible solution. The status code is: ", m_p.status)
+
+def evaluate_PWL_function(s_i,xpts,ypts,eps=10**-11):
+    # return the evaluation at point s_i of the PWL function described by its series of points in xpts,ypts
+    # it seems we cannot find the right evaluation if the PWL is discontinuous and s_i is on a breakpoint...
+    # we need to retrieve it after the resolution of the model
+    val = 0
+    n = len(xpts)
+    #print("s_i ", s_i)
+    #print("interval of valid x [", xpts[0],",",xpts[n-1],"]")
+    for i in range(n-1):
+        if xpts[i] <= s_i <= xpts[i+1]+eps:
+            t = 1-(s_i-xpts[i])/(xpts[i+1]-xpts[i])
+            return t*ypts[i]+(1-t)*ypts[i+1]
+
+def BestReactionGurobiCyberSecurityPWLgen(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Profile,p,create,ins, m_p = None,CE_verify=False,REL_GAP_SOLVER=1e-7,ABS_GAP_SOLVER=1e-10):
+    if CE_verify:
+        xk_Qkp = sum(Q_p[k] for k in range(m) if k!=p)
+    else:
+        xk_Qkp = sum(np.dot(Profile[k], Q_p[k]) for k in range(m) if k!=p) # Q_p[k] == Q[p][k] which are the mixed terms between player p and player k
+    if m_p == None:
+        # retrieve binary variable indices
+        binary_indices = read_list(ins+"/model_IntegerIndexes%i.csv"%(p+1)) # CHANGED HERE
+        # initiate model
+        m_p = grb.Model("MIQPG")
+        # no pritting of the output
+        m_p.setParam( 'OutputFlag', False)
+        m_p.setParam("Threads", 4)
+        m_p.setParam("MIPGap",REL_GAP_SOLVER) # keep value 1e-10 to avoid interferences with MIPGapAbs
+        m_p.setParam("MIPGapAbs",ABS_GAP_SOLVER)
+        #m_p.setParam('MIPGapAbs', 1e4)
+        m_p.setParam("FeasibilityTol",1e-9) # do not put something less precise than 1e-7 if the stopping criterion is 1e-6
+        m_p.setParam("IntFeasTol",1e-9)
+        #m_p.setParam('BarHomogeneous', 1)
+        #m_p.setParam('DualReductions',0)
+        # set objective function direction
+        m_p.ModelSense = -1 # maximize
+        m_p.update()
+        # binary variables
+        x = [] # decision vector
+        for i in range(n_C_p+n_I_p): # CHANGED HERE to select the right binary variables and not the first ones
+            if i in binary_indices:
+                x.append(m_p.addVar(vtype="B", name="b"+str(i)))
+                m_p.update()
+            else:
+                x.append(m_p.addVar(lb=0, vtype="C", name="x"+str(i)))
+                m_p.update()
+        x = np.array(x)
+        # constraints
+        for k in range(n_constr_p):
+            #m_p.addConstr(np.array(x).np.dot(A_p[k]), grb.GRB.LESS_EQUAL, b_p[k])
+            #m_p.addConstr(x.np.dot(A_p[k]), grb.GRB.LESS_EQUAL, b_p[k])
+            m_p.addConstr(np.dot(A_p[k],x), grb.GRB.LESS_EQUAL, b_p[k])
+            m_p.update()
+        if n_I_p+n_C_p ==1:
+            #QuadPart = grb.QuadExpr(x[0]*c_p[0]+ xk_Qkp*x[0]-0.5*x[0]*Q_p[p]*x[0])
+            QuadPart = grb.QuadExpr(x[0]*c_p[0]-0.5*x[0]*Q_p[p]*x[0])
+        else:
+            #QuadPart = grb.QuadExpr(x.np.dot(c_p)-0.5*(x.np.dot(Q_p[p].np.dot(x.T)))+xk_Qkp.np.dot(x.T))
+            #QuadPart = grb.QuadExpr(x.np.dot(c_p)-0.5*(x.np.dot(Q_p[p].np.dot(x.T))))
+            QuadPart = grb.QuadExpr(np.dot(c_p,x)-0.5*(np.dot(np.dot(x.T,Q_p[p]),x))) # quadratic (and bilinear) terms (x^2 and x*y)
+        m_p.setObjective(QuadPart)
+        m_p.update()
+    if n_I_p+n_C_p == 1 and type(xk_Qkp) is not np.ndarray:
+        if CE_verify and m_p!=None:
+            # when we use CE, we change objective function in the indepedent part
+            #QuadPart = grb.QuadExpr(x[0]*c_p[0]-0.5*x[0]*Q_p[p]*x[0])
+            x_tmp = m_p.getVars()
+            QuadPart = grb.QuadExpr(x_tmp[0]*c_p[0]-0.5*x_tmp[0]*Q_p[p]*x_tmp[0])
+            m_p.setObjective(QuadPart)
+            m_p.update()
+            m_p.setObjective(m_p.getObjective()+xk_Qkp*x_tmp)
+            m_p.update()
+        else:
+            m_p.setObjective(m_p.getObjective()+xk_Qkp*m_p.getVars()[0])
+            m_p.update()
+    else:
+        if CE_verify and m_p!=None:
+            x_tmp = np.array(m_p.getVars())
+            #QuadPart = grb.QuadExpr(np.dot(c_p,m_p.getVars())-0.5*(np.dot(np.dot(m_p.getVars().T,Q_p[p]),m_p.getVars())))
+            QuadPart = grb.QuadExpr(np.dot(c_p,x_tmp)-0.5*(np.dot(np.dot(x_tmp.T,Q_p[p]),x_tmp)))
+            #QuadPart = grb.QuadExpr(np.dot(c_p,x)-0.5*(np.dot(np.dot(x.T,Q_p[p]),x)))
+            m_p.setObjective(QuadPart)
+            m_p.update()
+            m_p.setObjective(m_p.getObjective()+np.dot(x_tmp,xk_Qkp))
+            m_p.update()
+        else:
+            m_p.setObjective(m_p.getObjective() + np.dot(m_p.getVars(),xk_Qkp))
+            m_p.update()
+    m_p.write("test_model_%i.lp"%(p+1))
+    # create is always false
+    if create:
+        if n_I_p+n_C_p ==1 and type(xk_Qkp) is not np.ndarray:
+            if CE_verify:
+                # when we use CE, we change objective function in the indepedent part
+                #QuadPart = grb.QuadExpr(x[0]*c_p[0]-0.5*x[0]*Q_p[p]*x[0])
+                x_tmp = m_p.getVars()
+                QuadPart = grb.QuadExpr(x_tmp[0]*c_p[0]-0.5*x_tmp[0]*Q_p[p]*x_tmp[0])
+                # overrite objective
+                m_p.setObjective(QuadPart)
+                m_p.update()
+            m_p.setObjective(m_p.getObjective()-xk_Qkp*m_p.getVars()[0])
+        else:
+            if CE_verify:
+                #QuadPart = grb.QuadExpr(np.dot(c_p,x)-0.5*(np.dot(np.dot(x.T,Q_p[p]),x)))
+                x_tmp = np.array(m_p.getVars())
+                QuadPart = grb.QuadExpr(np.dot(c_p,x_tmp)-0.5*(np.dot(np.dot(x_tmp.T,Q_p[p]),x_tmp)))
+                # overrite objective
+                m_p.setObjective(QuadPart)
+                m_p.update()
+            m_p.setObjective(m_p.getObjective()-np.dot(xk_Qkp,m_p.getVars()))
+        m_p.update()
+        return None,None,m_p,[0 for i in range(m)] # potential error here, is it really 0? It seems to not be used
+    else:
+        if not CE_verify:
+            # warm start
+            for j,aux_var in enumerate(m_p.getVars()):
+                aux_var.start = Profile[p][j]
+                m_p.update()
+        global start_time
+        ##print("end of model in MILP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
+
+        # PWL with general constraints
+        alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
+        xpts = read_list_float(ins+"/model_PWL_xpts_%i.txt"%(p+1))
+        ypts = read_list_float(ins+"/model_PWL_ypts_%i.txt"%(p+1))
+        print("QuadExpr objective before adding the PWL function:")
+        print(m_p.getObjective())
+        print("index of PWL variable: ", n_markets)
+        try:
+            val = m_p.getObjective().getLinExpr().getCoeff(n_markets)
+        except:
+            val = 0
+        var = m_p.getVars()[n_markets]
+        print("linear term of PWL variable: ", val)
+        print(ypts)
+        ypts = [ypts[i]+val*xpts[i] for i in range(len(ypts))]
+        print(ypts)
+        m_p.setPWLObj(var,xpts,ypts) # missing a way to avoid removing linear terms in x[n_markets]
+        m_p.update()
+        print("QuadExpr objective after adding the PWL function:")
+        print(m_p.getObjective())
+        #m_p.addGenConstrPWL(x[n_markets],x[2*n_markets+1],xpts,ypts,"PWLfunc") # n_j+1 -> n_markets and 2n_j+2 -> 2n_markets+1
+
+        m_p.optimize()
+        ##print("end of optimization in MILP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
+        #sol = [i.x for i in m_p.getVars()]
+        #ypts = read_list_float(ins+"/model_PWL_ypts_%i.txt"%(p+1))
+        #realval_PWL = evaluate_PWL_function(sol[n_markets],xpts,ypts)
+        try:
+            #return [x[i].x for i in range(n_I_p+n_C_p)],m_p.ObjVal, m_p
+            sol = [i.x for i in m_p.getVars()]
+            # add MCT to the objective (and mixed terms)
+            alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
+            value = m_p.ObjVal - Ds[p] + Ds[p]/m*sum(Profile[k][n_markets] for k in range(m) if k != p)
+            #print("diff value and m_p.ObjVal = ", - Ds[p] + Ds[p]/m*sum(Profile[k][n_markets] for k in range(m) if k != p))
+            if n_I_p+n_C_p ==1 and type(xk_Qkp) is not np.ndarray:
+                # this is important for NE verification
+                if CE_verify:
+                    m_p.setObjective(m_p.getObjective()-xk_Qkp*x_tmp)
+                else:
+                    m_p.setObjective(m_p.getObjective()-xk_Qkp*m_p.getVars()[0])
+            else:
+                if CE_verify:
+                    m_p.setObjective(m_p.getObjective()-np.dot(x_tmp,xk_Qkp))
+                else:
+                    # this is important for NE verification
+                    ##xk_Qkp[n_markets] = 0 # put 0 due to the PWL obj on variable x[n_markets]
+                    #print("starting: value/lin/quad/ext")
+                    #print(value)
+                    #print(np.dot(c_p,sol))
+                    #print(0.5*np.dot(sol,np.dot(Q_p[p],sol)))
+                    #print(np.dot(xk_Qkp,sol))
+                    #print("end")
+                    val_PWL = m_p.ObjVal - np.dot(c_p,sol) + 0.5*np.dot(sol,np.dot(Q_p[p],sol)) - np.dot(xk_Qkp,sol)
+                    print("x[n_markets] = ", sol[n_markets])
+                    m_p.setObjective(m_p.getObjective()-np.dot(xk_Qkp,m_p.getVars()))
+
+                    print("val_PWL for player %i: "%p, val_PWL)
+                    ypts = read_list_float(ins+"/model_PWL_ypts_%i.txt"%(p+1))
+                    realval_PWL = evaluate_PWL_function(sol[n_markets],xpts,ypts)
+                    print("where it should be: ", realval_PWL)
+                    print("diff is ", realval_PWL-val_PWL)
+                    print("U_p[%i] should be "%p, m_p.ObjVal - np.dot(xk_Qkp,sol))
+                    print("U_depend should be ", np.dot(xk_Qkp,sol))
+
+                    if abs(realval_PWL-val_PWL) > 1e-8 and False:
+                        print("xk_Qkp = ", xk_Qkp)
+                        for k in range(m):
+                            if k != p:
+                                #print(Q_p[k])
+                                #print(Profile[k])
+                                print("Q_p[k] = ", Q_p[k])
+                                print("profile[%i] = "%k, Profile[k])
+                        #print("s_k linear term: ", xk_Qkp[n_markets]*sol[n_])
+                        print("xk_Qkp*sol:")
+                        [print(xk_Qkp[i]*sol[i]) for i in range(len(sol))]
+                        print("c_p*sol")
+                        [print(c_p[i]*sol[i]) for i in range(len(sol))]
+                        print("quad terms")
+                        [print(-0.5*sol[i]*sol[j]*Q_p[p][i,j]) for i in range(len(sol)) for j in range(len(sol))]
+            m_p.update()
+            return sol, value, m_p, val_PWL
         except:
             print("Wow! The best reaction problem has no feasible solution. The status code is: ", m_p.status)
 

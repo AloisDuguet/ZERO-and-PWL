@@ -308,7 +308,7 @@ function parser_SGM_solution(filename)
     return ne, profits, S, num_iter_done, cpu_time
 end
 
-function write_SGM_instance_last_informations(filename, refinement_method, scriptname = "launch_SGM.py", link_filename = "../IPG-and-PWL"; rel_gap = 1e-6, abs_gap = 1e-5)
+function write_SGM_instance_last_informations(filename, refinement_method, scriptname = "launch_SGM.py", link_filename = "../IPG-and-PWL"; rel_gap = 1e-6, abs_gap = 1e-5, PWL_general_constraint = false)
     # write in "../../IPG/launch_SGM.py" the file name of the model to solve with SGM as well as the game type given by the refinement_method
 
     # filename of the model
@@ -325,7 +325,11 @@ function write_SGM_instance_last_informations(filename, refinement_method, scrip
     elseif refinement_method == "SGM_gurobiNL_model"
         lines[line_number] = "game_type = \"CyberSecuritygurobiNL\""
     else
-        lines[line_number] = "game_type = \"CyberSecurity\""
+        if !PWL_general_constraint
+            lines[line_number] = "game_type = \"CyberSecurity\""
+        else
+            lines[line_number] = "game_type = \"CyberSecurityPWLgen\""
+        end
     end
 
     # relative gap and absolute gap for SGM
