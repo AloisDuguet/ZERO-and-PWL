@@ -1,4 +1,5 @@
 from Instances import *
+from SCIP_best_response import *
 from nonlinear_best_response_cybersecurity import *
 # get optimization software
 import gurobipy as grb
@@ -42,7 +43,10 @@ def InitialStrategies(G,opt_solver=1,REL_GAP_SOLVER=1e-7,ABS_GAP_SOLVER=1e-10):
         elif G.type() == "CyberSecurityPWLgen":
             S[p][0], U_p[p][0], Model_p = BestReactionGurobiCyberSecurityPWLgen(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER)
         elif G.type() == "CyberSecurityNL":
-            S[p][0], U_p[p][0], Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None, NL_term = G.NL_term())
+            if G.NL_term() == "S+inverse_square_root" and True:
+                S[p][0], U_p[p][0], Model_p = BestReactionSCIPCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER, ABS_GAP_SOLVER=ABS_GAP_SOLVER, NL_term=G.NL_term())
+            else:
+                S[p][0], U_p[p][0], Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None, NL_term = G.NL_term())
         elif G.type() == "CyberSecuritySOCP":
             S[p][0], U_p[p][0], Model_p = SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER, ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term = G.NL_term())
         elif G.type() == "CyberSecuritygurobiNL":
@@ -148,7 +152,10 @@ def CreateModels(m, n_I, n_C, n_constr, c, Q, A, b, problem_type = "UNK", G = No
         elif G.type() == "CyberSecurityPWLgen":
             _,_,Model_p = BestReactionGurobiCyberSecurityPWLgen(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER) # create = True should be fine
         elif G.type() == "CyberSecurityNL":
-            _,_,Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None, NL_term = G.NL_term()) # same
+            if G.NL_term() == "S+inverse_square_root" and True:
+                _,_,Model_p = BestReactionSCIPCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER, ABS_GAP_SOLVER=ABS_GAP_SOLVER, NL_term=G.NL_term())
+            else:
+                _,_,Model_p = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None, NL_term = G.NL_term()) # same
         elif G.type() == "CyberSecuritySOCP":
             _,_,Model_p = SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER, NL_term = G.NL_term()) # same
         elif G.type() == "CyberSecuritygurobiNL":
@@ -418,6 +425,7 @@ def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Pro
             print("Wow! The best reaction problem has no feasible solution. The status code is: ", m_p.status)
 
 def BestReactionGurobiCyberSecurityPWLgen(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Profile,p,create,ins, m_p = None,CE_verify=False,REL_GAP_SOLVER=1e-7,ABS_GAP_SOLVER=1e-10):
+    print("entering BestReactionGurobiCyberSecurityPWLgen")
     if CE_verify:
         xk_Qkp = sum(Q_p[k] for k in range(m) if k!=p)
     else:
@@ -460,6 +468,9 @@ def BestReactionGurobiCyberSecurityPWLgen(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b
         alpha,nRealVars,nOtherRealVars,Ds,n_markets = get_additional_info_for_NL_model(p, m)
         xpts = read_list_float(ins+"/model_PWL_xpts_%i.txt"%(p+1))
         ypts = read_list_float(ins+"/model_PWL_ypts_%i.txt"%(p+1))
+        if abs(xpts[-1]-xpts[-2]) < 1e-6: # last piece of length less than 1e-6 -> delete the penultimate point
+            del xpts[-2]
+            del ypts[-2]
         m_p.addGenConstrPWL(x[n_markets],x[2*n_markets+1],xpts,ypts,"PWLfunc") # n_j+1 -> n_markets and 2n_j+2 -> 2n_markets+1
         if n_I_p+n_C_p ==1:
             #QuadPart = grb.QuadExpr(x[0]*c_p[0]+ xk_Qkp*x[0]-0.5*x[0]*Q_p[p]*x[0])
@@ -530,6 +541,7 @@ def BestReactionGurobiCyberSecurityPWLgen(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b
         ##print("end of model in MILP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
         m_p.optimize()
         ##print("end of optimization in MILP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
+        print(m_p.status)
         try:
             #return [x[i].x for i in range(n_I_p+n_C_p)],m_p.ObjVal, m_p
             sol = [i.x for i in m_p.getVars()]
@@ -555,6 +567,7 @@ def BestReactionGurobiCyberSecurityPWLgen(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b
             print("Wow! The best reaction problem has no feasible solution. The status code is: ", m_p.status)
 
 def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Profile,p,create,ins, m_p = None,CE_verify=False,REL_GAP_SOLVER=1e-7,ABS_GAP_SOLVER=1e-10,NL_term="inverse_square_root"):
+    print("entering GurobiNLBestReactionCyberSecurity")
     if CE_verify:
         xk_Qkp = sum(Q_p[k] for k in range(m) if k!=p)
     else:
@@ -571,6 +584,8 @@ def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,P
         m_p.setParam("MIPGapAbs",ABS_GAP_SOLVER)
         m_p.setParam("IntFeasTol", 1e-9)
         m_p.setParam("FeasibilityTol",1e-9) # allowed to remove numerical issues in the convergence of the SGM with value 1e-7 as opposed to 1e-6
+        if NL_term == "cube+inverse_square_root":
+            m_p.setParam("NonConvex",2)
         #m_p.setParam('BarHomogeneous', 1)
         #m_p.setParam('DualReductions',0)
         # set objective function direction
@@ -628,9 +643,19 @@ def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,P
             m_p.addConstr(s_nl == 1-x[n_markets])
             m_p.addGenConstrLogA(s_nl, -t_nl, np.e, "log(1-x)", "FuncPieces=-1 FuncPieceError=%f"%())
             exit(19) # it is quite tricky to chose FuncPieceError because we need to know the optimal objective value... Thus it is not implemented for now
-
+        elif NL_term == "cube+inverse_square_root":
+            nl_vars.append(m_p.addVar(lb = 0, ub = 1, vtype="C", name="s_nl"))
+            nl_vars.append(m_p.addVar(lb = 0, vtype="C", name="t_nl"))
+            m_p.addConstr(nl_vars[0]*nl_vars[0], grb.GRB.LESS_EQUAL, 1-x[n_markets])
+            m_p.addConstr(1, grb.GRB.LESS_EQUAL, nl_vars[1]*nl_vars[0])
+            nl_vars.append(m_p.addVar(lb=0,ub=1, vtype="C", name="v_nl"))
+            nl_vars.append(m_p.addVar(lb=0,ub=1, vtype="C", name="w_nl"))
+            m_p.addConstr(nl_vars[2], grb.GRB.EQUAL, x[n_markets]*x[n_markets])
+            m_p.addConstr(nl_vars[3], grb.GRB.EQUAL, nl_vars[2]*x[n_markets])
         if NL_term == "log":
             m_p.setObjective(QuadPart - alpha*nl_vars[1])
+        elif NL_term == "cube+inverse_square_root":
+            m_p.setObjective(QuadPart - alpha*(nl_vars[1] - 1 - 3/2*nl_vars[3]))
         else:
             m_p.setObjective(QuadPart - alpha*(nl_vars[1] - 1)) # contains the term for the cybersecurity budget
         m_p.update()
@@ -645,9 +670,11 @@ def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,P
         m_p.update()
     else:
         if NL_term == "inverse_square_root":
-            m_p.setObjective(m_p.getObjective() + np.dot(m_p.getVars()[:len(m_p.getVars())-2],xk_Qkp)) # before it was m_p.getVars() instead of x
+            m_p.setObjective(m_p.getObjective() + np.dot(m_p.getVars()[:len(m_p.getVars())-2],xk_Qkp))
         elif NL_term == "inverse_cubic_root":
-            m_p.setObjective(m_p.getObjective() + np.dot(m_p.getVars()[:len(m_p.getVars())-3],xk_Qkp)) # before it was m_p.getVars() instead of x
+            m_p.setObjective(m_p.getObjective() + np.dot(m_p.getVars()[:len(m_p.getVars())-3],xk_Qkp))
+        elif NL_term == "cube+inverse_square_root":
+            m_p.setObjective(m_p.getObjective() + np.dot(m_p.getVars()[:len(m_p.getVars())-4],xk_Qkp))
         m_p.update()
     #m_p.write("test_model_%i.lp"%(p+1))
     if create:
@@ -655,6 +682,8 @@ def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,P
             m_p.setObjective(m_p.getObjective()-np.dot(xk_Qkp,m_p.getVars()[:len(m_p.getVars())-2]))
         elif NL_term == "inverse_cubic_root":
             m_p.setObjective(m_p.getObjective()-np.dot(xk_Qkp,m_p.getVars()[:len(m_p.getVars())-3]))
+        elif NL_term == "cube+inverse_square_root":
+            m_p.setObjective(m_p.getObjective()-np.dot(xk_Qkp,m_p.getVars()[:len(m_p.getVars())-4]))
         m_p.update()
         return None,None,m_p
     else:
@@ -664,19 +693,26 @@ def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,P
             for j,aux_var in enumerate(m_p.getVars()):
                 if j < len(Profile[p]):
                     aux_var.start = Profile[p][j]
-                elif j == len(Profile[p]):
+                elif j == len(Profile[p]): # s_nl
                     if NL_term == "inverse_square_root":
                         aux_var.start = np.sqrt(1-m_p.getVars()[n_markets].start)
                     elif NL_term == "inverse_cubic_root":
                         aux_var.start = (1-m_p.getVars()[n_markets].start)**(1/3)
-                elif j == len(Profile[p])+1:
+                    elif NL_term == "cube+inverse_square_root":
+                        aux_var.start = np.sqrt(1-m_p.getVars()[n_markets].start)
+                elif j == len(Profile[p])+1: # t_nl
                     aux_var.start = 1/m_p.getVars()[len(Profile[p])].start
+                #elif j == len(Profile[p])+2 and NL_term == "cube+inverse_square_root": # v_nl
+                #    aux_var.start = m_p.getVars()[n_markets].start**2
+                #elif j == len(Profile[p])+3 and NL_term == "cube+inverse_square_root": # w_nl
+                #    aux_var.start = m_p.getVars()[n_markets].start**3
                 m_p.update()
         global start_time
         ##print("end of model in MIQP for NL BR --- %s seconds ---" % (Ltime.time() - 1675900000))
         #m_p.setParam("LogToConsole", 1)
         #m_p.setParam("OutputFlag", 1)
         m_p.optimize()
+        print(m_p.status)
         ##print("end of optimization in MIQP for NL BR --- %s seconds ---" % (Ltime.time() - 1675900000))
         try:
             #return [x[i].x for i in range(n_I_p+n_C_p)],m_p.ObjVal, m_p
@@ -686,6 +722,8 @@ def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,P
                 sol = sol[:len(sol)-2] # added for the NL term
             elif NL_term == "inverse_cubic_root":
                 sol = sol[:len(sol)-3]
+            elif NL_term == "cube+inverse_square_root":
+                sol = sol[:len(sol)-4]
             #print("solution of gurobiNL of value %f: \n\t\t\t\t"%(value), sol)
             if False: # the NL_term has not been adapted to another option than inverse_square_root
                 print("values of terms in NL BR:")
@@ -717,6 +755,8 @@ def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,P
                         m_p.setObjective(m_p.getObjective()-np.dot(xk_Qkp,m_p.getVars()[:len(m_p.getVars())-2]))
                     elif NL_term == "inverse_cubic_root":
                         m_p.setObjective(m_p.getObjective()-np.dot(xk_Qkp,m_p.getVars()[:len(m_p.getVars())-3]))
+                    elif NL_term == "cube+inverse_square_root":
+                        m_p.setObjective(m_p.getObjective()-np.dot(xk_Qkp,m_p.getVars()[:len(m_p.getVars())-4]))
             m_p.update()
 
             return sol, value, m_p

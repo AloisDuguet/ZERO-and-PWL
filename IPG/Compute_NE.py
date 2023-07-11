@@ -1,3 +1,5 @@
+
+import numpy as np
 from Instances import *
 from Initial_str import *
 from nonlinear_best_response_cybersecurity import *
@@ -8,9 +10,6 @@ from time import time
 from copy import deepcopy
 import time as Ltime
 
-import numpy as np
-
-import gurobipy as grb
 
 # under unix: to limit time
 # import signal
@@ -42,6 +41,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
     """
 
     # to facilitate the parsing of the number of iteration: (works with another writing in file at the usual exit)
+    print("terme non linéaire : ", G.NL_term())
     file = open("save_number_of_iteration", "a")
     if G.type() == "CyberSecuritygurobiNL" or G.type() == "CyberSecuritySOCP":
         file.write("\n")
@@ -154,12 +154,16 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
             elif G.type() == "CyberSecurityPWLgen":
                 s_p, u_max, _ = BestReactionGurobiCyberSecurityPWLgen(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER)
             elif G.type() == "CyberSecurityNL":
-                s_p, u_max, _ = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term=G.NL_term())
+                if G.NL_term() == "S+inverse_square_root" and True: # True uses pyscipopt's best response, False uses pyomo's best response
+                    s_p, u_max, _ = BestReactionSCIPCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER, ABS_GAP_SOLVER=ABS_GAP_SOLVER, NL_term=G.NL_term())
+                else:
+                    s_p, u_max, _ = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term=G.NL_term())
             elif G.type() == "CyberSecuritySOCP":
                 s_p, u_max, _ = SOCPBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term=G.NL_term())
             elif G.type() == "CyberSecuritygurobiNL":
                 s_p, u_max, _ = GurobiNLBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term=G.NL_term())
             #print("end of computation of Best Response iteration %i --- %s seconds ---" % (count, Ltime.time() - 1675900000))
+            print("end of computation of Best Response iteration %i"%count)
 
             # criterion working with absolute, relative and mixed error, if rel_gap = 0 for absolute and abs_gap = 0 for relative
             abs_gap_adapted = abs_gap-REL_GAP_SOLVER*abs(Profits[p]) # MOSEK (conic solver) does not allow absolute gap stopping criterion, so for all solvers relative gap is used. Thus, the absolute gap that the SGM stopping criterion uses is abs_gap minus the maximum deviation done by solver
@@ -297,6 +301,11 @@ def IndUtilities(m, c, Q, S, U_p, MCT, S_new, G = []):
                     U_p[p].append(float(np.dot(c[p],s) - 0.5*np.dot(s,np.dot(Q[p][p],s)) - alpha*(1/(1-s[n_markets])**(1/3)-1)))
                 elif G.NL_term() == "log":
                     U_p[p].append(float(np.dot(c[p],s) - 0.5*np.dot(s,np.dot(Q[p][p],s)) - alpha*(-np.log(1-s[n_markets]))))
+                elif G.NL_term() == "cube+inverse_square_root":
+                    U_p[p].append(float(np.dot(c[p],s) - 0.5*np.dot(s,np.dot(Q[p][p],s)) - alpha*(1/np.sqrt(1-s[n_markets])-1-3/2*s[n_markets]**3)))
+                elif G.NL_term() == "S+inverse_square_root":
+                    print("----> using S+inverse_square_root with non PWL method")
+                    U_p[p].append(float(np.dot(c[p],s) - 0.5*np.dot(s,np.dot(Q[p][p],s)) - alpha*(1/np.sqrt(1-s[n_markets])-2+2/(1+exp(-20*s[n_markets])))))
                 else:
                     print("error probably because G.NL_term() was not recognised:")
                     print(G.NL_term())
@@ -698,6 +707,8 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
                 bonus = 3
             elif G.NL_term() == "log":
                 bonus = 1
+            elif G.NL_term() == "cube+inverse_square_root":
+                bonus = 4
         else:
             k_p = len(Best_m[p].getVars()) # does not work with pyomo models.
         #WARNING: this upper bound is valid only for separable games, i.e. a game where the payoff can be decomposed into a sum of multiplication of univariate function

@@ -46,6 +46,11 @@ function evaluate_cybersecurity_objective_value(x, parameters, p, params, fixed_
         val += -params.alphas[p]*(1/(1-x[n_markets+1])^(1/3)-1)
     elseif NL_term == "log"
         val += -params.alphas[p]*(-log(1-x[n_markets+1]))
+    elseif NL_term == "cube+inverse_square_root"
+        val += -params.alphas[p]*(1/sqrt(1-x[n_markets+1])-1-3/2*x[n_markets+1]^3)
+        #println("value of nonlinear function: ", -params.alphas[p]*(1/sqrt(1-x[n_markets+1])-1-3/2*x[n_markets+1]^3))
+    elseif NL_term == "S+inverse_square_root"
+        val += -params.alphas[p]*(1/sqrt(1-x[n_markets+1])+2/(1+exp(-20*x[n_markets+1]))-2)
     end
 
     #println("evaluation of the objective function of player $p:")
@@ -95,6 +100,8 @@ function compute_cybersecurity_nonlinear_best_response(player_index, n_players, 
          @NLexpression(model, h_i, alpha*(1/(1-s_i)^(1/3)-1))
      elseif NL_term == "log"
          @NLexpression(model, h_i, alpha*(-log(1-s_i)))
+     elseif NL_term == "S+inverse_square_root"
+         @NLexpression(model, h_i, alpha*(1/sqrt(1-s_i)+2/(1+exp(-20*s_i))-2))
      end
 
      # add order two terms in an NLexpression
@@ -222,6 +229,15 @@ function compute_cybersecurity_gurobi_nonlinear_best_response(player_index, n_pl
      elseif NL_term == "log"
          set_optimizer_attribute(model, "NonConvex", 2)
          error("gurobiNL not exact with NL_term = log, use MOSEK instead")
+    elseif NL_term == "cube+inverse_square_root"
+        set_optimizer_attribute(model, "NonConvex", 2)
+        @constraint(model, s_nl*s_nl <= 1-var_s_i)
+        @variable(model, 1 >= v_nl >= 0)
+        @variable(model, 1 >= w_nl >= 0)
+        @constraint(model, var_s_i*var_s_i == v_nl)
+        @constraint(model, var_s_i*v_nl == w_nl)
+    elseif NL_term == "S+inverse_square_root"
+        error("wrong function for S+inverse_square_root")
      end
      @constraint(model, s_nl*t_nl >= 1)
      # FINISH HERE
@@ -240,10 +256,19 @@ function compute_cybersecurity_gurobi_nonlinear_best_response(player_index, n_pl
 
      # add the objective function
      if fixed_costs
-         @objective(model, Max, -alpha*(t_nl-1) + order_two_terms + sum(c[k]*Q_i[k] for k in 1:n_markets)
-         + c[end]*s_i - sum(fcost[j]*activate_fixed_cost[j] for j in 1:n_markets) + param_terms)
+        if NL_term == "cube+inverse_square_root"
+            @objective(model, Max, -alpha*(t_nl-3/2*w_nl-1) + order_two_terms + sum(c[k]*Q_i[k] for k in 1:n_markets)
+            + c[end]*s_i - sum(fcost[j]*activate_fixed_cost[j] for j in 1:n_markets) + param_terms)
+        else
+            @objective(model, Max, -alpha*(t_nl-1) + order_two_terms + sum(c[k]*Q_i[k] for k in 1:n_markets)
+            + c[end]*s_i - sum(fcost[j]*activate_fixed_cost[j] for j in 1:n_markets) + param_terms)
+        end
      else
-         @objective(model, Max, -alpha*(t_nl-1) + order_two_terms + sum(c[k]*Q_i[k] for k in 1:n_markets) + c[end]*s_i + param_terms)
+         if NL_term == "cube+inverse_square_root"
+             @objective(model, Max, -alpha*(t_nl-3/2*w_nl-1) + order_two_terms + sum(c[k]*Q_i[k] for k in 1:n_markets) + c[end]*s_i + param_terms)
+         else
+             @objective(model, Max, -alpha*(t_nl-1) + order_two_terms + sum(c[k]*Q_i[k] for k in 1:n_markets) + c[end]*s_i + param_terms)
+        end
      end
 
      # check validity of model by printing it
@@ -312,12 +337,17 @@ function compute_max_s_i_for_all_players(n_players, params, NL_term)
     h0_funcs = [] # h_i - B[i] functions, to compute max_s_is
     for i in 1:n_players
         if NL_term == "inverse_square_root"
-            push!(h_funcs, x->params.alphas[i]*(1/sqrt(1-x)-1))
+            #push!(h_funcs, x->params.alphas[i]*(1/sqrt(1-x)-1))
             push!(h0_funcs, x->params.alphas[i]*(1/sqrt(1-x)-1)-params.B[i])
         elseif NL_term == "inverse_cubic_root"
             push!(h0_funcs, x->params.alphas[i]*(1/(1-x)^(1/3)-1)-params.B[i])
         elseif NL_term == "log"
             push!(h0_funcs, x->params.alphas[i]*(-log(1-x))-params.B[i])
+        elseif NL_term == "cube+inverse_square_root"
+            #push!(h_funcs, x->params.alphas[i]*(1/sqrt(1-x)-1+3/2*x^3))
+            push!(h0_funcs, x->params.alphas[i]*(1/sqrt(1-x)-1+3/2*x^3)-params.B[i])
+        elseif NL_term == "S+inverse_square_root"
+            push!(h0_funcs, x->params.alphas[i]*(1/sqrt(1-x)-2+2/(1+exp(-20*x)))-params.B[i])
         end
         max_s_is[i] = bisection(h0_funcs[i], (0,1))
     end
@@ -351,12 +381,12 @@ function cybersecurity_NE_characterization_function(x, params, fixed_costs, NL_t
 
         try
             # compute the inf in y_i (because it is a maximization problem), NBR = Non-linear Best Response
-            if NL_term == "inverse_square_root"
+            if NL_term == "inverse_square_root" || NL_term == "cube+inverse_square_root"
                 @time global model_NBR, sol_NBR, obj_NBR, ordvar_NBR = compute_cybersecurity_gurobi_nonlinear_best_response(p, n_players
                 , n_markets, params.Qbar[p,:], max_s_is[p], params.cs[p], params.alphas[p], params.Qs[p]
                 , params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:], filename
                 , parameters, fixed_costs, params.fcost[p,:],NL_term)
-            elseif NL_term == "inverse_cubic_root" || NL_term == "log"
+            elseif NL_term == "inverse_cubic_root" || NL_term == "log" || NL_term == "S+inverse_square_root"
                 @time global model_NBR, sol_NBR, obj_NBR, ordvar_NBR = compute_cybersecurity_nonlinear_best_response(p, n_players
                 , n_markets, params.Qbar[p,:], max_s_is[p], params.cs[p], params.alphas[p], params.Qs[p]
                 , params.Cs[p], params.constant_values[p], params.linear_terms_in_spi[p,:], filename

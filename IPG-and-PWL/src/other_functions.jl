@@ -11,6 +11,10 @@ function parametrized_expressions(alphas, NL_term = "inverse_square_root")
             println(file, "push!(expr_h, :($(alpha)*(1/(1-x)^(1/3)-1)))")
         elseif NL_term == "log"
             println(file, "push!(expr_h, :($(alpha)*(-log(1-x))))")
+        elseif NL_term == "cube+inverse_square_root"
+            println(file, "push!(expr_h, :($(alpha)*(1/sqrt(1-x)-1+3/2*x^3)))")
+        elseif NL_term == "S+inverse_square_root"
+            println(file, "push!(expr_h, :($(alpha)*(1/sqrt(1-x)-2+2/(1+exp(-20*x)))))")
         end
     end
     close(file)

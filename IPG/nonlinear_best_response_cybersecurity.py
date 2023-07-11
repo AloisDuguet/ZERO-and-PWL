@@ -102,14 +102,14 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
         #    return (None, sum(model.A[i,j]*model.x[j] for j in model.iternRealVars), model.b[i])
         #model.linCons = pyo.Constraint(model.iternCons, rule=linear_constraints)
 
-        model.linCons = pyo.ConstraintList()
-        for i in model.iternCons:
-            test1 = sum((A_p[i,j] == 0) for j in model.iternRealVars) == nRealVars
-            test2 = sum((A_p[i,j] == 0) for j in model.iternRealVars) == nRealVars - 1
-            test3 = abs(A_p[i,n_markets]) == 1
-            test4 = sum((A_p[i,j] != 0) for j in range(nRealVars,np.shape(A_p)[1])) > 0
-            if not(test1 or (test2 and test3 and test4)):
-                model.linCons.add((None, sum(model.A[i,j]*model.x[j] for j in model.iternRealVars), model.b[i]))
+        # HERE #model.linCons = pyo.ConstraintList()
+        #for i in model.iternCons:
+        #    test1 = sum((A_p[i,j] == 0) for j in model.iternRealVars) == nRealVars
+        #    test2 = sum((A_p[i,j] == 0) for j in model.iternRealVars) == nRealVars - 1
+        #    test3 = abs(A_p[i,n_markets]) == 1
+        #    test4 = sum((A_p[i,j] != 0) for j in range(nRealVars,np.shape(A_p)[1])) > 0
+        #    if not(test1 or (test2 and test3 and test4)):
+        #        model.linCons.add((None, sum(model.A[i,j]*model.x[j] for j in model.iternRealVars), model.b[i]))
 
 
         if create:
@@ -128,6 +128,8 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
                 expr += -alpha*(1/(1-model.x[n_markets])**(1/3)-1)
             elif NL_term == "log":
                 expr += -alpha*(-log(1-model.x[n_markets]))
+            elif NL_term == "S+inverse_square_root":
+                expr += -alpha*(1/pyo.sqrt(1-model.x[n_markets]) + 2/(1+pyo.exp(-20*model.x[n_markets])) - 2)
             # mixed terms with xk_Qkp
             expr += pyo.summation(xk_Qkp,model.x)
             # constant terms (-D_i) and spi terms (D_i/n_players*s_pi)
@@ -156,6 +158,8 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
                 expr += -alpha*(1/(1-model.x[n_markets])**(1/3)-1)
             elif NL_term == "log":
                 expr += -alpha*(-log(1-model.x[n_markets]))
+            elif NL_term == "S+inverse_square_root":
+                expr += -alpha*(1/pyo.sqrt(1-model.x[n_markets]) + 2/(1+pyo.exp(-20*model.x[n_markets])) - 2)
             # mixed terms with xk_Qkp
             expr += pyo.summation(xk_Qkp,model.x)
             # constant terms (-D_i) and spi terms (D_i/n_players*s_pi)
@@ -180,7 +184,9 @@ def NonLinearBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_
     # give warm start with Profile => COUENNE DOES NOT SUPPORT WARMSTART
     #for i in range(nRealVars):
     #    model.x[i] = Profile[p][i]
-    opt = pyo.SolverFactory('couenne')
+    #opt = pyo.SolverFactory('couenne')
+    #opt = pyo.SolverFactory('scip', executable = "/usr/bin/scip", solver_io = "nl")
+    opt = pyo.SolverFactory('scip', solver_io = "nl")
     ##opt = pyo.SolverFactory('ipopt') # ipopt can not handle integer variables
     #opt = pyo.SolverFactory('bonmin')
     global start_time

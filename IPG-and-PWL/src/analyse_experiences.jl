@@ -925,6 +925,21 @@ function prepare_performance_profile_cybersecurity(filename, filename_save = "pe
     display(p)
 end
 
+function add_PWLgen_failed_exps(filename)
+    # complete the name of some refinement_methods which don't have "PWLgen" at the end because it failed
+
+    lines = readlines(filename)
+    for i in 1:length(lines)
+        lines[i] = replace(lines[i], "refinement:"=>"refinementPWLgen:")
+    end
+    file = open(filename, "w")
+    for i in 1:length(lines)
+        println(file, lines[i])
+    end
+    close(file)
+    return 0
+end
+
 function prepare_real_performance_profile_cybersecurity(filename, filename_save = "performance_profile.png", list_categories = []; refinement_methods = ["full_refinement","SGM_SOCP_model"],
     errs = [Absolute(0.5),Absolute(0.05),Absolute(0.005),Absolute(0.0005)], time_limit=900)
     # prepare profiles for a call to function performance_profile
@@ -989,6 +1004,8 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
                     end
                 end
                 push!(exps_by_category[i], cpu_time)
+            else
+                # explain why it does not belong to the current category
             end
         end
     end
@@ -1076,11 +1093,11 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
         exps = copy(exps_by_category[i])
         x = sort(exps)
         name = c.name
-        name = replace(name, "full_refinementPWLgen"=>"2-level approximation autoPWL")
+        name = replace(name, "full_refinementPWLgen"=>"2-level approximation")
         name = replace(name, "full_refinement"=>"2-level approximation")
         name = replace(name, "SOCP"=>"SGM-ExpCone")
-        name = replace(name, "gurobiNL"=>"SGM-MIQP")
-        name = replace(name, "sufficient_refinementPWLgen"=>"direct approximation autoPWL")
+        name = replace(name, "gurobiNL"=>"SGM-MIQCP")
+        name = replace(name, "sufficient_refinementPWLgen"=>"direct approximation")
         name = replace(name, "sufficient_refinement"=>"direct approximation")
         p = plot!(x,LinRange(0,1,270), xlabel = "seconds", ylabel = "cumulative frequency", label = "$name")
     end
@@ -1165,11 +1182,11 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
             name = list_categories[i].name
             # change some names to fit my slides: "full_refinement"=>"PWL-ANE", "SOCP"=>"SGM-MOSEK"
             #name = replace(name, "full_refinement"=>"PWL-ANE")
-            name = replace(name, "full_refinementPWLgen"=>"2-level approximation autoPWL")
-            name = replace(name, "sufficient_refinementPWLgen"=>"direct approximation autoPWL")
+            name = replace(name, "full_refinementPWLgen"=>"2-level approximation")
+            name = replace(name, "sufficient_refinementPWLgen"=>"direct approximation")
             name = replace(name, "full_refinement"=>"2-level approximation")
             name = replace(name, "SOCP"=>"SGM-ExpCone")
-            name = replace(name, "gurobiNL"=>"SGM-MIQP")
+            name = replace(name, "gurobiNL"=>"SGM-MIQCP")
             name = replace(name, "sufficient_refinement"=>"direct approximation")
             push!(l_profiles, Profile(x,y,name,Dict()))
         end

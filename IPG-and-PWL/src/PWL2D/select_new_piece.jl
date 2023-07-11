@@ -128,7 +128,6 @@ function select_new_piece_mid_angle_forward_direction(current_region, reusable_p
 
                 candidate_piece,value = use_inclined_bounding_option(inclined_bounding, current_region, first_vertex, forward_direction, arguments)
 
-
                 # stocke le nouvel essai dans piece_trials
                 push!(piece_trials, candidate_piece)
                 push!(values, value)
