@@ -205,6 +205,11 @@ def BestReactionSCIPCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
     print("time to generate SCIP model: ", Ltime.time()-t0)
     time_limit = 900
     m_p.setParam('limits/time', time_limit)
+    m_p.setParam('limits/absgap', ABS_GAP_SOLVER)
+    m_p.setParam('limits/gap', REL_GAP_SOLVER)
+    m_p.setParam('numerics/feastol', 1e-9)
+    print("absgap: ", ABS_GAP_SOLVER, " and relgap: ", REL_GAP_SOLVER)
+    # I could not find the parameter for integer feasibility tolerance for SCIP
     m_p.optimize()
     print(type(m_p.getStatus()))
     print("SCIP status : ", m_p.getStatus())

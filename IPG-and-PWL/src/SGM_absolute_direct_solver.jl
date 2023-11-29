@@ -507,7 +507,7 @@ end
 
 
 
-SGM_PWL_absolute_direct_solver("instance_2_2_3.txt", refinement_method = "sufficient_refinement", err_pwlh = Absolute(0.05), NL_term = "S+inverse_square_root", PWL_general_constraint = false)
+SGM_PWL_absolute_direct_solver("instance_2_2_3.txt", refinement_method = "SGM_NL_model", err_pwlh = Absolute(0.05), NL_term = "S+inverse_square_root", PWL_general_constraint = false)
 
 
 
@@ -543,21 +543,27 @@ benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[1,2,3,4,5,6,7,8,9,10,270]], refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "PWLgen/iter_root567.txt")
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[1,2,3,4,5,6,7,8,9,10,270]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["log"], filename_save = "PWLgen/iter_log567.txt")
 
-#benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances[[10*i for i in 1:27]], refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/test_exactlin+disagg_NL234.txt", PWL_general_constraint = false)
-
 ###benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances[[1,2,3,4,5]], refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/test_time_NL234.txt", PWL_general_constraint = false)
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/NL234.txt", PWL_general_constraint = false)
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete, refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/NL567.txt", PWL_general_constraint = false)
-benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[252:270], refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/NL567.txt", PWL_general_constraint = false)
 
 
-if false # final experiments
+# final experiments
+#=benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[252:270], refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/NL567.txt", PWL_general_constraint = false)
+benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_NL_model"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/NL234_onlySCIP.txt", PWL_general_constraint = false)
+benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[1:251], refinement_methods = ["SGM_NL_model"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/NL567_onlySCIP.txt", PWL_general_constraint = false)
+=#
+
+
+if false
     #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "indicator_exps/absolute_direct_log234.txt")
     #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "indicator_exps/absolute_direct_root234.txt")
     benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "indicator_exps/absolute_direct_log567.txt")
     benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete, refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "indicator_exps/absolute_direct_root567.txt")
     end
 ###prepare_real_performance_profile_cybersecurity("exps_final_24_03_23/absolute_direct_log234.txt",refinement_methods=["SGM_SOCP_model","sufficient_refinement","full_refinement"],errs=[Absolute(0.05),Absolute(2.5e-5)])
+
+include("compute_analysis.jl")
 
 #=filename_saves = ["indicator_exps/absolute_direct_log234.txt", "indicator_exps/absolute_direct_log567.txt", "indicator_exps/absolute_direct_root234.txt", "indicator_exps/absolute_direct_root567.txt"]
 refinement_methods_log = ["SGM_SOCP_model","sufficient_refinement","full_refinement"]
@@ -576,8 +582,8 @@ p4 = prepare_real_performance_profile_cybersecurity(filename_save,filename_save[
 #p = plot!(p1,p2,p3,p4, layout = (2,2))
 #display(p)
 
-err_pwlhs = [Absolute(0.05), Absolute(2.5e-5)]
-refinement_methods_root_PWLgen = ["SGM_gurobiNL_model","sufficient_refinementPWLgen","full_refinementPWLgen"]
+
+
 
 # launch experiments in another file
 ##cd("/home/aduguet/Documents/doctorat/2dpwlb/codes/julia/graph_coloring_based_corridor_fitting_problem")
@@ -594,43 +600,6 @@ p2 = prepare_real_performance_profile_cybersecurity(filename_save,filename_save[
 filename_save = filename_PWLgen[4]
 p4 = prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-5]*"_perf_profile.pdf", refinement_methods = refinement_methods_root_PWLgen, errs = err_pwlhs)
 =#
-
-
-
-# HERE:
-
-filename_PWLgen = ["PWLgen/log234.txt","PWLgen/root234.txt","PWLgen/log567.txt","PWLgen/root567.txt"]
-filename_PWLgen = ["SCIP_exps/NL234.txt","SCIP_exps/NL567.txt"]
-# does not work! save figures with french legend in another place : (you need to uncomment the french translation in prepare_real_performance_profile_cybersecurity also)
-###filename_PWLgen = ["fr/log234.txt","fr/root234.txt","fr/log567.txt","fr/root567.txt"]
-err_pwlhs = [Absolute(0.05), Absolute(2.5e-5)]
-refinement_methods_log_PWLgen = ["SGM_SOCP_model","sufficient_refinementPWLgen","full_refinementPWLgen","sufficient_refinement","full_refinement"]
-refinement_methods_root_PWLgen = ["SGM_gurobiNL_model","sufficient_refinementPWLgen","full_refinementPWLgen","sufficient_refinement","full_refinement"]
-refinement_methods_log_PWLgen = ["SGM_SOCP_model","sufficient_refinementPWLgen","full_refinementPWLgen"]
-refinement_methods_root_PWLgen = ["SGM_gurobiNL_model","sufficient_refinementPWLgen","full_refinementPWLgen"]
-refinement_methods_NL_PWL = ["SGM_NL_model","sufficient_refinementPWLgen","full_refinementPWLgen"]
-refinement_methods_NL_PWL = ["SGM_NL_model","sufficient_refinement","full_refinement"]
-filename_save = filename_PWLgen[1]
-p1 = prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.pdf", refinement_methods = refinement_methods_NL_PWL, errs = err_pwlhs)
-filename_save = filename_PWLgen[2]
-p2 = prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.pdf", refinement_methods = refinement_methods_NL_PWL, errs = err_pwlhs)
-
-
-
-
-SCIP_times, SCIP_lines = compute_best_response_computation_time("SCIP_exps/NL234_best_response_times.txt")
-other_times, other_lines = compute_best_response_computation_time("SCIP_exps/NL234_best_response_times.txt", "CyberSecurity-")
-include_SCIP_fictive_times(SCIP_times, "SCIP_exps/NL234.txt")
-SCIP_times = compute_best_response_computation_time("SCIP_exps/N567_best_response_times.txt")
-include_SCIP_fictive_times(SCIP_times, "SCIP_exps/NL567.txt")
-filename_PWLgen = ["SCIP_exps/NL234_fictive_MINLP.txt","SCIP_exps/NL567_fictive_MINLP.txt"]
-filename_save = filename_PWLgen[1]
-p1 = prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.pdf", refinement_methods = refinement_methods_NL_PWL, errs = err_pwlhs, fictive_times = true)
-filename_save = filename_PWLgen[2]
-p2 = prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.pdf", refinement_methods = refinement_methods_NL_PWL, errs = err_pwlhs, fictive_times = true)
-
-
-
 
 
 
