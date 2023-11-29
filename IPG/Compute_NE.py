@@ -43,7 +43,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
     # to facilitate the parsing of the number of iteration: (works with another writing in file at the usual exit)
     print("terme non linéaire : ", G.NL_term())
     file = open("save_number_of_iteration", "a")
-    if G.type() == "CyberSecuritygurobiNL" or G.type() == "CyberSecuritySOCP":
+    if G.type() == "CyberSecuritygurobiNL" or G.type() == "CyberSecuritySOCP" or G.type() == "CyberSecurityNL":
         file.write("\n")
     #file.write("count = %d\t%s"%(count,G.type()))
     file.write("_")
@@ -154,7 +154,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
             elif G.type() == "CyberSecurityPWLgen":
                 s_p, u_max, _ = BestReactionGurobiCyberSecurityPWLgen(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER)
             elif G.type() == "CyberSecurityNL":
-                if G.NL_term() == "S+inverse_square_root" and True: # True uses pyscipopt's best response, False uses pyomo's best response
+                if G.NL_term() == "S+inverse_square_root" and True: # True uses pyscipopt's best response, False uses pyomo's best response which is not working because scip is not recognised
                     s_p, u_max, _ = BestReactionSCIPCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER, ABS_GAP_SOLVER=ABS_GAP_SOLVER, NL_term=G.NL_term())
                 else:
                     s_p, u_max, _ = NonLinearBestReactionCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,False,G.ins(),Best_m[p],REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER,NL_term=G.NL_term())
@@ -305,7 +305,7 @@ def IndUtilities(m, c, Q, S, U_p, MCT, S_new, G = []):
                     U_p[p].append(float(np.dot(c[p],s) - 0.5*np.dot(s,np.dot(Q[p][p],s)) - alpha*(1/np.sqrt(1-s[n_markets])-1-3/2*s[n_markets]**3)))
                 elif G.NL_term() == "S+inverse_square_root":
                     print("----> using S+inverse_square_root with non PWL method")
-                    U_p[p].append(float(np.dot(c[p],s) - 0.5*np.dot(s,np.dot(Q[p][p],s)) - alpha*(1/np.sqrt(1-s[n_markets])-2+2/(1+exp(-20*s[n_markets])))))
+                    U_p[p].append(float(np.dot(c[p],s) - 0.5*np.dot(s,np.dot(Q[p][p],s)) - alpha*(1/np.sqrt(1-s[n_markets])-2+2/(1+np.exp(-20*s[n_markets])))))
                 else:
                     print("error probably because G.NL_term() was not recognised:")
                     print(G.NL_term())
@@ -709,7 +709,10 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
                 bonus = 1
             elif G.NL_term() == "cube+inverse_square_root":
                 bonus = 4
+            elif G.NL_term() == "S+inverse_square_root":
+                bonus = 0 # 0 for SCIP model
         else:
+            print("using .getVars() to model")
             k_p = len(Best_m[p].getVars()) # does not work with pyomo models.
         #WARNING: this upper bound is valid only for separable games, i.e. a game where the payoff can be decomposed into a sum of multiplication of univariate function
         m_p.addConstr(grb.quicksum(activ[p].values()) <= k_p+1+bonus) # limit the number of active strategies by thr upper bound on the number of active strategies shown in Carvalho18 (not valid anytime: needs to be a separable game)

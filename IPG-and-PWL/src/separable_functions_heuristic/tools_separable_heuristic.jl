@@ -49,8 +49,8 @@ function compute_1D_PWL(delta1, delta2, dict_args)
     expr_f1 = Meta.parse(str_expr_f1)
     expr_f2 = Meta.parse(str_expr_f2)
 
-    PWL1 = LinA.exactLin(expr_f1,domain[1],domain[2],Absolute(delta1))
-    PWL2 = LinA.exactLin(expr_f2,domain[3],domain[4],Absolute(delta2))
+    PWL1 = LinA.ExactLin(expr_f1,domain[1],domain[2],Absolute(delta1))
+    PWL2 = LinA.ExactLin(expr_f2,domain[3],domain[4],Absolute(delta2))
     return PWL1,PWL2
 end
 

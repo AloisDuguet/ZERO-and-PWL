@@ -7,10 +7,10 @@ Created on Tue Nov  8 15:35:36 2022
 """
 # don't change the line number of the following line : it should be line 10
 # (cf write_SGM_instance_filename in ../IPG-and-PWL/src/SGM_solver.jl)
-filename = "../IPG-and-PWL/SGM_files/instance_2_2_1_Abs2-5e-5_fixedcosttrue"
-game_type = "CyberSecurityNL"
+filename = "../IPG-and-PWL/SGM_files/instance_7_9_2_Abs2-5e-5_fixedcosttrue"
+game_type = "CyberSecurity"
 rel_gap = 0.0
-abs_gap = 0.0001
+abs_gap = 5.0e-5
 
 import time as Ltime
 start_time = Ltime.time()
@@ -26,6 +26,12 @@ SGM_start_time = Ltime.time()
 G = Instances.Game(game_type,2,2,filename) # 2,2 is not important because it is not used for cybersecurity games
 max_iter = 1000 # sufficient for a really long time I guess
 print("launching IterativeSG_NOT_DFS")
+
+# to count time spent to solve best response with SCIP:
+file = open("SCIP_time.txt", "a")
+file.write("\n{}-{}:".format(game_type, filename[34:42]))
+file.close()
+
 # check if there is a warmstart (files filename+_warmstart{i}.csv not empty)
 if game_type == "CyberSecurity" or game_type == "CyberSecurityPWLgen":
     S = Instances.get_warmstart_cybersecurity(filename, G.m())

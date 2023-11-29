@@ -148,9 +148,9 @@ def CreateModels(m, n_I, n_C, n_constr, c, Q, A, b, problem_type = "UNK", G = No
             return "andouille"
             _,_,Model_p = BestReactionGurobi(m,n_I[p],n_C[p],n_constr[p],c[p],Q[p],A[p],b[p],Profile,p,True)
         elif G.type() == "CyberSecurity":
-            _,_,Model_p = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER) # create = True should be fine
+            _,_,Model_p = BestReactionGurobiCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER) # create == True should be fine
         elif G.type() == "CyberSecurityPWLgen":
-            _,_,Model_p = BestReactionGurobiCyberSecurityPWLgen(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER) # create = True should be fine
+            _,_,Model_p = BestReactionGurobiCyberSecurityPWLgen(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER,ABS_GAP_SOLVER=ABS_GAP_SOLVER) # create == True should be fine
         elif G.type() == "CyberSecurityNL":
             if G.NL_term() == "S+inverse_square_root" and True:
                 _,_,Model_p = BestReactionSCIPCyberSecurity(G.m(),G.n_I()[p],G.n_C()[p],G.n_constr()[p],G.c()[p],G.Q()[p],G.A()[p],G.b()[p],Profile,p,True,G.ins(),None,REL_GAP_SOLVER=REL_GAP_SOLVER, ABS_GAP_SOLVER=ABS_GAP_SOLVER, NL_term=G.NL_term())
@@ -401,6 +401,11 @@ def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Pro
         m_p.optimize()
         ##print("end of optimization in MILP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
         try:
+            if m_p.status == 2:
+                # write time
+                file = open("SCIP_time.txt", "a")
+                file.write("nopwlgen{} ".format(m_p.Runtime))
+                file.close()
             #return [x[i].x for i in range(n_I_p+n_C_p)],m_p.ObjVal, m_p
             sol = [i.x for i in m_p.getVars()]
             # add MCT to the objective (and mixed terms)
@@ -471,6 +476,7 @@ def BestReactionGurobiCyberSecurityPWLgen(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b
         if abs(xpts[-1]-xpts[-2]) < 1e-6: # last piece of length less than 1e-6 -> delete the penultimate point
             del xpts[-2]
             del ypts[-2]
+        # works only with convex PWL function (because the PWL function is continuous when the NL function is convex):
         m_p.addGenConstrPWL(x[n_markets],x[2*n_markets+1],xpts,ypts,"PWLfunc") # n_j+1 -> n_markets and 2n_j+2 -> 2n_markets+1
         if n_I_p+n_C_p ==1:
             #QuadPart = grb.QuadExpr(x[0]*c_p[0]+ xk_Qkp*x[0]-0.5*x[0]*Q_p[p]*x[0])
@@ -539,9 +545,16 @@ def BestReactionGurobiCyberSecurityPWLgen(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b
                 m_p.update()
         global start_time
         ##print("end of model in MILP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
+        t0 = Ltime.time()
         m_p.optimize()
+        print("PWLgen Gurobi computation time: ", Ltime.time()-t0)
         ##print("end of optimization in MILP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
         print(m_p.status)
+        # write time
+        if m_p.status == 2:
+            file = open("SCIP_time.txt", "a")
+            file.write("pwlgen{} ".format(m_p.Runtime))
+            file.close()
         try:
             #return [x[i].x for i in range(n_I_p+n_C_p)],m_p.ObjVal, m_p
             sol = [i.x for i in m_p.getVars()]
@@ -561,7 +574,6 @@ def BestReactionGurobiCyberSecurityPWLgen(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b
                     # this is important for NE verfication
                     m_p.setObjective(m_p.getObjective()-np.dot(xk_Qkp,m_p.getVars()))
             m_p.update()
-
             return sol, value, m_p
         except:
             print("Wow! The best reaction problem has no feasible solution. The status code is: ", m_p.status)
@@ -607,7 +619,7 @@ def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,P
             #m_p.addConstr(x.np.dot(A_p[k]), grb.GRB.LESS_EQUAL, b_p[k])
             m_p.addConstr(np.dot(A_p[k],x), grb.GRB.LESS_EQUAL, b_p[k])
             m_p.update()
-        if n_I_p+n_C_p ==1:
+        if n_I_p+n_C_p == 1:
             #QuadPart = grb.QuadExpr(x[0]*c_p[0]+ xk_Qkp*x[0]-0.5*x[0]*Q_p[p]*x[0])
             QuadPart = grb.QuadExpr(x[0]*c_p[0]-0.5*x[0]*Q_p[p]*x[0])
         else:

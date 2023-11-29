@@ -71,6 +71,8 @@ function print_2dpwl_to_txt(pwl, filename)
 end
 
 function pwl2d_SOS1_formulation(model, pwl, id_var, id_func)
+    # WARNING: there may be errors in this formulation. It seems to be disaggregated logarithmic
+
     # formulate with convex combination pwl in model with name of variable for position id_var and for value id_func
 
     # get important values
@@ -113,7 +115,6 @@ function pwl2d_SOS1_formulation(model, pwl, id_var, id_func)
     @constraint(model, var1 == sum(sum(lambdass[k][i][j]*x1s[k][i][j] for j in 1:n_ccs[i]) for i in 1:n))
     @constraint(model, var2 == sum(sum(lambdass[k][i][j]*x2s[k][i][j] for j in 1:n_ccs[i]) for i in 1:n))
     @constraint(model, pwlbilins[k] == sum(sum(lambdass[k][i][j]*fs[k][i][j] for j in 1:n_ccs[i]) for i in 1:n))
-    @constraint(model, sum(zs[k][ll] for ll in 1:l) == 1)
     @constraint(model, sum(sum(lambdass[k][i][j] for j in 1:n_ccs[i]) for i in 1:n) == 1)
     # logarithmic number of constraints depending on the writing of i in base 2
     for ll in 1:l
@@ -278,8 +279,9 @@ function pwl1d_positive_formulation(model, pwl, id_var, id_func, name_var = "")
     return model
 end
 
-function pwl1d_positive_SOS2_formulation(model, pwl, id_var, id_func, name_var = "")
+function pwl1d_positive_SOS1_formulation_aggregated(model, pwl, id_var, id_func, name_var = "")
     # add a logarithmic SOS1 formulation of a one-variable pwl in model, with names starting by id
+    # formulation : aggregated logarithmic formulation with convex combination
 
     # get important values
     n = length(pwl)
@@ -346,6 +348,7 @@ end
 
 function pwl1d_positive_SOS1_formulation(model, pwl, id_var, id_func, name_var = "")
     # formulate with convex combination pwl in model with name of variable for position id_var and for value id_func
+    # formulation : disaggregated logarithmic formulation with convex combination
 
     # get important values
     n = length(pwl)
@@ -450,7 +453,7 @@ function pwl_formulation_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, 
      func_h_s_i = @variable(model, h_s_i[1:2], lower_bound = 0)
 
      # add formulation of the pwl function for h_i
-     model = pwl1d_positive_SOS2_formulation(model, pwl1d, var_s_i, func_h_s_i, "_h")
+     model = pwl1d_positive_SOS1_formulation_aggregated(model, pwl1d, var_s_i, func_h_s_i, "_h")
 
      # add formulation of the pwl function for the square terms
      func_quads = []
@@ -470,7 +473,7 @@ function pwl_formulation_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, 
 
          println("func_quads number $(length(func_quads))")
          # create the formulation of the pwl
-         ##model = pwl1d_positive_SOS2_formulation(model, pwlquads[k], id_var, func_quads[end], "_quad$k")
+         ##model = pwl1d_positive_SOS1_formulation_aggregated(model, pwlquads[k], id_var, func_quads[end], "_quad$k")
          model = pwl1d_convex_formulation(model, pwlquads[k], id_var, func_quads[end]) # formulation with only constraints for convex functions
      end
 

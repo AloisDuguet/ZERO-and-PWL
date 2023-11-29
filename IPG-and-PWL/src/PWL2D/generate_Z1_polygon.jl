@@ -111,5 +111,5 @@ err = Absolute(0.1)
 x1 = 0
 x2 = 2
 # construction de la pwl
-pwl = LinA.exactLin(expr,x1,x2,err)
+pwl = LinA.ExactLin(expr,x1,x2,err)
 println(pwl)=#

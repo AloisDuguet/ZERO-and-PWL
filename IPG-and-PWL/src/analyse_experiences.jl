@@ -941,7 +941,7 @@ function add_PWLgen_failed_exps(filename)
 end
 
 function prepare_real_performance_profile_cybersecurity(filename, filename_save = "performance_profile.png", list_categories = []; refinement_methods = ["full_refinement","SGM_SOCP_model"],
-    errs = [Absolute(0.5),Absolute(0.05),Absolute(0.005),Absolute(0.0005)], time_limit=900)
+    errs = [Absolute(0.5),Absolute(0.05),Absolute(0.005),Absolute(0.0005)], time_limit=900, fictive_times = false)
     # prepare profiles for a call to function performance_profile
     # the performace profile will be:
     # computation time in x
@@ -1096,9 +1096,18 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
         name = replace(name, "full_refinementPWLgen"=>"2-level approximation")
         name = replace(name, "full_refinement"=>"2-level approximation")
         name = replace(name, "SOCP"=>"SGM-ExpCone")
-        name = replace(name, "gurobiNL"=>"SGM-MIQCP")
+        name = replace(name, "gurobiNL"=>"SGM-MIQCQP")
         name = replace(name, "sufficient_refinementPWLgen"=>"direct approximation")
         name = replace(name, "sufficient_refinement"=>"direct approximation")
+        if !fictive_times
+            name = replace(name, "NL"=>"SGM-SCIP")
+        else
+            name = replace(name, "NL"=>"SGM-fictive")
+        end
+        # french translation
+        #name = replace(name, "direct approximation"=>"approximation directe")
+        #name = replace(name, "SGM-ExpCone"=>"SGM-ConeExp")
+        #name = replace(name, "2-level approximation 0.05"=>"approximation à deux niveaux")
         p = plot!(x,LinRange(0,1,270), xlabel = "seconds", ylabel = "cumulative frequency", label = "$name")
     end
     #display(p)
@@ -1186,13 +1195,22 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
             name = replace(name, "sufficient_refinementPWLgen"=>"direct approximation")
             name = replace(name, "full_refinement"=>"2-level approximation")
             name = replace(name, "SOCP"=>"SGM-ExpCone")
-            name = replace(name, "gurobiNL"=>"SGM-MIQCP")
+            name = replace(name, "gurobiNL"=>"SGM-MIQCQP")
             name = replace(name, "sufficient_refinement"=>"direct approximation")
+            if !fictive_times
+                name = replace(name, "NL"=>"SGM-SCIP")
+            else
+                name = replace(name, "NL"=>"SGM-fictive")
+            end
+            # french translation
+            #name = replace(name, "direct approximation"=>"approximation directe")
+            #name = replace(name, "SGM-ExpCone"=>"SGM-ConeExp")
+            #name = replace(name, "2-level approximation 0.05"=>"approximation à deux niveaux")
             push!(l_profiles, Profile(x,y,name,Dict()))
         end
     end
 
-    # info for article: when does the perf profile of direct-approximation beat SGM-MOSEK?
+    #=# info for article: when does the perf profile of direct-approximation beat SGM-MOSEK?
     for i in 1:length(l_profiles[1].x)
         xnl = l_profiles[1].x
         ynl = l_profiles[1].y
@@ -1200,7 +1218,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
         ydir = l_profiles[2].y
 
         #println("($(xnl[i]),$(ynl[i]))\t($(xdir[i]),$(ydir[i]))")
-    end
+    end=#
 
     #println("list_categories of length $(length(list_categories)):\n$list_categories")
     #=println("l_profiles:")
@@ -1241,4 +1259,147 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
     savefig(filename_save)
 
     display(p)
+end
+
+function compute_best_response_computation_time(filename = "../../IPG/SCIP_time.txt", str_spec = "CyberSecurityNL")
+    # sum the best response computation time by experience
+
+    lines = readlines(filename)
+    #=liness = []
+    # remove lines with #
+    for line in lines
+        if line[1] != '#'
+            push!(liness, line)
+        end
+    end
+    lines = deepcopy(liness)=#
+
+    times = []
+    num_lines = []
+
+    # for all lines containing "CyberSecurityNL" we compute the sum of times after ":"
+    for k in 1:length(lines)
+        line = lines[k]
+        if occursin(str_spec, line)
+            s = split(line, ":")[end]
+            ts = split(s)
+            t = 0
+            for j in 1:length(ts)
+                t += parse(Float64,ts[j])
+            end
+            push!(times, t)
+            push!(num_lines, k)
+        end
+    end
+
+    return times, num_lines
+end
+
+
+#=function compute_best_response_computation_time(filename = "../../IPG/SCIP_time.txt")
+    # sum the best response computation time by experience
+
+    lines = readlines(filename)
+    liness = []
+    # remove lines with #
+    for line in lines
+        if line[1] != '#'
+            push!(liness, line[9:end])
+        end
+    end
+    lines = deepcopy(liness)
+    # note lines without pwlgen (which correspond to SCIP best responses)
+    SCIP_instances = []
+    for i in 1:length(lines)
+        line = lines[i]
+        if !(occursin("pwlgen", line))
+            push!(SCIP_instances, i)
+        end
+    end
+    # we ignore first iteration best response computation times because it is with a MILP that does not approximate enough the model
+    sufficient_instances = []
+    full_instances = []
+    for i in 1:length(SCIP_instances)-1
+        push!(sufficient_instances, SCIP_instances[i]+1)
+        if SCIP_instances[i+1]-SCIP_instances[i] == 3
+            push!(full_instances, SCIP_instances[i]+2)
+        elseif SCIP_instances[i+1]-SCIP_instances[i] == 4
+            push!(full_instances, SCIP_instances[i]+3)
+        end
+    end
+    # last instance with SCIP :
+    i = length(SCIP_instances)
+    push!(sufficient_instances, SCIP_instances[i]+1)
+    if length(lines)-SCIP_instances[i] == 3
+        push!(full_instances, SCIP_instances[i]+2)
+    elseif length(lines)-SCIP_instances[i] == 4
+        push!(full_instances, SCIP_instances[i]+3)
+    end
+    println("SCIP_instances : $(length(SCIP_instances)) instances")
+    println("sufficient_instances : $(length(sufficient_instances)) instances")
+    println("full_instances : $(length(full_instances)) instances")
+    # sum the times by instances
+    methods = ["SGM_NL_model","sufficient_refinement","full_refinement"]
+    times = Dict("SGM_NL_model"=>[],"sufficient_refinement"=>[],"full_refinement"=>[],"corrected_SGM_NL_model"=>[]) # 1 for SCIP, 2 for sufficient_refinement, 3 for full_refinement
+    for i in SCIP_instances
+        ss = split(lines[i])
+        vals = [parse(Float64, ss[j]) for j in 1:length(ss)]
+        push!(times["SGM_NL_model"], sum(vals))
+    end
+    for i in sufficient_instances
+        ss = replace(lines[i], "nopwlgen"=>"")
+        ss = split(ss)
+        vals = [parse(Float64, ss[j]) for j in 1:length(ss)]
+        push!(times["sufficient_refinement"], sum(vals))
+    end
+    for i in sufficient_instances
+        ss = replace(lines[i], "nopwlgen"=>"")
+        ss = split(ss)
+        vals = [parse(Float64, ss[j]) for j in 1:length(ss)]
+        push!(times["full_refinement"], sum(vals))
+    end
+    return times
+end
+=#
+
+function include_SCIP_fictive_times(SCIP_times, filename = "NL234_fictive_MINLP_solver.txt", ratio = 10.34)
+    # changes the SCIP computation times inside result file filename : substract SCIP_times and add SCIP_times divided by ratio
+    # the goal is to estimate the time it would take with a better MINLP solver
+
+    lines = readlines(filename)
+
+    # find lines with "SGM_NL_model" and change the time which is between the 12th and 13th ":"
+    cpt = 1
+    for k in 1:length(lines)
+        line = lines[k]
+        # break if all values in SCIP_times have been used
+        if cpt > length(SCIP_times)
+            break
+        end
+        # select lines with SCIP results
+        if occursin("SGM_NL_model", line)
+            # decompose line
+            ss = split(line, "::")
+            # change time value
+            t = parse(Float64, split(ss[13])[1])
+            println("old time: $t")
+            t = t - SCIP_times[cpt] + SCIP_times[cpt]/ratio
+            println("new time: $t")
+            cpt += 1
+            ss[13] = "$t secondes"
+            # rebuild line and save in lines
+            s = ""
+            for i in 1:length(ss)
+                s = s*ss[i]*"::"
+            end
+            s = s[1:end-2]
+            lines[k] = deepcopy(s)
+        end
+    end
+
+    file = open(filename[1:end-4]*"_fictive_MINLP.txt", "w")
+    for i in 1:length(lines)
+        println(file, lines[i])
+    end
+    close(file)
 end

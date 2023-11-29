@@ -1,5 +1,28 @@
 include("analyse_experiences.jl")
 
+#=function prepare_parsing_iterations(filename)
+    s = ""
+    text = readlines(filename)[1]
+    cpt = 0
+    for ch in text
+        print(ch)
+        if ch == '_'
+            println("_ detected")
+            cpt += 1
+        end
+        if cpt > 1 && mod(cpt, 4) == 1 && ch == '_'
+            println("adding line return")
+            s = s*"\n"
+        end
+        s = s*ch
+    end
+    println(s)
+    file = open("iteration_parse_test.txt", "w")
+    println(file, s)
+    close(file)
+    return s
+end=#
+
 function parse_iterations(filename)
     # parse a file containing only the iterations of one exp (such as root234)
     # each line contains 3 to 4 values, in the form _v1 _v2 _v3 _v4
@@ -113,3 +136,9 @@ specific variances: [7.157141821609977, 6.8086403153005435, 6.858376604355734]
 means: Any[38.498039215686276, 40.3125, 39.5843137254902]
 variances: Any[16.78675353350196, 19.129390835831654, 18.230542918883756]
 =#
+analyse_iterations("PWLgen/log234_iteration.txt")
+analyse_iterations("PWLgen/root234_iteration.txt")
+analyse_iterations("PWLgen/log567_iteration.txt")
+analyse_iterations("PWLgen/root567_iteration.txt")
+analyse_iterations("SCIP_exps/NL234_iterations.txt")
+analyse_iterations("SCIP_exps/NL567_iterations.txt")

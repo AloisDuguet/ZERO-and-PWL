@@ -66,7 +66,7 @@ function SGM_model_to_csv(player_index, n_players, n_j, Qb_i, max_s_i, c, pwl1d,
      func_h_s_i = @variable(model, h_s_i[1:2], lower_bound = 0)
 
      # add formulation of the pwl function for h_i
-     model = pwl1d_positive_SOS2_formulation(model, pwl1d, var_s_i, func_h_s_i, "_h")
+     model = pwl1d_positive_SOS1_formulation(model, pwl1d, var_s_i, func_h_s_i, "_h")
 
      # add the objective function
      if fixed_costs
@@ -470,7 +470,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
         # launch creation of files with matrices
         #println("player $p and fixed costs:\n$(params.fcost)")
         if refinement_method != "SGM_NL_model" && refinement_method != "SGM_SOCP_model" && refinement_method != "SGM_gurobiNL_model"
-            #pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,LinA.exactLin(expr_h[p],t1,t2,err))
+            #pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,LinA.ExactLin(expr_h[p],t1,t2,err))
             pwl_h = pwlh(expr_h[p],params.alphas[p],t1,t2,err,corrected_heuristicLin(expr_h[p],t1,t2,err))
             pwl_h.pwl = special_rounding_pwl(pwl_h.pwl) # round the extremes xMin and xMax to 12 decimals to avoid some problems later
             #println("\nh_$p approximated on [$t1,$t2] by $(length(pwl_h.pwl)) pieces\n$pwl_h\n")
