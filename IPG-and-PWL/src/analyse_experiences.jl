@@ -1295,7 +1295,6 @@ function compute_best_response_computation_time(filename = "../../IPG/SCIP_time.
     return times, num_lines
 end
 
-
 #=function compute_best_response_computation_time(filename = "../../IPG/SCIP_time.txt")
     # sum the best response computation time by experience
 
@@ -1370,36 +1369,159 @@ function include_SCIP_fictive_times(SCIP_times, filename = "NL234_fictive_MINLP_
 
     # find lines with "SGM_NL_model" and change the time which is between the 12th and 13th ":"
     cpt = 1
+    file = open(filename[1:end-4]*"_fictive_MINLP.txt", "w")
     for k in 1:length(lines)
         line = lines[k]
-        # break if all values in SCIP_times have been used
+        #=# break if all values in SCIP_times have been used
         if cpt > length(SCIP_times)
             break
-        end
+        end=#
         # select lines with SCIP results
-        if occursin("SGM_NL_model", line)
+        if occursin("ERROR", line) && occursin("SGM_NL_model", line)
+            cpt += 1
+            println(file, line)
+        elseif occursin("SGM_NL_model", line)
             # decompose line
             ss = split(line, "::")
             # change time value
-            t = parse(Float64, split(ss[13])[1])
+            println("line $k")
+            t = parse(Float64, split(ss[18])[1])
             println("old time: $t")
+            #println("size SCIP_times[1] = $(length(SCIP_times[1]))")
+            #println("SCIP_times[$cpt] = $(SCIP_times[cpt])")
             t = t - SCIP_times[cpt] + SCIP_times[cpt]/ratio
             println("new time: $t")
+            if t < 0
+                println("time SCIP: $(SCIP_times[cpt])\tone-line result: $line")
+            end
             cpt += 1
-            ss[13] = "$t secondes"
+            ss[18] = "$t"
             # rebuild line and save in lines
             s = ""
             for i in 1:length(ss)
                 s = s*ss[i]*"::"
             end
             s = s[1:end-2]
-            lines[k] = deepcopy(s)
+            #lines[k] = deepcopy(s)
+            println(file, s)
+        else
+            println(file, line)
         end
     end
 
-    file = open(filename[1:end-4]*"_fictive_MINLP.txt", "w")
-    for i in 1:length(lines)
-        println(file, lines[i])
+    #for i in 1:length(lines)
+    #   println(file, lines[i])
+    #end
+    close(file)
+end
+
+function replace_real_SCIP_results()
+    # replace bad SCIP results with good ones
+
+    fileSCIP234 = "SCIP_exps/NL234_onlySCIP.txt"
+    fileSCIP567 = "SCIP_exps/NL567_onlySCIP.txt"
+    oldfile234 = "SCIP_exps/NL234.txt"
+    oldfile567 = "SCIP_exps/NL567.txt"
+
+    # retrieve new SCIP234 results
+    SCIP234 = readlines(fileSCIP234)
+    # retrieve new SCIP567 results
+    SCIP567 = readlines(fileSCIP567)
+
+    # retrieve old nonconvex234 results
+    res234 = readlines(oldfile234)
+    # retrieve old nonconvex567 results
+    res567 = readlines(oldfile567)
+
+    # replace SCIP234 in res234
+    cpt = 1
+    for i in 1:length(res234)
+        if occursin("SGM_NL_model", res234[i])
+            res234[i] = SCIP234[cpt]
+            if cpt == length(SCIP234)
+                println("replacing 234 stops at cpt = $cpt")
+                break
+            end
+            cpt += 1
+        end
+    end
+
+    # replace SCIP567 in res567
+    cpt = 1
+    for i in 1:length(res567)
+        if occursin("SGM_NL_model", res567[i])
+            res567[i] = SCIP567[cpt]
+            if cpt == length(SCIP567)
+                println("replacing 567 stops at cpt = $cpt")
+                break
+            end
+            cpt += 1
+        end
+    end
+
+    # rewrite oldfile234
+    file = open(oldfile234, "w")
+    for i in 1:length(res234)
+        println(file, res234[i])
     end
     close(file)
+
+    # rewrite oldfile567
+    file = open(oldfile567, "w")
+    for i in 1:length(res567)
+        println(file, res567[i])
+    end
+    close(file)
+
+    return 0
+end
+
+function rebuild_iteration_NL()
+    # get filenames
+    fileSCIP234 = "SCIP_exps/iter_final/SCIP234_iteration.txt"
+    fileSCIP567 = "SCIP_exps/iter_final/SCIP567_iteration.txt"
+    oldfile234 = "SCIP_exps/iter_final/oldNL234_iteration.txt"
+    oldfile567 = "SCIP_exps/iter_final/oldNL567_iteration.txt"
+
+    # retrieve new SCIP234 results
+    SCIP234 = readlines(fileSCIP234)
+    # retrieve new SCIP567 results
+    SCIP567 = readlines(fileSCIP567)
+
+    # retrieve old nonconvex234 results
+    res234 = readlines(oldfile234)
+    # retrieve old nonconvex567 results
+    res567 = readlines(oldfile567)
+
+    # replace SCIP234 in res234
+    for i in 1:length(res234)
+        l = SCIP234[i]
+        pos = findfirst("_", res234[i][2:end])+1 # there may be an error here
+        ll = res234[i][pos:end]
+        res234[i] = l*ll
+    end
+
+    # replace SCIP567 in res567
+    for i in 1:length(res567)
+        l = SCIP567[i]
+        pos = findfirst("_", res567[i][2:end])+1 # there may be an error here
+        ll = res567[i][pos:end]
+        res567[i] = l*ll
+    end
+
+    # rewrite oldfile234
+    file = open(oldfile234, "w")
+    for i in 1:length(res234)
+        println(file, res234[i])
+    end
+    close(file)
+
+    # rewrite oldfile567
+    file = open(oldfile567, "w")
+    for i in 1:length(res567)
+        println(file, res567[i])
+    end
+    close(file)
+
+    return 0
 end

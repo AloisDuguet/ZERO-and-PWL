@@ -18,14 +18,27 @@ p2 = prepare_real_performance_profile_cybersecurity(filename_save,filename_save[
 
 
 
-# compute fictive times for SCIP with ratio 10.34
+# compute fictive times for SCIP with ratio 10.34 (OCTERACT)
 SCIP_times, SCIP_lines = compute_best_response_computation_time("SCIP_exps/NL234_best_response_times.txt")
 other_times, other_lines = compute_best_response_computation_time("SCIP_exps/NL234_best_response_times.txt", "CyberSecurity-")
 include_SCIP_fictive_times(SCIP_times, "SCIP_exps/NL234.txt")
-SCIP_times = compute_best_response_computation_time("SCIP_exps/N567_best_response_times.txt")
+SCIP_times, SCIP_lines = compute_best_response_computation_time("SCIP_exps/NL567_best_response_times.txt")
 include_SCIP_fictive_times(SCIP_times, "SCIP_exps/NL567.txt")
 filename_PWLgen = ["SCIP_exps/NL234_fictive_MINLP.txt","SCIP_exps/NL567_fictive_MINLP.txt"]
 filename_save = filename_PWLgen[1]
 p1 = prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.pdf", refinement_methods = refinement_methods_NL_PWL, errs = err_pwlhs, fictive_times = true)
 filename_save = filename_PWLgen[2]
 p2 = prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.pdf", refinement_methods = refinement_methods_NL_PWL, errs = err_pwlhs, fictive_times = true)
+
+
+# compute fictive times for SCIP with ratio 3.75 (BARON)
+SCIP_times, SCIP_lines = compute_best_response_computation_time("SCIP_exps/NL234_best_response_times.txt")
+other_times, other_lines = compute_best_response_computation_time("SCIP_exps/NL234_best_response_times.txt", "CyberSecurity-")
+include_SCIP_fictive_times(SCIP_times, "SCIP_exps/NL234.txt", 3.75)
+SCIP_times, SCIP_lines = compute_best_response_computation_time("SCIP_exps/NL567_best_response_times.txt")
+include_SCIP_fictive_times(SCIP_times, "SCIP_exps/NL567.txt", 3.75)
+filename_PWLgen = ["SCIP_exps/NL234_fictive_MINLP.txt","SCIP_exps/NL567_fictive_MINLP.txt"]
+filename_save = filename_PWLgen[1]
+p1 = prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_baron_perf_profile.pdf", refinement_methods = refinement_methods_NL_PWL, errs = err_pwlhs, fictive_times = true)
+filename_save = filename_PWLgen[2]
+p2 = prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_baron_perf_profile.pdf", refinement_methods = refinement_methods_NL_PWL, errs = err_pwlhs, fictive_times = true)

@@ -17,6 +17,7 @@ The cybersecurity cost function used is not described in the instance, but by th
 
 ## Computing an approximated Nash equilibrium
 The function SGM_PWL_absolute_direct_solver in file IPG-and-PWL/src/SGM_absolute_direct_solver.jl computes an approximated Nash equilibrium to an instance of the CIG with the time limit of 900 seconds (hard coded for now, accessible as an argument of function IterativeSG_NOT_DFS in file IPG/Compute_NE.py).
+INPUT:
 - filename_instance is a String, name of the instance inside the folder IPG-and-PWL/instances/
 - fixed_costs (DEFAULT = true) is a boolean, indicating if opening a market costs a fixed cost, all experiences from the paper uses the value true
 - refinement_method (DEFAULT = "sufficient_refinement") is a String, name of the method used to solve the instance:
@@ -34,6 +35,10 @@ The function SGM_PWL_absolute_direct_solver in file IPG-and-PWL/src/SGM_absolute
 EXAMPLE:
 SGM_PWL_absolute_direct_solver("instance_2_2_3.txt", refinement_method = "sufficient_refinement", NL_term = "S+inverse_square_root", PWL_general_constraint = false)
 -> launches the computation of a delta-approximate Nash equilibrium with delta = 1e-4 (the default value of abs_gap) for the instance described in file IPG-and-PWL/instances/instance_2_2_3.txt with cybersecurity cost function "S+inverse_square_root", which is the nonconvex function in the paper.
+
+OUTPUT:
+- cs_instance is a struct of type option_cs_instance containing the parameters of the instance (see file "IPG-and-PWL/src/SGM_solver.jl")
+- output is a struct of type output_cs_instance containing the results of the instance (see file "IPG-and-PWL/src/SGM_solver.jl")
 
 ## Benchmark
 The function benchmark_SGM_absolute_direct_solver in file IPG-and-PWL/src/SGM_absolute_direct_solver.jl allows to launch many instances one after the other, created by taking all possibilities of parameters, while saving results in a file in a one-line fashion for each instance.

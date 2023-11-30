@@ -507,7 +507,7 @@ end
 
 
 
-SGM_PWL_absolute_direct_solver("instance_2_2_3.txt", refinement_method = "SGM_NL_model", err_pwlh = Absolute(0.05), NL_term = "S+inverse_square_root", PWL_general_constraint = false)
+#SGM_PWL_absolute_direct_solver("instance_2_2_3.txt", refinement_method = "SGM_NL_model", err_pwlh = Absolute(0.05), NL_term = "S+inverse_square_root", PWL_general_constraint = false)
 
 
 
@@ -545,14 +545,16 @@ benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big
 
 ###benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances[[1,2,3,4,5]], refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/test_time_NL234.txt", PWL_general_constraint = false)
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/NL234.txt", PWL_general_constraint = false)
+#benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances[[1,2,3]], refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/recover_iter_NL234.txt", PWL_general_constraint = false)
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete, refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/NL567.txt", PWL_general_constraint = false)
+#benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[1,2,3]], refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/recover_iter_NL567.txt", PWL_general_constraint = false)
 
 
 # final experiments
-#=benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[252:270], refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/NL567.txt", PWL_general_constraint = false)
-benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_NL_model"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/NL234_onlySCIP.txt", PWL_general_constraint = false)
-benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[1:251], refinement_methods = ["SGM_NL_model"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/NL567_onlySCIP.txt", PWL_general_constraint = false)
-=#
+##benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[252:270], refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/NL567.txt", PWL_general_constraint = false)
+##benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_NL_model"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/NL234_onlySCIP.txt", PWL_general_constraint = false)
+##benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[1:251], refinement_methods = ["SGM_NL_model"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/NL567_onlySCIP.txt", PWL_general_constraint = false)
+
 
 
 if false
@@ -563,7 +565,7 @@ if false
     end
 ###prepare_real_performance_profile_cybersecurity("exps_final_24_03_23/absolute_direct_log234.txt",refinement_methods=["SGM_SOCP_model","sufficient_refinement","full_refinement"],errs=[Absolute(0.05),Absolute(2.5e-5)])
 
-include("compute_analysis.jl")
+####include("compute_analysis.jl")
 
 #=filename_saves = ["indicator_exps/absolute_direct_log234.txt", "indicator_exps/absolute_direct_log567.txt", "indicator_exps/absolute_direct_root234.txt", "indicator_exps/absolute_direct_root567.txt"]
 refinement_methods_log = ["SGM_SOCP_model","sufficient_refinement","full_refinement"]
