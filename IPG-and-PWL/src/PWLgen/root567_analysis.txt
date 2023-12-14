@@ -1,0 +1,156 @@
+methods	%solved	#inst	time	iter	
+gurobiNL	0.926	270	4.56	1.0	
+sufficient_refinement_0.05	0	0	undef	undef	
+sufficient_refinement_2.5e-5	0.0	16	undef	undef	
+full_refinement_0.05	0.0	14	undef	undef	
+full_refinement_2.5e-5	0	0	undef	undef	
+
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c|c}
+ & methods & %solved & #inst & time & iter \\ \hline
+gurobiNL & 0.926 & 270 & 4.56 & 1.0 & 1.0 \\
+sufficient\_refinement\_0.05 & 0 & 0 & undef & undef & undef \\
+sufficient\_refinement\_2.5e-5 & 0.0 & 16 & undef & undef & undef \\
+full\_refinement\_0.05 & 0.0 & 14 & undef & undef & undef \\
+full\_refinement\_2.5e-5 & 0 & 0 & undef & undef & undef \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+
+			Absolute(0.05) Absolute(2.5e-5)
+instances solved:	0	0	
+instances comparable:	0	0	
+
+			true
+instances solved:	767	
+instances comparable:	810	
+average cpu times:	16.83	
+average iterations:	1.0	
+			SGM_gurobiNL_model sufficient_refinement full_refinement
+instances solved:	0	0	0	
+instances comparable:	0	0	0	
+
+Total number of experiences: 810
+
+43 occured, with errors :
+ErrorException("ERROR time limit reached in SGM")
+0 experiences stopped because of a failed resolution of Couenne in julia
+the indices of those experiences are in l_failed:
+Any[]
+
+
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c}
+ & solved & comparable & time & iterations \\ \hline
+Absolute(0.05) & 0 & 0 & undef & undef \\
+Absolute(2.5e-5) & 0 & 0 & undef & undef \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c}
+ & solved & comparable & time & iterations \\ \hline
+true & 767 & 810 & 16.83 & 1.0 \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c}
+ & solved & comparable & time & iterations \\ \hline
+SGM\_gurobiNL\_model & 0 & 0 & undef & undef \\
+sufficient\_refinement & 0 & 0 & undef & undef \\
+full\_refinement & 0 & 0 & undef & undef \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+
+methods	%solved	#inst	time	iter	
+gurobiNL	0.615	26	11.11	1.0	
+sufficient_refinement_0.05	0	0	undef	undef	
+sufficient_refinement_2.5e-5	0	0	undef	undef	
+full_refinement_0.05	0	0	undef	undef	
+full_refinement_2.5e-5	0	0	undef	undef	
+
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c|c}
+ & methods & %solved & #inst & time & iter \\ \hline
+gurobiNL & 0.615 & 26 & 11.11 & 1.0 & 1.0 \\
+sufficient\_refinement\_0.05 & 0 & 0 & undef & undef & undef \\
+sufficient\_refinement\_2.5e-5 & 0 & 0 & undef & undef & undef \\
+full\_refinement\_0.05 & 0 & 0 & undef & undef & undef \\
+full\_refinement\_2.5e-5 & 0 & 0 & undef & undef & undef \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+
+			Absolute(0.05) Absolute(2.5e-5)
+instances solved:	0	0	
+instances comparable:	0	0	
+
+			true
+instances solved:	58	
+instances comparable:	78	
+average cpu times:	70.2	
+average iterations:	1.0	
+			SGM_gurobiNL_model sufficient_refinement full_refinement
+instances solved:	0	0	0	
+instances comparable:	0	0	0	
+
+Total number of experiences: 78
+
+20 occured, with errors :
+ErrorException("ERROR time limit reached in SGM")
+0 experiences stopped because of a failed resolution of Couenne in julia
+the indices of those experiences are in l_failed:
+Any[]
+
+
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c}
+ & solved & comparable & time & iterations \\ \hline
+Absolute(0.05) & 0 & 0 & undef & undef \\
+Absolute(2.5e-5) & 0 & 0 & undef & undef \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c}
+ & solved & comparable & time & iterations \\ \hline
+true & 58 & 78 & 70.2 & 1.0 \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c}
+ & solved & comparable & time & iterations \\ \hline
+SGM\_gurobiNL\_model & 0 & 0 & undef & undef \\
+sufficient\_refinement & 0 & 0 & undef & undef \\
+full\_refinement & 0 & 0 & undef & undef \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+

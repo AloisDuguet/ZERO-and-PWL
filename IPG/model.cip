@@ -7,14 +7,14 @@ OBJECTIVE
 VARIABLES
   [binary] <b3>: obj=0, original bounds=[0,1]
   [binary] <b4>: obj=0, original bounds=[0,1]
-  [continuous] <x2>: obj=-7.16869568195766, original bounds=[0,+inf]
-  [continuous] <x0>: obj=-24.9489371741103, original bounds=[0,+inf]
-  [continuous] <x1>: obj=-41.0203144644921, original bounds=[0,+inf]
+  [continuous] <x2>: obj=-26.1945942338328, original bounds=[0,+inf]
+  [continuous] <x0>: obj=0.104778376935331, original bounds=[0,+inf]
+  [continuous] <x1>: obj=0.135338736874803, original bounds=[0,+inf]
   [continuous] <z>: obj=1, original bounds=[-inf,+inf]
 CONSTRAINTS
-  [linear] <c1>: <x2>[C] <= 0.103780520225039;
-  [linear] <c2>: <x0>[C] -163<b3>[B] <= 0;
-  [linear] <c3>: <x1>[C] -80<b4>[B] <= 0;
+  [linear] <c1>: <x2>[C] <= 0.902343751773993;
+  [linear] <c2>: <x0>[C] -100<b3>[B] <= 0;
+  [linear] <c3>: <x1>[C] -188<b4>[B] <= 0;
   [linear] <c4>:  -<x0>[C] <= -0;
   [linear] <c5>:  -<x1>[C] <= -0;
   [linear] <c6>:  -<x2>[C] <= -0;
@@ -22,5 +22,5 @@ CONSTRAINTS
   [linear] <c8>: <b3>[B] <= 1;
   [linear] <c9>:  -<b4>[B] <= 0;
   [linear] <c10>: <b4>[B] <= 1;
-  [nonlinear] <c11>: ((<x0> * 124.8) + (<x1> * 128.29) + (<x2> * 60) + (<b3> * (-754)) + (<b4> * (-1696)) + (<x0> * <x0> * (-1.72)) + (<x0> * <x1> * 0) + (<x0> * <x2> * 0.042) + (<x0> * <b3> * 0) + (<x0> * <b4> * 0) + (<x1> * <x1> * (-1.95)) + (<x1> * <x2> * 0.082) + (<x1> * <b3> * 0) + (<x1> * <b4> * 0) + (<x2> * <x2> * (-10)) + (<x2> * <b3> * 0) + (<x2> * <b4> * 0) + (<b3> * <b3> * 0) + (<b3> * <b4> * 0) + (<b4> * <b4> * 0) + ((power(sqrt(((<x2> * (-1)) + 1)), -1) + (power((exp((<x2> * (-20))) + 1), -1) * 2) + (-2)) * (-6)) + (<z> * (-1))) >= 0;
+  [nonlinear] <c11>: ((<x0> * 121.11) + (<x1> * 122.5) + (<x2> * 90) + (<b3> * (-813)) + (<b4> * (-588)) + (<x0> * <x0> * (-2.56)) + (<x0> * <x1> * 0) + (<x2> * <x0> * 0.12) + (<b3> * <x0> * 0) + (<b4> * <x0> * 0) + (<x1> * <x1> * (-2.68)) + (<x2> * <x1> * 0.155) + (<b3> * <x1> * 0) + (<b4> * <x1> * 0) + (<x2> * <x2> * (-30)) + (<x2> * <b3> * 0) + (<x2> * <b4> * 0) + (<b3> * <b3> * 0) + (<b3> * <b4> * 0) + (<b4> * <b4> * 0) + ((power(sqrt(((<x2> * (-1)) + 1)), -1) + (power((exp((<x2> * (-20))) + 1), -1) * 2) + (-2)) * (-1)) + (<z> * (-1))) >= 0;
 END
