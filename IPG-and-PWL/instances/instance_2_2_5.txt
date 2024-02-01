@@ -1,0 +1,30 @@
+#number of players
+2
+#number of markets
+2
+# c_i
+3 4
+# c_11 _Q11^2 + _Q11 + _
+0.99 2.57 0.0
+# c_12 _Q12^2 + _Q12 + _
+0.73 2.4 0.0
+# c_21 _Q21^2 + _Q21 + _
+0.27 2.45 0.0
+# c_22 _Q22^2 + _Q22 + _
+0.35 2.06 0.0
+# m_j
+1.66 1.42
+# r_j
+0.1 0.36
+# q_j
+103 158
+# Di
+77 88
+# _alpha_i
+8 10
+# Qij_bar forall i forall j
+155 181 190 132
+# Bi
+4.6 1.2
+# fixed costs forall i forall j in thousands of dollars
+673 1384 1092 855
