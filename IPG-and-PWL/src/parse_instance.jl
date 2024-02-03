@@ -383,17 +383,3 @@ function matrix_to_string(mat, sep = " ")
     end
     return s
 end
-
-#=filename = "../../../../CLionProjects/ZERO-and-PWL/IPG-and-PWL/CSV_files/instance1_Abs2_Abs10_Abs10000_fixedcostfalse/model_output.txt"
-parsed_sol = parse_cs_solution(filename)=#
-
-#=
-for field in fieldnames(cybersecurity_params)
-   println(field)
-   println(getfield(params,field))
-   println(getfield(adap,field))
-   if getfield(params,field) != getfield(adap,field)
-      error()
-   end
-end
-=#
