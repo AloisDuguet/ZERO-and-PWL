@@ -201,7 +201,7 @@ def BestReactionSCIPCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
 
 
     ##print("model problem: ")
-    m_p.writeProblem(genericnames = False, filename = 'model.cip') # with argument trans=True the core is dumped...
+    #m_p.writeProblem(genericnames = False, filename = 'model.cip') # with argument trans=True the core is dumped...
     print("time to generate SCIP model: ", Ltime.time()-t0)
     time_limit = 900
     m_p.setParam('limits/time', time_limit)

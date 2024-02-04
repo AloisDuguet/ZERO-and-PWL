@@ -1,0 +1,26 @@
+STATISTICS
+  Problem name     : SCIP_BR
+  Variables        : 6 (2 binary, 0 integer, 0 implicit integer, 4 continuous)
+  Constraints      : 0 initial, 11 maximal
+OBJECTIVE
+  Sense            : maximize
+VARIABLES
+  [binary] <b3>: obj=0, original bounds=[0,1]
+  [binary] <b4>: obj=0, original bounds=[0,1]
+  [continuous] <x2>: obj=-1.98395957178644, original bounds=[0,+inf]
+  [continuous] <x0>: obj=-47.753046009907, original bounds=[0,+inf]
+  [continuous] <x1>: obj=-59.2368865925006, original bounds=[0,+inf]
+  [continuous] <z>: obj=1, original bounds=[-inf,+inf]
+CONSTRAINTS
+  [linear] <c1>: <x2>[C] <= 0.0319058004586098;
+  [linear] <c2>: <x0>[C] -112<b3>[B] <= 0;
+  [linear] <c3>: <x1>[C] -122<b4>[B] <= 0;
+  [linear] <c4>:  -<x0>[C] <= -0;
+  [linear] <c5>:  -<x1>[C] <= -0;
+  [linear] <c6>:  -<x2>[C] <= -0;
+  [linear] <c7>:  -<b3>[B] <= 0;
+  [linear] <c8>: <b3>[B] <= 1;
+  [linear] <c9>:  -<b4>[B] <= 0;
+  [linear] <c10>: <b4>[B] <= 1;
+  [nonlinear] <c11>: ((<x0> * 174.9) + (<x1> * 142.13) + (<x2> * 118.5) + (<b3> * (-846)) + (<b4> * (-1010)) + (<x0> * <x0> * (-1.83)) + (<x0> * <x1> * 0) + (<x0> * <x2> * 0.225) + (<x0> * <b3> * 0) + (<x0> * <b4> * 0) + (<x1> * <x1> * (-2.61)) + (<x1> * <x2> * 0.235) + (<x1> * <b3> * 0) + (<x1> * <b4> * 0) + (<x2> * <x2> * (-39.5)) + (<x2> * <b3> * 0) + (<x2> * <b4> * 0) + (<b3> * <b3> * 0) + (<b3> * <b4> * 0) + (<b4> * <b4> * 0) + ((power(sqrt(((<x2> * (-1)) + 1)), -1) + (power((exp((<x2> * (-20))) + 1), -1) * 2) + (-2)) * (-4)) + (<z> * (-1))) >= 0;
+END
