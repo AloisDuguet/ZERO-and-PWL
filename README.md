@@ -49,8 +49,11 @@ EXAMPLE:
 benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/NL234.txt", PWL_general_constraint = false)
 -> launches the experiments of "nonconvex234" in the paper and saves the results in "PWL-and-PWL/src/SCIP_exps/NL234.txt"
 
+## Experimental results
+The results obtained by solving the instances from subsets of instances are named {subset}.txt. They are located in folder IPG-and-PWL/src/PWLgen for subsets root234, root567, log234 and log567, while for subsets nonconvex234 and nonconvex567 they are in folder IPG-and-PWL/src/SCIP_exps. The number of iterations inside the SGM are not available in those file. They are accessible in separate .txt files called "{subset}_iteration.txt".
+
 ## One-line result of an instance
-The different informations are separated by "::". It contains informations described in the two data structures "option_cs_instance" (parameters of the instance) and "output_cs_instance" (results of the instance) described in file "IPG-and-PWL/src/SGM_solver.jl". The number of iterations inside the SGM is NOT available in this file. It is accessible in separate .txt files for example called "log234_iteration.txt" for log234 instances.
+The different informations are separated by "::". It contains informations described in the two data structures "option_cs_instance" (parameters of the instance) and "output_cs_instance" (results of the instance) described in file "IPG-and-PWL/src/SGM_solver.jl". 
 This one-line result contains, in order of apparition:
 - filename_instance
 - err_pwlh
