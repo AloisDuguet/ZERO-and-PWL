@@ -1,7 +1,7 @@
 ## Forked from
 This git is a fork from ds4dm/ZERO of Gabriele Dragotto and Sriram Sankaranarayanan
 
-It contains the code and results associated with the project "Computing Approximate Nash Equilibria for Integer Programming Games" carried by Margarida Carvalho, Gabriele Dragotto, Aloïs Duguet and Sandra Ulrich Ngueveu.
+It contains the code and results associated with the project "Computing Approximate Nash Equilibria for Integer Programming Games" carried by Margarida Carvalho, Gabriele Dragotto, Aloïs Duguet and Sandra Ulrich Ngueveu. A preprint is available: https://arxiv.org/abs/2402.04250.
 
 ## License
 This code is distributed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International.
