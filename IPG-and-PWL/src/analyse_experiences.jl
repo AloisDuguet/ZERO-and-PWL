@@ -876,6 +876,7 @@ function prepare_performance_profile_cybersecurity(filename, filename_save = "pe
             name = list_categories[i].name
             # change some names to fit my slides: "full_refinement"=>"PWL-ANE", "SOCP"=>"SGM-MOSEK"
             #name = replace(name, "full_refinement"=>"PWL-ANE")
+            println("translation in position 1")
             name = replace(name, "full_refinement"=>"2-level approximation")
             name = replace(name, "SOCP"=>"SGM-MOSEK")
             name = replace(name, "gurobiNL"=>"SGM-gurobiQP")
@@ -954,11 +955,13 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
 
     # create list_categories if not given
     if list_categories == []
+        println("list_categories:\n")
         for refinement_method in refinement_methods
             if refinement_method[1:4] == "SGM_"
                 # it is a NL version, adding only one
                 cat = category([characteristic(:refinement_method,refinement_method)], split(refinement_method, "_")[2])
                 push!(list_categories, cat)
+                println("$(list_categories[end])\n")
             else
                 for err in errs
                     charac1 = characteristic(:refinement_method, refinement_method)
@@ -970,9 +973,15 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
                     end
                     cat = category([charac1,charac2], name)
                     push!(list_categories, cat)
+                    println("$(list_categories[end])\n")
                 end
             end
         end
+    end
+
+    # print all experiences options
+    for exp in exps
+        println("exp: $exp")
     end
 
     # find all experiences for each category
@@ -981,6 +990,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
     for i in 1:length(list_categories)
         category = list_categories[i]
         #println(category)
+        println("number of exps in exps = $(length(exps))")
         for exp in exps
             in_category = true
             # does it meet the required characteristics?
@@ -1015,6 +1025,8 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
     new_categories = []
     new_exps_by_category = []
     for i in 1:length(list_categories)
+        println("list_category: $(list_categories[i])")
+        println("exp_category = $(length(exps_by_category[i]))")
         if length(exps_by_category[i]) > 0
             println("size of category $i: $(length(exps_by_category[i]))")
             push!(new_categories, list_categories[i])
@@ -1093,6 +1105,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
         exps = copy(exps_by_category[i])
         x = sort(exps)
         name = c.name
+        println("translation in position 2")
         name = replace(name, "full_refinementPWLgen"=>"2-level approximation")
         name = replace(name, "full_refinement"=>"2-level approximation")
         name = replace(name, "SOCP"=>"SGM-ExpCone")
@@ -1191,6 +1204,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
             name = list_categories[i].name
             # change some names to fit my slides: "full_refinement"=>"PWL-ANE", "SOCP"=>"SGM-MOSEK"
             #name = replace(name, "full_refinement"=>"PWL-ANE")
+            println("translation in position 3")
             name = replace(name, "full_refinementPWLgen"=>"2-level approximation")
             name = replace(name, "sufficient_refinementPWLgen"=>"direct approximation")
             name = replace(name, "full_refinement"=>"2-level approximation")

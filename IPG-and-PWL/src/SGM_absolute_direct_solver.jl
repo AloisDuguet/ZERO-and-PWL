@@ -436,9 +436,10 @@ function benchmark_SGM_absolute_direct_solver(; filename_instances, fixed_costss
             output.cpu_time = t
             output.julia_time += t # it was previously equal to -total_python_time
             # change inst.refinement_method depending on PWL_general_constraint at the last moment
-            if PWL_general_constraint && (inst.refinement_method == "full_refinement" || inst.refinement_method == "sufficient_refinement")
-                inst.refinement_method = inst.refinement_method*"PWLgen"
-            end
+            # CHANGED HERE:
+            # if PWL_general_constraint && (inst.refinement_method == "full_refinement" || inst.refinement_method == "sufficient_refinement")
+            #     inst.refinement_method = inst.refinement_method*"PWLgen"
+            # end
             push!(experiences, cs_experience(inst, output))
             file = open(filename_save[1:end-4]*"_intermediary.txt", "a")
             write_output_instance(file, inst, output)
@@ -449,9 +450,10 @@ function benchmark_SGM_absolute_direct_solver(; filename_instances, fixed_costss
                 cd("../IPG-and-PWL/src")
             end
             # change inst.refinement_method depending on PWL_general_constraint at the last moment
-            if PWL_general_constraint && (inst.refinement_method == "full_refinement" || inst.refinement_method == "sufficient_refinement")
-                inst.refinement_method = inst.refinement_method*"PWLgen"
-            end
+            # CHANGED HERE:
+            # if PWL_general_constraint && (inst.refinement_method == "full_refinement" || inst.refinement_method == "sufficient_refinement")
+            #     inst.refinement_method = inst.refinement_method*"PWLgen"
+            # end
             if occursin("ProcessExited(10)", string(e)) # SGM finished with TIME LIMIT reached
                 output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [], -1, -1)
             #elseif occursin("ProcessExited(11)", string(e)) # SGM finished with MAX ITER reached
@@ -507,7 +509,7 @@ end
 
 
 
-SGM_PWL_absolute_direct_solver("instance_2_2_3.txt", refinement_method = "SGM_NL_model", err_pwlh = Absolute(0.05), NL_term = "S+inverse_square_root", PWL_general_constraint = false)
+#SGM_PWL_absolute_direct_solver("instance_2_2_3.txt", refinement_method = "SGM_SOCP_model", err_pwlh = Absolute(0.05), NL_term = "S+inverse_square_root", PWL_general_constraint = false)
 
 
 
@@ -557,6 +559,9 @@ benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[1:2], refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/NL567_onlySCIP.txt", PWL_general_constraint = false)
 
 
+# test benchmark
+#benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances[[1,2,3,4,5,6,7,8,9,10,270]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/absolute_direct_log234.txt")
+benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances[[2,6,10]], refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "test_exps/absolute_direct_root234.txt")
 
 if false
     #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "indicator_exps/absolute_direct_log234.txt")
