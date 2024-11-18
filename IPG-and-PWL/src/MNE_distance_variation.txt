@@ -546,3 +546,35 @@ instance_2_2_10.txt::delta2.5e-5 epsilon0.0::true::sufficient_refinementPWLgen::
 variations: 39.33794460987126
 instance_2_2_10.txt::delta0.05 epsilon0.0::true::full_refinement::1::0::0.0001::inverse_square_root::false::true::true::28.948585664_26.597769245_0.896277139_1.0_1.0__0.0_0.0_0.786982248521_0.0_0.0::865.171361147_-6.738649341::-1 secondes::1 iterations::0.0001 observed delta::222_142::::0.21673599999999998::-1.3726241240000001
 variations: 39.33794460987126
+instance_2_2_3.txt::delta2.5e-5 epsilon0.0::true::SGM_SOCP_model::1::0::0.0001::log::false::false::true::0.0_0.0_0.890434273_0.0_0.0__23.696929653_22.907079285_0.928569036_1.0_1.0::-2.835908235_1439.814869224::-1 secondes::1 iterations::0.0001 observed delta::1_1::::0.51404::-1.250936163
+variations: 32.98909229743455
+instance_2_2_3.txt::delta2.5e-5 epsilon0.0::true::SGM_SOCP_model::1::0::0.0001::log::false::false::true::0.0_0.0_0.890434273_0.0_0.0__23.696929653_22.907079285_0.928569036_1.0_1.0::-2.835908235_1439.814869224::-1 secondes::1 iterations::0.0001 observed delta::1_1::::0.457883::-1.02004831
+variations: 32.98909229743455
+instance_1.txt::delta2.5e-5 epsilon0.0::true::sufficient_refinementPWLgen::1::0::0.0001::log::false::true::true::0.0_98.338747052_0.917915001_0.0_1.0__29.3639305_93.342806316_0.917915001_1.0_1.0::6250.444189349_5825.048608503::-1 secondes::1 iterations::0.0001 observed delta::125_125::::0.45428::-1.026369318
+variations: 29.802681729107103
+instance_1.txt::delta2.5e-5 epsilon0.0::true::full_refinement::1::0::0.0001::log::false::true::true::0.0_98.338747052_0.917915001_0.0_1.0__29.3639305_93.342806316_0.917915001_1.0_1.0::6250.444189356_5825.048608486::-1 secondes::1 iterations::0.0001 observed delta::125_125::::0.430688::-1.498471189
+variations: 29.802681729107103
+instance_1.txt::delta2.5e-5 epsilon0.0::true::SGM_gurobiNL_model::1::0::0.0001::inverse_square_root::false::true::true::0.0_98.337895124_0.903860107_0.0_1.0__29.363698817_93.350190583_0.914833407_1.0_1.0::6250.088557768_5824.907774376::-1 secondes::1 iterations::0.0001 observed delta::1_1::::0.255379::-0.871469693
+variations: 29.801075907039195
+instance_2_2_1.txt::delta2.5e-5 epsilon0.0::true::SGM_NL_model::1::0::0.0001::S+inverse_square_root::false::false::true::34.741566338_0.0_0.031905800459_1.0_0.0__36.74180542_29.923580756_0.050226824602_1.0_1.0::1288.128156801_2088.674627106::-1 secondes::1 iterations::0.0001 observed delta::2_2::::3.419926::-4.015751498
+variations: 30.007032130917903
+instance_2_2_2.txt::delta2.5e-5 epsilon0.0::true::SGM_SOCP_model::1::0::0.0001::log::false::false::true::0.0_27.494089011_0.451188308_0.0_1.0__26.022494436_0.0_0.259181761_1.0_0.0::583.595025771_643.873392601::-1 secondes::1 iterations::0.0001 observed delta::1_1::::0.367942::-0.872141882
+variations: 37.88313627104457
+instance_2_2_2.txt::delta2.5e-5 epsilon0.0::true::SGM_SOCP_model::1::0::0.0001::log::false::true::true::0.0_27.494089011_0.451188308_0.0_1.0__26.022494436_0.0_0.259181761_1.0_0.0::583.595025771_643.873392601::-1 secondes::1 iterations::0.0001 observed delta::1_1::::0.357878::-0.892720536
+variations: 37.88313627104457
+instance_2_2_2.txt::delta2.5e-5 epsilon0.0::true::sufficient_refinementPWLgen::1::0::0.0001::log::false::true::true::0.0_27.494089187_0.451188363906_0.0_1.0__26.022494504_0.0_0.259181779_1.0_0.0::583.595004234_643.873371113::-1 secondes::1 iterations::0.0001 observed delta::74_22::::0.151459::-0.674981095
+variations: 37.88313644568078
+instance_2_2_2.txt::delta0.05 epsilon0.0::true::full_refinement::1::0::0.0001::log::false::true::true::0.0_27.494089187_0.451188363906_0.0_1.0__26.022494504_0.0_0.259181779_1.0_0.0::583.595004227_643.873371087::-1 secondes::1 iterations::0.0001 observed delta::74_22::::0.12288099999999999::-1.30624715
+variations: 37.88313644568078
+instance_2_2_6.txt::delta2.5e-5 epsilon0.0::true::SGM_SOCP_model::1::0::0.0001::log::false::true::true::0.0_41.084451574_0.12482664_0.0_1.0__0.0_0.0_0.877549846_0.0_0.0::1784.24343346_-8.353513678::-1 secondes::1 iterations::0.0001 observed delta::1_1::::0.513923::-1.033978428
+variations: 41.103512664505956
+instance_2_2_6.txt::delta2.5e-5 epsilon0.0::true::sufficient_refinementPWLgen::1::0::0.0001::log::false::true::true::0.0_41.084451519_0.124826680957_0.0_1.0__0.0_0.0_0.877543571747_0.0_0.0::1784.243240208_-8.35367496::-1 secondes::1 iterations::0.0001 observed delta::17_149::::0.240439::-0.757907957
+variations: 41.10351249388234
+instance_2_2_6.txt::delta0.05 epsilon0.0::true::full_refinement::1::0::0.0001::log::false::true::true::0.0_41.084451519_0.124826680957_0.0_1.0__0.0_0.0_0.877543571747_0.0_0.0::1784.243240208_-8.35367496::-1 secondes::1 iterations::0.0001 observed delta::17_149::::0.14502::-1.293433587
+variations: 41.10351249388234
+instance_2_2_10.txt::delta2.5e-5 epsilon0.0::true::SGM_SOCP_model::1::0::0.0001::log::false::true::true::28.947714222_26.59642014_0.935054743_1.0_1.0__0.0_0.0_0.688599969_0.0_0.0::864.491762355_-9.125340785::-1 secondes::1 iterations::0.0001 observed delta::1_1::::0.33829::-0.866872762
+variations: 39.33701136204435
+instance_2_2_10.txt::delta2.5e-5 epsilon0.0::true::sufficient_refinementPWLgen::1::0::0.0001::log::false::true::true::28.947719692_26.596428593_0.935430145_1.0_1.0__0.0_0.0_0.688596776_0.0_0.0::864.491750828_-9.119824447::-1 secondes::1 iterations::0.0001 observed delta::210_102::::0.354057::-0.874515361
+variations: 39.33702347637915
+instance_2_2_10.txt::delta0.05 epsilon0.0::true::full_refinement::1::0::0.0001::log::false::true::true::28.947719692_26.596428593_0.935430145_1.0_1.0__0.0_0.0_0.688596776_0.0_0.0::864.491750827_-9.119824449::-1 secondes::1 iterations::0.0001 observed delta::210_102::::0.24511300000000003::-1.3757538779999998
+variations: 39.33702347637915
