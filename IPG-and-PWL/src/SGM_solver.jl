@@ -23,6 +23,7 @@ mutable struct option_cs_instance
     abs_gap
     NL_term
     big_weights_on_NL_part
+    PWL_general_constraint::Bool
 end
 
 mutable struct output_cs_instance
@@ -406,7 +407,7 @@ function save_MNE_distance_variation(sols, option, output, filename = "MNE_dista
 end
 
 function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_costs = true, refinement_method = "full_refinement",
-    max_iter = 6, rel_gap = 2e-6, abs_gap = 1e-4, big_weights_on_NL_part = false, NL_term = "log")
+    max_iter = 6, rel_gap = 2e-6, abs_gap = 1e-4, big_weights_on_NL_part = false, NL_term = "log", PWL_general_constraint = false)
     # prepare the instance of PWL approximation of a cybersecurity instance and launch the SGM solver
     # refinement_method is the method used to refine the PWL. It can be "taylor" for the order 1 taylor piece, and "max_precision" to refine the piece(s) containing the pure strategy to rel_gap
 
@@ -785,7 +786,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
             println("profits:\n$profits\nall_vals:\n$(outputs_SGM["all_vals"])")
             length_pwls = [length(cs_instance.cs_players[p].pwl_h.pwl) for p in 1:n_players]
             output = output_cs_instance(true, outputs_SGM["sol"][end], profits, -1, iter, max_delta, length_pwls,compute_MNE_distance_variation(outputs_SGM["sol"]), total_SGM_time, -total_python_time)
-            options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part)
+            options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part, PWL_general_constraint)
             save_MNE_distance_variation(outputs_SGM["sol"], options, output)
             return cs_instance, Vs, iter, outputs_SGM, output
         elseif max_delta > 1e11
@@ -929,7 +930,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
     println("profits:\n$profits\nall_vals:\n$(outputs_SGM["all_vals"])")
     length_pwls = [length(cs_instance.cs_players[p].pwl_h.pwl) for p in 1:n_players]
     max_delta = maximum([abs(Vs[end][2][i]) for i in 1:n_players])
-    options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part)
+    options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part, PWL_general_constraint)
     output = output_cs_instance(false, outputs_SGM["sol"][end], profits, -1, max_iter, max_delta, length_pwls,[], total_SGM_time, -total_python_time)
     variations = save_MNE_distance_variation(outputs_SGM["sol"], options, output)
     output = output_cs_instance(false, outputs_SGM["sol"][end], profits, time_to_remove, max_iter, max_delta, length_pwls,variations, total_SGM_time, -total_python_time)
@@ -952,7 +953,7 @@ function benchmark_SGM_PWL_solver(; filename_instances, err_pwlhs, fixed_costss 
                         for rel_gap in rel_gaps
                             for abs_gap in abs_gaps
                                 for NL_term in NL_terms
-                                    push!(instance_queue, option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part))
+                                    push!(instance_queue, option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part, PWL_general_constraint))
                                 end
                             end
                         end

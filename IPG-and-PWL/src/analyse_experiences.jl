@@ -876,7 +876,6 @@ function prepare_performance_profile_cybersecurity(filename, filename_save = "pe
             name = list_categories[i].name
             # change some names to fit my slides: "full_refinement"=>"PWL-ANE", "SOCP"=>"SGM-MOSEK"
             #name = replace(name, "full_refinement"=>"PWL-ANE")
-            println("translation in position 1")
             name = replace(name, "full_refinement"=>"2-level approximation")
             name = replace(name, "SOCP"=>"SGM-MOSEK")
             name = replace(name, "gurobiNL"=>"SGM-gurobiQP")
@@ -1105,7 +1104,6 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
         exps = copy(exps_by_category[i])
         x = sort(exps)
         name = c.name
-        println("translation in position 2")
         name = replace(name, "full_refinementPWLgen"=>"2-level approximation")
         name = replace(name, "full_refinement"=>"2-level approximation")
         name = replace(name, "SOCP"=>"SGM-ExpCone")
@@ -1204,7 +1202,6 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
             name = list_categories[i].name
             # change some names to fit my slides: "full_refinement"=>"PWL-ANE", "SOCP"=>"SGM-MOSEK"
             #name = replace(name, "full_refinement"=>"PWL-ANE")
-            println("translation in position 3")
             name = replace(name, "full_refinementPWLgen"=>"2-level approximation")
             name = replace(name, "sufficient_refinementPWLgen"=>"direct approximation")
             name = replace(name, "full_refinement"=>"2-level approximation")

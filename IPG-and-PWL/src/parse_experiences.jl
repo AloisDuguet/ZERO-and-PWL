@@ -114,7 +114,7 @@ function write_output_instance(file, option, output)
     # write in file open by stream file the output_cs_instance structure output with the corresponding option_cs_instance option
     delta, eps = get_infos_err(option.err_pwlh)
     s_option = "$(option.filename_instance)$(SEP1)delta$(Float64(delta))$(SEP2)epsilon$(Float64(eps))$(SEP1)"
-    s_option = string(s_option, option.fixed_costs, SEP1, option.refinement_method, SEP1, option.max_iter, SEP1, option.rel_gap, SEP1, option.abs_gap, SEP1, option.NL_term, SEP1, option.big_weights_on_NL_part, SEP1)
+    s_option = string(s_option, option.fixed_costs, SEP1, option.refinement_method, SEP1, option.max_iter, SEP1, option.rel_gap, SEP1, option.abs_gap, SEP1, option.NL_term, SEP1, option.big_weights_on_NL_part, SEP1, option.PWL_general_constraint, SEP1)
     try
         if typeof(output.solution) != ErrorException && typeof(output.solution) != MethodError && typeof(output.solution) != String
             s_output = string(output.solved, SEP1, write_matrix(output.solution), SEP1, write_vector(output.profits), SEP1, output.cpu_time, SEP2, "secondes")
@@ -155,8 +155,10 @@ function load_output_instance(line)
             NL_term = "inverse_square_root"
         end
         big_weights_on_NL_part = parse(Bool, infos[7])
+        PWL_general_constraint = parse(Bool, infos[8])
+        deleteat!(infos, 8) # removing PWL_general_constraint from infos to not change the index of all the following elements of infos
         options = option_cs_instance(filename_instance, err_pwlh, fixed_costs,
-        refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part)
+        refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part, PWL_general_constraint)
         if !occursin("ERROR", line) && !occursin("ProcessExited", line) && !occursin("E__r__r__o__r", line)
             solved = parse(Bool, infos[8])
             solution = parse_matrix(infos[9])
@@ -219,15 +221,17 @@ function load_output_instance(line)
                 NL_term = "inverse_square_root"
             end
             big_weights_on_NL_part = parse(Bool, infos[7])
+            PWL_general_constraint = parse(Bool, infos[8])
+            deleteat!(infos, 8) # removing PWL_general_constraint from infos to not change the index of all the following elements of infos
             options = option_cs_instance(filename_instance, err_pwlh, fixed_costs,
-            refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part)
+            refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part, PWL_general_constraint)
             outputs = output_cs_instance(false, [[]], [], Inf,
                 -1, -1, [], [], Inf, Inf)
             return cs_experience(options, outputs)
         catch e
             println("entering second catch of load_output_instance for error message: ", e)
             options = option_cs_instance("UNK", "UNK", false,
-            "UNK", "UNK", "UNK", "UNK", "UNK", "UNK")
+            "UNK", "UNK", "UNK", "UNK", "UNK", "UNK", "UNK")
             outputs = output_cs_instance(false, [[]], [], 0,
                 -1, -1, [], [], -1, -1)
             return cs_experience(options, outputs)
