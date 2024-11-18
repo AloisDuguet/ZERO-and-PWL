@@ -1096,8 +1096,17 @@ for i in 8:10
         push!(filename_instances_bigover7, "instance_$(i)_$(j)_1.txt")
     end
 end
-filename_instances_bigover7_small = filename_instances_bigover7[[1,5,9,10,14,18,19,23,27]]
+filename_instances_bigover7_complete = []
+for i in 8:10
+    for j in 2:10
+        for k in 1:10
+            push!(filename_instances_bigover7, "instance_$(i)_$(j)_$(k).txt")
+        end
+    end
+end
+filename_instances_bigover7_reallysmall = filename_instances_bigover7[[1,5,9,10,14,18,19,23,27]]
 filename_instances_big10 = filename_instances_bigover7[19:27]
+filename_instances_bigover7_small = filename_instances_bigover7_complete[[10,30,60,90,190,210,240,270]]
 
 #errs = [Absolute(0.5),Absolute(0.4),Absolute(0.3),Absolute(0.2),Absolute(0.1),Absolute(0.075),Absolute(0.05),Absolute(0.025),Absolute(0.1),Absolute(0.0075),Absolute(0.005),Absolute(0.0025),Absolute(0.001),Absolute(0.0005)];
 errs2 = [Absolute(0.5),Absolute(0.05),Absolute(0.005),Absolute(0.0005)]
