@@ -1,4 +1,3 @@
-
 import numpy as np
 from Instances import *
 from Initial_str import *
@@ -254,7 +253,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
                         exit(15)
             aux_p = aux_p+1
         if aux:
-            if time()-time_aux:
+            if time()-time_aux <= TIME_LIMIT:
                 print("usual return")
                 file = open("save_number_of_iteration", "a")
                 #if G.type() == "CyberSecuritygurobiNL" or G.type() == "CyberSecuritySOCP":
@@ -272,7 +271,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
     else:
         exit(11)
         # not working : raise Exception("ERROR Maximum number of iterations of %i was attained"%max_iter)
-    return ne_previous, [], S,count,time()-time_aux
+    return ne_previous, [], S,count-1,time()-time_aux
 
 #######################################################################################################################
 

@@ -319,16 +319,18 @@ function relaunch_exp(experiences, number, complete_output = false)
             cd("../IPG-and-PWL/src")
         end
         if occursin("ProcessExited(10)", string(e)) # SGM finished with TIME LIMIT reached
-            output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [], -1, -1)
+            output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [], -1, -1, [])
         elseif occursin("ProcessExited(209)", string(e)) # SGM finished with TIME LIMIT reached in SCIP best reaction
-            output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [], -1, -1)
+            output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [], -1, -1, [])
+        elseif occursin("ProcessExited(5)", string(e)) # SGM finished with TIME LIMIT reached during the solving of the normal-form game that proves the NE has been found
+            output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [], -1, -1, [])
         #elseif occursin("ProcessExited(11)", string(e)) # SGM finished with MAX ITER reached
         elseif occursin("ProcessExited(11)", string(e)) # SGM finished with MAX ITER reached
-            output = output_cs_instance(false, ErrorException("ERROR max iter reached in SGM"), [], Inf, -1, [], [], [], -1, -1)
+            output = output_cs_instance(false, ErrorException("ERROR max iter reached in SGM"), [], Inf, -1, [], [], [], -1, -1, [])
         elseif occursin("ProcessExited(3)", string(e)) # SGM finished with MAX ITER reached
-            output = output_cs_instance(false, ErrorException("ERROR time limit reached in NL BR"), [], Inf, -1, [], [], [], -1, -1)
+            output = output_cs_instance(false, ErrorException("ERROR time limit reached in NL BR"), [], Inf, -1, [], [], [], -1, -1, [])
         else
-            output = output_cs_instance(false, e, [], Inf, -1, [], [], [], -1, -1)
+            output = output_cs_instance(false, e, [], Inf, -1, [], [], [], -1, -1, [])
             #outputs = output_cs_instance(false, infos[7], [[]], [], 0, -1, [], [])  old
         end
         if !complete_output
@@ -1026,8 +1028,8 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
     new_categories = []
     new_exps_by_category = []
     for i in 1:length(list_categories)
-        println("list_category: $(list_categories[i])")
-        println("exp_category = $(length(exps_by_category[i]))")
+        #println("list_category: $(list_categories[i])")
+        #println("exp_category = $(length(exps_by_category[i]))")
         if length(exps_by_category[i]) > 0
             println("size of category $i: $(length(exps_by_category[i]))")
             push!(new_categories, list_categories[i])

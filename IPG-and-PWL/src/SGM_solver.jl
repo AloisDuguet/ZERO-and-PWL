@@ -37,6 +37,7 @@ mutable struct output_cs_instance
     variation_MNE
     SGM_time
     julia_time
+    iterations
 end
 
 mutable struct cs_experience
@@ -785,7 +786,7 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
             profits = [outputs_SGM["all_vals"][end][3*p-1] for p in 1:n_players]
             println("profits:\n$profits\nall_vals:\n$(outputs_SGM["all_vals"])")
             length_pwls = [length(cs_instance.cs_players[p].pwl_h.pwl) for p in 1:n_players]
-            output = output_cs_instance(true, outputs_SGM["sol"][end], profits, -1, iter, max_delta, length_pwls,compute_MNE_distance_variation(outputs_SGM["sol"]), total_SGM_time, -total_python_time)
+            output = output_cs_instance(true, outputs_SGM["sol"][end], profits, -1, iter, max_delta, length_pwls,compute_MNE_distance_variation(outputs_SGM["sol"]), total_SGM_time, -total_python_time, outputs_SGM["num_iter_done"])
             options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part, PWL_general_constraint)
             save_MNE_distance_variation(outputs_SGM["sol"], options, output)
             return cs_instance, Vs, iter, outputs_SGM, output
@@ -931,9 +932,9 @@ function SGM_PWL_solver(filename_instance; err_pwlh = Absolute(0.05), fixed_cost
     length_pwls = [length(cs_instance.cs_players[p].pwl_h.pwl) for p in 1:n_players]
     max_delta = maximum([abs(Vs[end][2][i]) for i in 1:n_players])
     options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part, PWL_general_constraint)
-    output = output_cs_instance(false, outputs_SGM["sol"][end], profits, -1, max_iter, max_delta, length_pwls,[], total_SGM_time, -total_python_time)
+    output = output_cs_instance(false, outputs_SGM["sol"][end], profits, -1, max_iter, max_delta, length_pwls,[], total_SGM_time, -total_python_time, outputs_SGM["num_iter_done"])
     variations = save_MNE_distance_variation(outputs_SGM["sol"], options, output)
-    output = output_cs_instance(false, outputs_SGM["sol"][end], profits, time_to_remove, max_iter, max_delta, length_pwls,variations, total_SGM_time, -total_python_time)
+    output = output_cs_instance(false, outputs_SGM["sol"][end], profits, time_to_remove, max_iter, max_delta, length_pwls,variations, total_SGM_time, -total_python_time, outputs_SGM["num_iter_done"])
     return cs_instance, Vs, max_iter, outputs_SGM, output
 end
 
@@ -999,14 +1000,14 @@ function benchmark_SGM_PWL_solver(; filename_instances, err_pwlhs, fixed_costss 
                 cd("../IPG-and-PWL/src")
             end
             if occursin("ProcessExited(10)", string(e)) # SGM finished with TIME LIMIT reached
-                output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [], -1, -1)
+                output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [], -1, -1, [])
             #elseif occursin("ProcessExited(11)", string(e)) # SGM finished with MAX ITER reached
             elseif occursin("ProcessExited(11)", string(e)) # SGM finished with MAX ITER reached
-                output = output_cs_instance(false, ErrorException("ERROR max iter reached in SGM"), [], Inf, -1, [], [], [], -1, -1)
+                output = output_cs_instance(false, ErrorException("ERROR max iter reached in SGM"), [], Inf, -1, [], [], [], -1, -1, [])
             elseif occursin("ProcessExited(3)", string(e)) # SGM finished with MAX ITER reached
-                output = output_cs_instance(false, ErrorException("ERROR time limit reached in NL BR"), [], Inf, -1, [], [], [], -1, -1)
+                output = output_cs_instance(false, ErrorException("ERROR time limit reached in NL BR"), [], Inf, -1, [], [], [], -1, -1, [])
             else
-                output = output_cs_instance(false, e, [], Inf, -1, [], [], [], -1, -1)
+                output = output_cs_instance(false, e, [], Inf, -1, [], [], [], -1, -1, [])
                 #outputs = output_cs_instance(false, infos[7], [[]], [], 0, -1, [], [])  old
             end
             #output = output_cs_instance(false, e, [[]], [], 0, -1, [], [])

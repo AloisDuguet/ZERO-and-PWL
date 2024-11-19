@@ -118,8 +118,8 @@ function write_output_instance(file, option, output)
     try
         if typeof(output.solution) != ErrorException && typeof(output.solution) != MethodError && typeof(output.solution) != String
             s_output = string(output.solved, SEP1, write_matrix(output.solution), SEP1, write_vector(output.profits), SEP1, output.cpu_time, SEP2, "secondes")
-            s_output = string(s_output, SEP1, output.iter, SEP2, "iterations", SEP1, output.delta_eq, SEP2, "observed", SEP2, "delta", SEP1, write_vector(output.length_pwls)
-            , SEP1, write_vector(output.variation_MNE), SEP1, output.SGM_time, SEP1, output.julia_time)
+            s_output = string(s_output, SEP1, output.iter, SEP2, "iterations", SEP1, output.delta_eq, SEP2, "observed", SEP2, "delta", SEP1, write_vector(output.length_pwls), 
+                            SEP1, write_vector(output.variation_MNE), SEP1, output.SGM_time, SEP1, output.julia_time, SEP1, write_vector(output.iterations))
             println(file, string(s_option, s_output))
         else
             println(file, string(s_option, "ERROR: $(output.solution)"))
@@ -183,16 +183,26 @@ function load_output_instance(line)
             else
                 julia_time = "UNK"
             end
+            # handles the one or two iteration count of the method:
+            if length(infos) == 18
+                str_iterations = split(infos[18], SEP3)
+                iterations = []
+                for s in str_iterations
+                    push!(iterations, parse(Float64, s))
+                end
+            else
+                iterations = []
+            end
             outputs = output_cs_instance(solved, solution, profits, cpu_time,
-            iter, delta_eq, length_pwls, variations, SGM_time, julia_time)
+            iter, delta_eq, length_pwls, variations, SGM_time, julia_time, [iterations])
         elseif occursin("ProcessExited(10)", line) # SGM finished with TIME LIMIT reached
-            outputs = output_cs_instance(false, [[]], [], Inf, -1, [], [], [], -1, -1)
+            outputs = output_cs_instance(false, [[]], [], Inf, -1, [], [], [], -1, -1, [])
         elseif occursin("ProcessExited(11)", line) # SGM finished with MAX ITER reached
-            outputs = output_cs_instance(false, [[]], [], Inf, -1, [], [], [], -1, -1)
+            outputs = output_cs_instance(false, [[]], [], Inf, -1, [], [], [], -1, -1, [])
         #elseif occursin("E__r__r__o__r", line)
         else
             s = line[findfirst("ErrorException",line)[2]:end]
-            outputs = output_cs_instance(false, ErrorException(s), [], Inf, -1, [], [], [], -1, -1)
+            outputs = output_cs_instance(false, ErrorException(s), [], Inf, -1, [], [], [], -1, -1, [])
             #outputs = output_cs_instance(false, infos[7], [[]], [], 0, -1, [], [])  old
         end
         return cs_experience(options, outputs)
@@ -226,14 +236,14 @@ function load_output_instance(line)
             options = option_cs_instance(filename_instance, err_pwlh, fixed_costs,
             refinement_method, max_iter, rel_gap, abs_gap, NL_term, big_weights_on_NL_part, PWL_general_constraint)
             outputs = output_cs_instance(false, [[]], [], Inf,
-                -1, -1, [], [], Inf, Inf)
+                -1, -1, [], [], Inf, Inf, [])
             return cs_experience(options, outputs)
         catch e
             println("entering second catch of load_output_instance for error message: ", e)
             options = option_cs_instance("UNK", "UNK", false,
             "UNK", "UNK", "UNK", "UNK", "UNK", "UNK", "UNK")
             outputs = output_cs_instance(false, [[]], [], 0,
-                -1, -1, [], [], -1, -1)
+                -1, -1, [], [], -1, -1, [])
             return cs_experience(options, outputs)
         end
         return cs_experience(options, outputs)

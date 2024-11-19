@@ -219,7 +219,7 @@ function SGM_PWL_absolute_direct_solver(filename_instance; fixed_costs = true, r
         # build output of type output_cs_instance
         println("profits:\n$profits\n")
         length_pwls = [length(cs_instance.cs_players[p].pwl_h.pwl) for p in 1:n_players]
-        output = output_cs_instance(true, outputs_SGM["sol"][end], profits, -1, 1, abs_gap, length_pwls,[], total_SGM_time, -total_python_time)
+        output = output_cs_instance(true, outputs_SGM["sol"][end], profits, -1, 1, abs_gap, length_pwls,[], total_SGM_time, -total_python_time, outputs_SGM["num_iter_done"])
         if !PWL_general_constraint || refinement_method != "sufficient_refinement"
             options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, 1, rel_gap, abs_gap, NL_term, big_weights_on_NL_part, PWL_general_constraint)
         else
@@ -343,7 +343,7 @@ function SGM_PWL_absolute_direct_solver(filename_instance; fixed_costs = true, r
         println("profits:\n$profits\n")
         length_pwls = [length(cs_instance.cs_players[p].pwl_h.pwl) for p in 1:n_players]
         options = option_cs_instance(filename_instance, err_pwlh, fixed_costs, refinement_method, 1, rel_gap, abs_gap, NL_term, big_weights_on_NL_part, PWL_general_constraint)
-        output = output_cs_instance(true, outputs_SGM["sol"][end], profits, -1, 1, abs_gap, length_pwls,[], total_SGM_time, -total_python_time)
+        output = output_cs_instance(true, outputs_SGM["sol"][end], profits, -1, 1, abs_gap, length_pwls,[], total_SGM_time, -total_python_time, outputs_SGM["num_iter_done"])
         save_MNE_distance_variation(sol, options, output)
 
         #=# check that it is really a delta-equilibrium
@@ -449,16 +449,18 @@ function benchmark_SGM_absolute_direct_solver(; filename_instances, fixed_costss
                 cd("../IPG-and-PWL/src")
             end
             if occursin("ProcessExited(10)", string(e)) # SGM finished with TIME LIMIT reached
-                output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [], -1, -1)
+                output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [], -1, -1, [])
             elseif occursin("ProcessExited(209)", string(e)) # SGM finished with TIME LIMIT reached in SCIP best reaction
-                output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [], -1, -1)
+                output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [], -1, -1, [])
+            elseif occursin("ProcessExited(5)", string(e)) # SGM finished with TIME LIMIT reached during the solving of the normal-form game that proves the NE has been found
+                output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [], -1, -1, [])
             #elseif occursin("ProcessExited(11)", string(e)) # SGM finished with MAX ITER reached
             elseif occursin("ProcessExited(11)", string(e)) # SGM finished with MAX ITER reached
-                output = output_cs_instance(false, ErrorException("ERROR max iter reached in SGM"), [], Inf, -1, [], [], [], -1, -1)
+                output = output_cs_instance(false, ErrorException("ERROR max iter reached in SGM"), [], Inf, -1, [], [], [], -1, -1, [])
             elseif occursin("ProcessExited(3)", string(e)) # SGM finished with MAX ITER reached # outdated
-                output = output_cs_instance(false, ErrorException("ERROR time limit reached in NL BR"), [], Inf, -1, [], [], [], -1, -1)
+                output = output_cs_instance(false, ErrorException("ERROR time limit reached in NL BR"), [], Inf, -1, [], [], [], -1, -1, [])
             else
-                output = output_cs_instance(false, e, [], Inf, -1, [], [], [], -1, -1)
+                output = output_cs_instance(false, e, [], Inf, -1, [], [], [], -1, -1, [])
                 #outputs = output_cs_instance(false, infos[7], [[]], [], 0, -1, [], [])  old
             end
             #output = output_cs_instance(false, e, [[]], [], 0, -1, [], [])
@@ -486,7 +488,7 @@ function benchmark_SGM_absolute_direct_solver(; filename_instances, fixed_costss
         preliminary_analysis(experiences, err_pwlhs, fixed_costss, refinement_methods, filename_save[1:end-4]*"_analysis.txt")
         prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.pdf", refinement_methods = refinement_methods, errs = err_pwlhs)
     catch e
-        println("error during analysis of the benchmark")
+        println("error during analysis of the benchmark: $e")
     end
 
     return experiences
@@ -514,9 +516,9 @@ SGM_PWL_absolute_direct_solver("instance_2_2_3.txt", refinement_method = "SGM_SO
 # tests:
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/absolute_direct_log234.txt")
 ##benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances[[261,270]], refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "test_exps/nonconvex234_small.txt", PWL_general_constraint = false)
-#benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[1,11,21,31,41,51,61,71,81,91,241,251,261]], refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "test_exps/root567_small.txt")
+benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[1]], refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "test_exps/root567_mini.txt")
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_bigover7_small, refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "test_exps/nonconvex810_small.txt", PWL_general_constraint = false)
-experience_error_relaunched = benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[261]], refinement_methods = ["SGM_gurobiNL_model"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "test_exps/root567_small_errors_relaunched.txt")
+#experience_error_relaunched = benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[261]], refinement_methods = ["SGM_gurobiNL_model"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "test_exps/root567_small_errors_relaunched.txt")
 
 
 #SGM_PWL_absolute_direct_solver("instance_4_8_7.txt", refinement_method = "SGM_NL_model", err_pwlh = Absolute(0.05), NL_term = "S+inverse_square_root", PWL_general_constraint = false)
