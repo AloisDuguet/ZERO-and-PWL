@@ -2448,3 +2448,29 @@ instance_1.txt::delta2.5e-5 epsilon0.0::true::SGM_gurobiNL_model::1::0::0.0001::
 variations: 29.801075907039195
 instance_2_2_1.txt::delta2.5e-5 epsilon0.0::true::SGM_NL_model::1::0::0.0001::S+inverse_square_root::false::false::true::34.741566338_0.0_0.031905800459_1.0_0.0__36.74180542_29.923580756_0.050226824602_1.0_1.0::1288.128156801_2088.674627106::-1 secondes::1 iterations::0.0001 observed delta::2_2::::3.231701::-3.846710676
 variations: 30.007032130917903
+instance_1.txt::delta2.5e-5 epsilon0.0::true::sufficient_refinementPWLgen::1::0::0.0001::log::false::true::true::0.0_98.338747052_0.917915001_0.0_1.0__29.3639305_93.342806316_0.917915001_1.0_1.0::6250.444189349_5825.048608503::-1 secondes::1 iterations::0.0001 observed delta::125_125::::0.402755::-1.330485487
+variations: 29.802681729107103
+instance_1.txt::delta2.5e-5 epsilon0.0::true::full_refinement::1::0::0.0001::log::false::true::true::0.0_98.338747052_0.917915001_0.0_1.0__29.3639305_93.342806316_0.917915001_1.0_1.0::6250.444189356_5825.048608486::-1 secondes::1 iterations::0.0001 observed delta::125_125::::0.418723::-1.469626298
+variations: 29.802681729107103
+instance_1.txt::delta2.5e-5 epsilon0.0::true::SGM_gurobiNL_model::1::0::0.0001::inverse_square_root::false::true::true::0.0_98.337895124_0.903860107_0.0_1.0__29.363698817_93.350190583_0.914833407_1.0_1.0::6250.088557768_5824.907774376::-1 secondes::1 iterations::0.0001 observed delta::1_1::::0.252475::-0.764441792
+variations: 29.801075907039195
+instance_1.txt::delta2.5e-5 epsilon0.0::true::sufficient_refinementPWLgen::1::0::0.0001::log::false::true::true::0.0_98.338747052_0.917915001_0.0_1.0__29.3639305_93.342806316_0.917915001_1.0_1.0::6250.444189349_5825.048608503::-1 secondes::1 iterations::0.0001 observed delta::125_125::::0.406132::-1.307892743
+variations: 29.802681729107103
+instance_1.txt::delta2.5e-5 epsilon0.0::true::full_refinement::1::0::0.0001::log::false::true::true::0.0_98.338747052_0.917915001_0.0_1.0__29.3639305_93.342806316_0.917915001_1.0_1.0::6250.444189356_5825.048608486::-1 secondes::1 iterations::0.0001 observed delta::125_125::::0.511803::-1.761506466
+variations: 29.802681729107103
+instance_1.txt::delta2.5e-5 epsilon0.0::true::SGM_gurobiNL_model::1::0::0.0001::inverse_square_root::false::true::true::0.0_98.337895124_0.903860107_0.0_1.0__29.363698817_93.350190583_0.914833407_1.0_1.0::6250.088557768_5824.907774376::-1 secondes::1 iterations::0.0001 observed delta::1_1::::0.207628::-0.787203969
+variations: 29.801075907039195
+instance_2_2_1.txt::delta2.5e-5 epsilon0.0::true::SGM_NL_model::1::0::0.0001::S+inverse_square_root::false::false::true::34.741566338_0.0_0.031905800459_1.0_0.0__36.74180542_29.923580756_0.050226824602_1.0_1.0::1288.128156801_2088.674627106::-1 secondes::1 iterations::0.0001 observed delta::2_2::::3.603523::-4.221965623
+variations: 30.007032130917903
+instance_5_2_1.txt::delta2.5e-5 epsilon0.0::true::SGM_gurobiNL_model::1::0::0.0001::inverse_square_root::false::false::true::0.0_0.0_0.601108033_0.0_0.0__37.608409754_0.0_0.913494716_1.0_0.0__27.365320839_0.0_0.36_1.0_0.0__0.0_0.0_0.939546839_0.0_0.0__33.559434217_26.063023676_0.395061728_1.0_1.0::-15.357898252_375.288240254_318.384020991_-5.037463678_782.262624217::-1 secondes::1 iterations::0.0001 observed delta::1_1_1_2_1::::0.743104::-1.346392874
+variations: 37.62299921144616_10.258032312350933_27.389718128524112_42.518387694466824
+instance_5_2_1.txt::delta2.5e-5 epsilon0.0::true::SGM_gurobiNL_model::1::0::0.0001::inverse_square_root::false::true::true::0.0_0.0_0.601108033_0.0_0.0__37.608409754_0.0_0.913494716_1.0_0.0__27.365320839_0.0_0.36_1.0_0.0__0.0_0.0_0.939546839_0.0_0.0__33.559434217_26.063023676_0.395061728_1.0_1.0::-15.357898252_375.288240254_318.384020991_-5.037463678_782.262624217::-1 secondes::1 iterations::0.0001 observed delta::1_1_1_2_1::::0.600595::-1.241794246
+variations: 37.62299921144616_10.258032312350933_27.389718128524112_42.518387694466824
+instance_1.txt::delta2.5e-5 epsilon0.0::true::sufficient_refinementPWLgen::1::0::0.0001::log::false::true::true::0.0_98.338747052_0.917915001_0.0_1.0__29.3639305_93.342806316_0.917915001_1.0_1.0::6250.444189349_5825.048608503::-1 secondes::1 iterations::0.0001 observed delta::125_125::::0.307961::-0.826743295
+variations: 29.802681729107103
+instance_1.txt::delta2.5e-5 epsilon0.0::true::full_refinement::1::0::0.0001::log::false::true::true::0.0_98.338747052_0.917915001_0.0_1.0__29.3639305_93.342806316_0.917915001_1.0_1.0::6250.444189356_5825.048608486::-1 secondes::1 iterations::0.0001 observed delta::125_125::::0.437194::-1.529363804
+variations: 29.802681729107103
+instance_1.txt::delta2.5e-5 epsilon0.0::true::SGM_gurobiNL_model::1::0::0.0001::inverse_square_root::false::true::true::0.0_98.337895124_0.903860107_0.0_1.0__29.363698817_93.350190583_0.914833407_1.0_1.0::6250.088557768_5824.907774376::-1 secondes::1 iterations::0.0001 observed delta::1_1::::0.135056::-0.686730073
+variations: 29.801075907039195
+instance_2_2_1.txt::delta2.5e-5 epsilon0.0::true::SGM_NL_model::1::0::0.0001::S+inverse_square_root::false::false::true::34.741566338_0.0_0.031905800459_1.0_0.0__36.74180542_29.923580756_0.050226824602_1.0_1.0::1288.128156801_2088.674627106::-1 secondes::1 iterations::0.0001 observed delta::2_2::::3.408494::-3.989165997
+variations: 30.007032130917903
