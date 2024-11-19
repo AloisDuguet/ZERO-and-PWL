@@ -64,6 +64,7 @@ This one-line result contains, in order of apparition:
 - abs_gap
 - NL_term
 - big_weights_on_NL_part
+- PWL_general_constraint parameter, true if PWL functions were modeled by Gurobi using its function addGenConstrPWL (works only for convex PWL), else false
 - solved, true if solved, false if time limit reached
 - solution, value of the variables for all players at the approximated equilibrium, see solution below
 - profits, profits of all players at the equilibrium
@@ -74,6 +75,7 @@ This one-line result contains, in order of apparition:
 - variation_MNE, deprecated
 - SGM_time, time spent inside the SGM
 - julia_time, time spent inside the julia code (python code running time excluded)
+- iterations, vector with the number of iterations of the SGM each time it was used (one time for all experiences except 2-level approximation which launches SGM two times)
 EXAMPLE:
 instance_2_2_3.txt::delta0.05 epsilon0.0::true::full_refinement::1::0::0.0001::S+inverse_square_root::false::true::0.0_0.0_0.873427971_0.0_0.0__23.695903111_22.905812669_0.901771423_1.0_1.0::-3.707066878_1438.708576549::1.840723773 secondes::1 iterations::0.0001 observed delta::180_195::::0.6194970000000001::0.3238423719999999
 
