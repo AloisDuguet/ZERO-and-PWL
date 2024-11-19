@@ -944,7 +944,7 @@ function add_PWLgen_failed_exps(filename)
     return 0
 end
 
-function prepare_real_performance_profile_cybersecurity(filename, filename_save = "performance_profile.png", list_categories = []; refinement_methods = ["full_refinement","SGM_SOCP_model"],
+function prepare_real_performance_profile_cybersecurity(filename, filename_statistics, filename_save = "performance_profile.png", list_categories = []; refinement_methods = ["full_refinement","SGM_SOCP_model"],
     errs = [Absolute(0.5),Absolute(0.05),Absolute(0.005),Absolute(0.0005)], time_limit=900, fictive_times = false)
     # prepare profiles for a call to function performance_profile
     # the performace profile will be:
@@ -953,12 +953,13 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
 
     println("\n-----")
     println(filename)
+    file = open(filename_statistics, "w")
 
     exps = load_all_outputs(filename)
 
     # create list_categories if not given
     if list_categories == []
-        println("list_categories:\n")
+        #println("list_categories:\n")
         for refinement_method in refinement_methods
             if refinement_method[1:4] == "SGM_"
                 # it is a NL version, adding only one
@@ -976,16 +977,16 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
                     end
                     cat = category([charac1,charac2], name)
                     push!(list_categories, cat)
-                    println("$(list_categories[end])\n")
+                    #println(file, "$(list_categories[end])\n")
                 end
             end
         end
     end
 
-    # print all experiences options
-    for exp in exps
-        println("exp: $exp")
-    end
+    # # print all experiences options
+    # for exp in exps
+    #     println("exp: $exp")
+    # end
 
     # find all experiences for each category
     max_julia_time = 0
@@ -993,8 +994,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
     iterationss_by_category = [[] for i in 1:length(list_categories)]
     for i in 1:length(list_categories)
         category = list_categories[i]
-        #println(category)
-        println("number of exps in exps = $(length(exps))")
+        #println(file, "category $category has a number of exps of $(length(exps))")
         for exp in exps
             in_category = true
             # does it meet the required characteristics?
@@ -1024,17 +1024,17 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
             end
         end
     end
-    println("\n\n----- max julia time is $max_julia_time seconds -----\n\n")
+    println(file, "\n\n----- max julia time is $max_julia_time seconds -----\n\n")
 
     # delete empty categories
     new_categories = []
     new_iterationss_by_category = []
     new_exps_by_category = []
     for i in 1:length(list_categories)
-        #println("list_category: $(list_categories[i])")
+        println("category: $(list_categories[i])")
         #println("exp_category = $(length(exps_by_category[i]))")
         if length(exps_by_category[i]) > 0
-            println("size of category $i: $(length(exps_by_category[i]))")
+            println(file, "$(length(exps_by_category[i])) instances in category $(list_categories[i])")
             push!(new_categories, list_categories[i])
             push!(new_exps_by_category, exps_by_category[i])
             push!(new_iterationss_by_category, iterationss_by_category[i])
@@ -1081,11 +1081,11 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
         # time analysis
         c = list_categories[i]
         exps = exps_by_category[i]
-        println()
-        println("category: $(c.name)")
+        println(file, "\n")
+        println(file, "category: $(c.name)")
         solved = 100*round(sum(exps[j] < Inf for j in 1:length(exps))/n_exps, digits=3)
         tot_solved += sum(exps[j] < Inf for j in 1:length(exps))
-        println("%solved: $solved")
+        println(file, "%solved: $solved")
         sum_non_inf = sum(log(exps[j]) for j in 1:length(exps) if exps[j] < Inf)
         count_non_inf = sum(exp < Inf for exp in exps)
         total_count_non_inf += count_non_inf
@@ -1097,32 +1097,31 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
         exps2 = sort(exps2)
         below10 = count(exps[j] < 10 for j in 1:length(exps))
         total_below10 += below10
-        println("number of instances below 10 seconds: $below10")
+        println(file, "number of instances below 10 seconds: $below10")
         max_exp = length(exps)-sum(exps[j] == Inf for j in 1:length(exps))
         exps2 = exps2[1:(max_exp)]
-        println("maximum time of solved instance: $(round(exps2[end], digits=2))")
+        println(file, "maximum time of solved instance: $(round(exps2[end], digits=2))")
         #pp = histogram!(pp, exps2, bins = [0.1,3,5,10,20,30,50,100,900])
-        println("mean time: $(round(mean_time, digits=2))")
-        println("geometric mean time: $(round(geom_mean_time, digits=2))")
+        println(file, "mean time: $(round(mean_time, digits=4))")
+        println(file, "geometric mean time: $(round(geom_mean_time, digits=4))")
         
         # iterations analysis
         iterations = iterationss_by_category[i]
-        println(iterations)
         mean_iterations = sum(iterations[j][1] for j in 1:length(iterations) if exps[j] < Inf)/count_non_inf # iterations[j][1] accesses the number of iterations of the first call to SGM
         standard_deviation_iterations = sqrt(sum((iterations[j][end]-mean_iterations)^2 for j in 1:length(iterations) if exps[j] < Inf)/count_non_inf)
-        println("mean number of iterations for last SGM call: $(round(mean_iterations, digits=2)) with standard deviation $(round(standard_deviation_iterations, digits=2))")
+        println(file, "mean number of iterations for last SGM call: $(round(mean_iterations, digits=2)) with standard deviation $(round(standard_deviation_iterations, digits=2))")
         sum_SGM_iterations = [sum(iterations[j][k] for k in 1:length(iterations[j])) for j in 1:length(iterations) if exps[j] < Inf]
         mean_iterations2 = sum(sum_SGM_iterations[j] for j in 1:length(iterations) if exps[j] < Inf)/count_non_inf # sum_SGM_iterations[j] accesses the number of iterations of all SGM calls
         standard_deviation_iterations2 = sqrt(sum((sum_SGM_iterations[j]-mean_iterations2)^2 for j in 1:length(iterations) if exps[j] < Inf)/count_non_inf)
-        println("mean number of iterations counting all SGM calls: $(round(mean_iterations2, digits=2)) with standard deviation $(round(standard_deviation_iterations2, digits=2))")
+        println(file, "mean number of iterations counting all SGM calls: $(round(mean_iterations2, digits=2)) with standard deviation $(round(standard_deviation_iterations2, digits=2))")
     end
     #savefig(pp,"repartition_times_indicator_exps.txt")
     #display(pp)
-    println("\ntotal solved: $(100*round(tot_solved/n_exps/3,digits=3))")
-    println("total mean time: $(round(tot_mean/tot_solved, digits=2))")
-    println("total geometric mean time: $(round(exp(geom_total_mean/total_count_non_inf), digits=2))")
-    println(total_below10)
-    println("total number of instances below 10 seconds: $(total_below10/810)")
+    println(file, "\ntotal solved: $(100*round(tot_solved/n_exps/3,digits=3))")
+    println(file, "total mean time: $(round(tot_mean/tot_solved, digits=2))")
+    println(file, "total geometric mean time: $(round(exp(geom_total_mean/total_count_non_inf), digits=2))")
+    println(file, "total number of instances solved under 10 seconds: $total_below10")
+    println(file, "fraction of all instances below 10 seconds: $(total_below10/810)")
 
     p = plot(legend = :bottomright, title = filename[32:length(filename)-4])
     for i in 1:length(list_categories)
@@ -1187,6 +1186,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
 
     # create profiles
     l_profiles = []
+    println(file)
     for i in 1:length(list_categories)
         x = []
         y = []
@@ -1205,9 +1205,9 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
             #println("proportion of best instances for $(list_categories[i].name): ($(x[val]),$(y[val]))")
             val = sum(exps_by_category[i][j] == 1 for j in 1:n_exps)/n_exps
             #println(exps_by_category[i])
-            println("proportion of best instances for $(list_categories[i].name): $val")
+            println(file, "proportion of best instances for $(list_categories[i].name): $val")
             # add last point with same fraction of instances solved and time to time_limit to finish the curve in the plot
-            println(x[end],"\t",y[end])
+            println(file, "with last point of the performance curve ($(x[end]), $(y[end]))")
             if length(y) != 0
                 push!(x, time_limit)
                 push!(y, y[end])
@@ -1281,11 +1281,14 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
 
     #x_range = [min_time,max_time]
     x_range = [min_time,min(time_limit,last_solved)]
-    println("\nlast solved instance had a performance ratio of $last_solved")
+    println(file, "\nlast solved instance had a performance ratio of $last_solved")
     y_range = [0,1.0]
     dict_options = Dict()
     #profiles = Performance_profile(l_profiles, title, x_axis, y_axis, x_range, y_range, dict_options)
     profiles = Performance_profile(l_profiles, "", x_axis, y_axis, x_range, y_range, dict_options)
+
+    # close file
+    close(file)
 
     #return profiles
 

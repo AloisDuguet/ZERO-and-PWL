@@ -484,9 +484,11 @@ function benchmark_SGM_absolute_direct_solver(; filename_instances, fixed_costss
 
     # give some elements of analysis
     try
-        launch_method_comparison(filename_save, experiences, refinement_methods, err_pwlhs, filename_save = filename_save[1:end-4]*"_analysis.txt")
-        preliminary_analysis(experiences, err_pwlhs, fixed_costss, refinement_methods, filename_save[1:end-4]*"_analysis.txt")
-        prepare_real_performance_profile_cybersecurity(filename_save,filename_save[1:end-4]*"_perf_profile.pdf", refinement_methods = refinement_methods, errs = err_pwlhs)
+        filename_analysis = filename_save[1:end-4]*"_analysis.txt"
+        filename_statistics = filename_save[1:end-4]*"_statistics.txt"
+        launch_method_comparison(filename_save, experiences, refinement_methods, err_pwlhs, filename_save = filename_analysis)
+        preliminary_analysis(experiences, err_pwlhs, fixed_costss, refinement_methods, filename_analysis)
+        prepare_real_performance_profile_cybersecurity(filename_save, filename_statistics, filename_save[1:end-4]*"_perf_profile.pdf", refinement_methods = refinement_methods, errs = err_pwlhs)
     catch e
         println("error during analysis of the benchmark: $e")
     end
