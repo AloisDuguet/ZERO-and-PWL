@@ -4,12 +4,13 @@ include("SGM_solver.jl")
 function SGM_PWL_absolute_direct_solver(filename_instance; fixed_costs = true, refinement_method = "sufficient_refinement",
     rel_gap = 0, abs_gap = 1e-4, err_pwlh = Absolute(2.5e-5), big_weights_on_NL_part = false, NL_term = "log", PWL_general_constraint = true)
     # specific case of SGM_PWL_solver if first refinement of PWL is sufficient and SGM stopping criterion is absolute
-     # PWL_general_constraint == false for log SOS2 model for the PWL function, true for using Model.addGenConstrPWL() in python code with gurobipy
+    # PWL_general_constraint == false for log SOS2 model for the PWL function, true for using Model.addGenConstrPWL() in python code with gurobipy
+    # the value of err_pwlh right now is the one used for full_refinement. For the others, it will be err_pwlh/4 (cf 'err_pwlh new setting' below)
 
     #println("before if\nrefinement_method: $refinement_method\nerr_pwlh: $err_pwlh")
     # setting err_pwlh to the maximum sufficient value
     if refinement_method != "full_refinement"
-        err_pwlh = Absolute(abs_gap/4)
+        err_pwlh = Absolute(abs_gap/4) # err_pwlh new setting for all experiences except for full_refinement
     end
     #println("after if\nrefinement_method: $refinement_method\nerr_pwlh: $err_pwlh")
 
@@ -516,12 +517,14 @@ SGM_PWL_absolute_direct_solver("instance_2_2_3.txt", refinement_method = "SGM_SO
 #SGM_PWL_absolute_direct_solver("instance_10_3_1.txt", refinement_method = "full_refinement", err_pwlh = Absolute(0.05)) # solved in less than 900s
 
 # tests:
-benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances[[1,2,3,4,5,6,7,8,9,10]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/absolute_direct_log234.txt")
 ##benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances[[261,270]], refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "test_exps/nonconvex234_small.txt", PWL_general_constraint = false)
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[1]], refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "test_exps/root567_mini.txt")
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_bigover7_small, refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "test_exps/nonconvex810_small.txt", PWL_general_constraint = false)
 #experience_error_relaunched = benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[261]], refinement_methods = ["SGM_gurobiNL_model"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "test_exps/root567_small_errors_relaunched.txt")
 
+# tests for revision instances:
+benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], abs_gaps = [Absolute(0.01), Absolute(0.001), Absolute(0.0001)], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/log234.txt")
+benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[1,11,21,31,41,51,61,71,81,181,191,201,211,221,231,241,251,261]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], abs_gaps = [Absolute(0.01), Absolute(0.001), Absolute(0.0001)], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/root567_small.txt")
 
 #SGM_PWL_absolute_direct_solver("instance_4_8_7.txt", refinement_method = "SGM_NL_model", err_pwlh = Absolute(0.05), NL_term = "S+inverse_square_root", PWL_general_constraint = false)
 #SGM_PWL_absolute_direct_solver("instance_2_2_1.txt", refinement_method = "sufficient_refinement", err_pwlh = Absolute(0.05), NL_term = "S+inverse_square_root") # working with new launch_cmd (base conda python environment)
