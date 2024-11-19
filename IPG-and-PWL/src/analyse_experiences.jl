@@ -990,6 +990,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
     # find all experiences for each category
     max_julia_time = 0
     exps_by_category = [[] for i in 1:length(list_categories)]
+    iterationss_by_category = [[] for i in 1:length(list_categories)]
     for i in 1:length(list_categories)
         category = list_categories[i]
         #println(category)
@@ -1017,6 +1018,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
                     end
                 end
                 push!(exps_by_category[i], cpu_time)
+                push!(iterationss_by_category[i], exp.outputs.iterations)
             else
                 # explain why it does not belong to the current category
             end
@@ -1026,6 +1028,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
 
     # delete empty categories
     new_categories = []
+    new_iterationss_by_category = []
     new_exps_by_category = []
     for i in 1:length(list_categories)
         #println("list_category: $(list_categories[i])")
@@ -1034,9 +1037,11 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
             println("size of category $i: $(length(exps_by_category[i]))")
             push!(new_categories, list_categories[i])
             push!(new_exps_by_category, exps_by_category[i])
+            push!(new_iterationss_by_category, iterationss_by_category[i])
         end
     end
     list_categories = deepcopy(new_categories)
+    iterationss_by_category = deepcopy(new_iterationss_by_category)
     exps_by_category = deepcopy(new_exps_by_category)
 
     # particular case of copy paste creating doubles of "SGM_SOCP_model" exps
@@ -1067,14 +1072,20 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
     geom_total_mean = 0 # because it will be computed with sum of logs
     total_count_non_inf = 0
     total_below10 = 0
+    # statistics for iterations
+    mean_iterations = 0
+    standard_deviation_iterations = 0
+    mean_iterations2 = 0
+    standard_deviation_iterations2 = 0
     for i in 1:length(list_categories)
+        # time analysis
         c = list_categories[i]
         exps = exps_by_category[i]
         println()
         println("category: $(c.name)")
         solved = 100*round(sum(exps[j] < Inf for j in 1:length(exps))/n_exps, digits=3)
         tot_solved += sum(exps[j] < Inf for j in 1:length(exps))
-        println("%solved: $(solved)")
+        println("%solved: $solved")
         sum_non_inf = sum(log(exps[j]) for j in 1:length(exps) if exps[j] < Inf)
         count_non_inf = sum(exp < Inf for exp in exps)
         total_count_non_inf += count_non_inf
@@ -1089,14 +1100,25 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_save 
         println("number of instances below 10 seconds: $below10")
         max_exp = length(exps)-sum(exps[j] == Inf for j in 1:length(exps))
         exps2 = exps2[1:(max_exp)]
-        println("maximum time of solved instance: $(exps2[end])")
+        println("maximum time of solved instance: $(round(exps2[end], digits=2))")
         #pp = histogram!(pp, exps2, bins = [0.1,3,5,10,20,30,50,100,900])
-        println("mean time: $(mean_time)")
-        println("geometric mean time: $(geom_mean_time)")
+        println("mean time: $(round(mean_time, digits=2))")
+        println("geometric mean time: $(round(geom_mean_time, digits=2))")
+        
+        # iterations analysis
+        iterations = iterationss_by_category[i]
+        println(iterations)
+        mean_iterations = sum(iterations[j][1] for j in 1:length(iterations) if exps[j] < Inf)/count_non_inf # iterations[j][1] accesses the number of iterations of the first call to SGM
+        standard_deviation_iterations = sqrt(sum((iterations[j][end]-mean_iterations)^2 for j in 1:length(iterations) if exps[j] < Inf)/count_non_inf)
+        println("mean number of iterations for last SGM call: $(round(mean_iterations, digits=2)) with standard deviation $(round(standard_deviation_iterations, digits=2))")
+        sum_SGM_iterations = [sum(iterations[j][k] for k in 1:length(iterations[j])) for j in 1:length(iterations) if exps[j] < Inf]
+        mean_iterations2 = sum(sum_SGM_iterations[j] for j in 1:length(iterations) if exps[j] < Inf)/count_non_inf # sum_SGM_iterations[j] accesses the number of iterations of all SGM calls
+        standard_deviation_iterations2 = sqrt(sum((sum_SGM_iterations[j]-mean_iterations2)^2 for j in 1:length(iterations) if exps[j] < Inf)/count_non_inf)
+        println("mean number of iterations counting all SGM calls: $(round(mean_iterations2, digits=2)) with standard deviation $(round(standard_deviation_iterations2, digits=2))")
     end
     #savefig(pp,"repartition_times_indicator_exps.txt")
     #display(pp)
-    println("total solved: $(100*round(tot_solved/n_exps/3,digits=3))")
+    println("\ntotal solved: $(100*round(tot_solved/n_exps/3,digits=3))")
     println("total mean time: $(round(tot_mean/tot_solved, digits=2))")
     println("total geometric mean time: $(round(exp(geom_total_mean/total_count_non_inf), digits=2))")
     println(total_below10)

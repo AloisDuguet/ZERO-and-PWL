@@ -514,9 +514,9 @@ SGM_PWL_absolute_direct_solver("instance_2_2_3.txt", refinement_method = "SGM_SO
 #SGM_PWL_absolute_direct_solver("instance_10_3_1.txt", refinement_method = "full_refinement", err_pwlh = Absolute(0.05)) # solved in less than 900s
 
 # tests:
-#benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/absolute_direct_log234.txt")
+benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances[[1,2,3,4,5,6,7,8,9,10]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/absolute_direct_log234.txt")
 ##benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances[[261,270]], refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "test_exps/nonconvex234_small.txt", PWL_general_constraint = false)
-benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[1]], refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "test_exps/root567_mini.txt")
+#benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[1]], refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "test_exps/root567_mini.txt")
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_bigover7_small, refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "test_exps/nonconvex810_small.txt", PWL_general_constraint = false)
 #experience_error_relaunched = benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[261]], refinement_methods = ["SGM_gurobiNL_model"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "test_exps/root567_small_errors_relaunched.txt")
 

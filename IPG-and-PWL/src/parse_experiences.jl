@@ -194,7 +194,7 @@ function load_output_instance(line)
                 iterations = []
             end
             outputs = output_cs_instance(solved, solution, profits, cpu_time,
-            iter, delta_eq, length_pwls, variations, SGM_time, julia_time, [iterations])
+            iter, delta_eq, length_pwls, variations, SGM_time, julia_time, iterations)
         elseif occursin("ProcessExited(10)", line) # SGM finished with TIME LIMIT reached
             outputs = output_cs_instance(false, [[]], [], Inf, -1, [], [], [], -1, -1, [])
         elseif occursin("ProcessExited(11)", line) # SGM finished with MAX ITER reached

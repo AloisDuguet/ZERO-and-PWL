@@ -23,7 +23,7 @@ include("analyse_experiences.jl")
     return s
 end=#
 
-function parse_iterations(filename)
+function parse_iterations_old(filename)
     # parse a file containing only the iterations of one exp (such as root234)
     # each line contains 3 to 4 values, in the form _v1 _v2 _v3 _v4
     # if one value vi is nonexistent, it means that the SGM failed this run
@@ -64,7 +64,7 @@ function parse_iterations(filename)
     return  iters
 end
 
-function analyse_iterations(filename)
+function analyse_iterations_old(filename)
     # return some statistics on the iterations found in file filename
 
     println("file parse is $filename")
@@ -106,7 +106,6 @@ function analyse_iterations(filename)
     return means, vars
 end
 
-
 #analyse_iterations("indicator_exps/log234_iterations.txt")
 #analyse_iterations("indicator_exps/root234_iterations.txt")
 #analyse_iterations("indicator_exps/log567_iterations.txt")
@@ -137,9 +136,11 @@ specific variances: [7.157141821609977, 6.8086403153005435, 6.858376604355734]
 means: Any[38.498039215686276, 40.3125, 39.5843137254902]
 variances: Any[16.78675353350196, 19.129390835831654, 18.230542918883756]
 =#
-analyse_iterations("PWLgen/log234_iteration.txt")
-analyse_iterations("PWLgen/root234_iteration.txt")
-analyse_iterations("PWLgen/log567_iteration.txt")
-analyse_iterations("PWLgen/root567_iteration.txt")
-analyse_iterations("SCIP_exps/NL234_iteration.txt")
-analyse_iterations("SCIP_exps/NL567_iteration.txt")
+
+
+# analyse_iterations_old("PWLgen/log234_iteration.txt")
+# analyse_iterations_old("PWLgen/root234_iteration.txt")
+# analyse_iterations_old("PWLgen/log567_iteration.txt")
+# analyse_iterations_old("PWLgen/root567_iteration.txt")
+# analyse_iterations_old("SCIP_exps/NL234_iteration.txt")
+# analyse_iterations_old("SCIP_exps/NL567_iteration.txt")
