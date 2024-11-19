@@ -320,6 +320,8 @@ function relaunch_exp(experiences, number, complete_output = false)
         end
         if occursin("ProcessExited(10)", string(e)) # SGM finished with TIME LIMIT reached
             output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [], -1, -1)
+        elseif occursin("ProcessExited(209)", string(e)) # SGM finished with TIME LIMIT reached in SCIP best reaction
+            output = output_cs_instance(false, ErrorException("ERROR time limit reached in SGM"), [], Inf, -1, [], [], [], -1, -1)
         #elseif occursin("ProcessExited(11)", string(e)) # SGM finished with MAX ITER reached
         elseif occursin("ProcessExited(11)", string(e)) # SGM finished with MAX ITER reached
             output = output_cs_instance(false, ErrorException("ERROR max iter reached in SGM"), [], Inf, -1, [], [], [], -1, -1)

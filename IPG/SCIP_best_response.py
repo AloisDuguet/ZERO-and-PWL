@@ -217,7 +217,7 @@ def BestReactionSCIPCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
     try:
         if m_p.getStatus() == "timelimit":
             print("time limit for best response of $time_limit seconds reached with SCIP")
-            exit(209) # time limit reached
+            exit(209) # time limit reached in SCIP best reaction
         #sol = [i.x for i in m_p.getVars()]
         #print("getting best sol SCIP")
         sol = m_p.getBestSol()
@@ -264,7 +264,7 @@ def BestReactionSCIPCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
         return sol, value, m_p
     except:
         if m_p.getStatus() == "timelimit":
-            exit(209)
+            exit(209) # time limit reached in SCIP best reaction
         print(sys.exc_info())
         print("Wow! The best reaction problem has no feasible solution with SCIP", m_p.getStatus())
         #print("Wow! The best reaction problem has no feasible solution. The status code is: ", m_p.status)

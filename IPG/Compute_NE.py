@@ -577,9 +577,9 @@ def FeasibilityProblem_Gurobi(m,A_supp, U_depend,U_p,MCT,Numb_stra,m_p = None):
     if m_p == None:
         # initiate model
         m_p = grb.Model("FeasibilityProblem")
-        m_p.setParam("Threads", 4)
         # no pritting of the output
         m_p.setParam( 'OutputFlag', False )
+        m_p.setParam("Threads", 4)
         # set objective function direction
         m_p.ModelSense = -1 # maximize
         m_p.update()
@@ -649,7 +649,7 @@ def ComputeNE_new(G,U_depend,U_p,MCT,m,n_I,n_C,Numb_stra,warmstart_MIP,opt_solve
     print("ComputeNE_MIP finished:\nne = ", ne, "\nProfits = ", Profits)
     return ne,Profits
 
-def check_relax_infeasibility_solution(filename):
+def check_relax_infeasibility_solution(filename, FEAS_TOL):
     # check if all artificial variables ArtP_R{x} and ArtN_R{x} are 0
     # if not, raise an error
     # if yes, life is pure joy
@@ -659,7 +659,7 @@ def check_relax_infeasibility_solution(filename):
     while len(line) >= 1:
         if line[:3] == "Art":
             val = float(line.split()[1])
-            if val >= 1e-9: # the numerical value should be the FeasibilityTol parameter
+            if val >= FEAS_TOL: # the numerical value should be the FeasibilityTol parameter
                 print("there is a value of artificial variable that is nonzero:\nval = ", val, "\n", line)
                 exit(9) #specific exit number for problem in ComputeNE_MIP
         line = f.readline()
@@ -671,13 +671,14 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
     ##print("start of model in ComputeNE_MIP --- %s seconds ---" % (Ltime.time() - 1675900000))
     # initiate model
     m_p = grb.Model("ComputeNE_MIP")
+    # no printing of the output
+    m_p.setParam( 'OutputFlag', False)
     m_p.setParam("Threads", 4)
     m_p.setParam("MIPGap",REL_GAP_SOLVER)
     m_p.setParam("MIPGapAbs",ABS_GAP_SOLVER)
     m_p.setParam("IntFeasTol", 1e-9)
-    m_p.setParam("FeasibilityTol", 1e-9)
-    # no pritting of the output
-    m_p.setParam( 'OutputFlag', False)
+    FEAS_TOL = 1e-9
+    m_p.setParam("FeasibilityTol", FEAS_TOL)
     m_p.setParam("TimeLimit", 900)
     # set objective function direction
     m_p.ModelSense = 1 # minimize (1)
@@ -786,7 +787,7 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
         print("\t"*10,"relaxed model optimized because of infeasibility")
         print("\n"*5)
         print("debug.sol should be written now")
-        bool_check = check_relax_infeasibility_solution("debug.sol")
+        bool_check = check_relax_infeasibility_solution("debug.sol", FEAS_TOL)
         print("end of checking artificial variables values with output ", bool_check)
         # if bool_check == True, m_p.status == 2 and the next if is executed
     if m_p.status == 9: # time limit
