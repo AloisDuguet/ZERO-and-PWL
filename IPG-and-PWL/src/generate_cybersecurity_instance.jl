@@ -68,3 +68,14 @@ function generate_cybersecurity_instance(n_players, n_markets, foldername = "../
     println("return: $(filename[14:end])")
     return filename[14:end]
 end
+
+if false # already generated
+    k = 10
+    for i in 1:k
+        for n_players in 11:15
+            for n_markets in 2:20
+                generate_cybersecurity_instance(n_players, n_markets)
+            end
+        end
+    end
+end
