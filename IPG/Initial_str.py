@@ -6,6 +6,8 @@ import gurobipy as grb
 import numpy as np
 import time as Ltime
 
+THREADS_NUMBER = 1
+
 #######################################################
 ##        COMPUTE INITIAL SET OF STRATEGIES          ##
 ## Generate initial strategies: monopoly strategies  ##
@@ -75,7 +77,7 @@ def InitialStrategiesII(G,opt_solver=1,social=1):
 def PotentialNEGurobi(m, n_I, n_C, n_constr, c, Q, A, b):
     m_Pot = grb.Model("PotentialNE")
     m_Pot.setParam( 'OutputFlag', False )
-    m_Pot.setParam("Threads", 2)
+    m_Pot.setParam("Threads", THREADS_NUMBER)
     # set objective function direction
     m_Pot.ModelSense = -1 # maximize
     m_Pot.update()
@@ -110,7 +112,7 @@ def PotentialNEGurobi(m, n_I, n_C, n_constr, c, Q, A, b):
 def SocialOptimumGurobi(m, n_I, n_C, n_constr, c, Q, A, b):
     m_SO = grb.Model("SocialOptimum")
     m_SO.setParam( 'OutputFlag', False )
-    m_SO.setParam("Threads", 2)
+    m_SO.setParam("Threads", THREADS_NUMBER)
     # set objective function direction
     m_SO.ModelSense = -1 # maximize
     m_SO.update()
@@ -180,7 +182,7 @@ def BestReactionGurobi(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Profile,p,create
         m_p = grb.Model("MIQPG")
         # no pritting of the output
         m_p.setParam( 'OutputFlag', False )
-        m_p.setParam("Threads", 4)
+        m_p.setParam("Threads", THREADS_NUMBER)
         m_p.setParam("MIPGap", 1e-6)
         #m_p.setParam('BarHomogeneous', 1)
         #m_p.setParam('DualReductions',0)
@@ -304,7 +306,7 @@ def BestReactionGurobiCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,Pro
         m_p = grb.Model("MIQPG")
         # no pritting of the output
         m_p.setParam( 'OutputFlag', False)
-        m_p.setParam("Threads", 4)
+        m_p.setParam("Threads", THREADS_NUMBER)
         m_p.setParam("MIPGap",REL_GAP_SOLVER) # keep value 1e-10 to avoid interferences with MIPGapAbs
         m_p.setParam("MIPGapAbs",ABS_GAP_SOLVER)
         #m_p.setParam('MIPGapAbs', 1e4)
@@ -442,7 +444,7 @@ def BestReactionGurobiCyberSecurityPWLgen(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b
         m_p = grb.Model("MIQPG")
         # no pritting of the output
         m_p.setParam( 'OutputFlag', False)
-        m_p.setParam("Threads", 4)
+        m_p.setParam("Threads", THREADS_NUMBER)
         m_p.setParam("MIPGap",REL_GAP_SOLVER) # keep value 1e-10 to avoid interferences with MIPGapAbs
         m_p.setParam("MIPGapAbs",ABS_GAP_SOLVER)
         #m_p.setParam('MIPGapAbs', 1e4)
@@ -591,7 +593,7 @@ def GurobiNLBestReactionCyberSecurity(m,n_I_p,n_C_p,n_constr_p,c_p,Q_p,A_p,b_p,P
         m_p = grb.Model("MIQPG")
         # no pritting of the output
         m_p.setParam( 'OutputFlag', False)
-        m_p.setParam("Threads", 4)
+        m_p.setParam("Threads", THREADS_NUMBER)
         m_p.setParam("MIPGap",REL_GAP_SOLVER)# keep value 1e-10 to avoid interferences with MIPGapAbs
         m_p.setParam("MIPGapAbs",ABS_GAP_SOLVER)
         m_p.setParam("IntFeasTol", 1e-9)

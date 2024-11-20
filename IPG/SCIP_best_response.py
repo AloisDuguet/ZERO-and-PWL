@@ -5,6 +5,8 @@ from Instances import *
 from check_SOCP import *
 import numpy as np
 
+THREADS_NUMBER = 1
+
 def findOrderVariables(model, name_vars, vars):
     # return the solution with the same order of variables as in name_var
 
@@ -208,6 +210,8 @@ def BestReactionSCIPCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
     m_p.setParam('limits/absgap', ABS_GAP_SOLVER)
     m_p.setParam('limits/gap', REL_GAP_SOLVER)
     m_p.setParam('numerics/feastol', 1e-9)
+    m_p.setParam('lp/threads', THREADS_NUMBER)
+    m_p.setParam('parallel/maxnthreads', THREADS_NUMBER)
     print("absgap: ", ABS_GAP_SOLVER, " and relgap: ", REL_GAP_SOLVER)
     # I could not find the parameter for integer feasibility tolerance for SCIP
     m_p.optimize()

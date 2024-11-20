@@ -9,6 +9,7 @@ from time import time
 from copy import deepcopy
 import time as Ltime
 
+THREADS_NUMBER = 1
 
 # under unix: to limit time
 # import signal
@@ -578,7 +579,7 @@ def FeasibilityProblem_Gurobi(m,A_supp, U_depend,U_p,MCT,Numb_stra,m_p = None):
         m_p = grb.Model("FeasibilityProblem")
         # no pritting of the output
         m_p.setParam( 'OutputFlag', False )
-        m_p.setParam("Threads", 4)
+        m_p.setParam("Threads", THREADS_NUMBER)
         # set objective function direction
         m_p.ModelSense = -1 # maximize
         m_p.update()
@@ -672,7 +673,8 @@ def ComputeNE_MIP(G,m, A_supp, U_depend, U_p, MCT, Numb_stra, warmstart_MIP, Bes
     m_p = grb.Model("ComputeNE_MIP")
     # no printing of the output
     m_p.setParam( 'OutputFlag', False)
-    m_p.setParam("Threads", 4)
+    m_p.setParam("Threads", THREADS_NUMBER)
+    print("number of threads: ", THREADS_NUMBER)
     m_p.setParam("MIPGap",REL_GAP_SOLVER)
     m_p.setParam("MIPGapAbs",ABS_GAP_SOLVER)
     m_p.setParam("IntFeasTol", 1e-9)

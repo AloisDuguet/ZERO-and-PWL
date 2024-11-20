@@ -9,6 +9,8 @@ import sys
 import copy
 import time as Ltime
 
+THREADS_NUMBER = 1
+
 def get_additional_info_for_NL_model(p, n_players):
     # return alpha and nRealVars of player p (p in 0,...,G.m()-1) by reading file "additional_infos_for_python.txt"
     f = open("additional_infos_for_python.txt")
@@ -360,7 +362,7 @@ def SOCPBestReactionCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
     'dparam.mio_tol_abs_gap': ABS_GAP_SOLVER,
     'dparam.mio_tol_abs_relax_int': 1e-9,
     'dparam.mio_tol_feas': 1e-9,
-    'iparam.num_threads': 4})
+    'iparam.num_threads': THREADS_NUMBER})
     #opt.solve(model, options = {'dparam.mio_tol_rel_gap': 1e-9,})
     ##print("end of optimization in SOCP BR --- %s seconds ---" % (Ltime.time() - 1675900000))
 

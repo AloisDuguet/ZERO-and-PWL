@@ -359,15 +359,12 @@ function SGM_PWL_absolute_direct_solver(filename_instance; fixed_costs = true, r
 end
 
 function benchmark_SGM_absolute_direct_solver(; filename_instances, fixed_costss = [true], refinement_methods = ["SGM_SOCP_model","sufficient_refinement"],
-    max_iters = [1], rel_gaps = [0], abs_gaps = [1e-4], err_pwlhs = [Absolute(2.5e-5)], filename_save = "last_experiences.txt", big_weights_on_NL_part = false, NL_terms = ["log"], PWL_general_constraint = true)
+    max_iters = [1], rel_gaps = [0], abs_gaps = [0.0001], err_pwlhs = [Absolute(2.5e-5)], filename_save = "last_experiences.txt", big_weights_on_NL_part = false, NL_terms = ["log"], PWL_general_constraint = true)
     # build, solve, and retrieve solution to instances defined with the cartesian products of the options
 
-    #=# build err_pwlhs
-    err_pwlhs = []
-    for abs_gap in abs_gaps
-        err_pwlh = Absolute(abs_gap/4)
-        push!(err_pwlhs, err_pwlh)
-    end=#
+    if length(abs_gaps) > 1
+        error("multiple values for abs_gaps currently not supported")
+    end
 
     # if NL function is nonconvex, forces PWL_general_constraint to be false
     if NL_terms[1] == "S+inverse_square_root"
@@ -407,11 +404,6 @@ function benchmark_SGM_absolute_direct_solver(; filename_instances, fixed_costss
                 end
             end
         end
-    end
-
-    # add err_pwlhs missing for sufficient_refinement I think
-    for abs_gap in abs_gaps
-        push!(err_pwlhs, Absolute(abs_gap/4))
     end
 
     # solve instances and store the output with the options of the instance in a list
@@ -485,6 +477,11 @@ function benchmark_SGM_absolute_direct_solver(; filename_instances, fixed_costss
 
     # give some elements of analysis
     try
+        # add err_pwlhs missing for sufficient_refinement in prepare_real_performance_profile_cybersecurity
+        for abs_gap in abs_gaps
+            push!(err_pwlhs, Absolute(abs_gap/4))
+        end
+        println("err_pwlhs just before analysis: $err_pwlhs")
         filename_analysis = filename_save[1:end-4]*"_analysis.txt"
         filename_statistics = filename_save[1:end-4]*"_statistics.txt"
         launch_method_comparison(filename_save, experiences, refinement_methods, err_pwlhs, filename_save = filename_analysis)
@@ -510,8 +507,12 @@ end
 
 
 
-SGM_PWL_absolute_direct_solver("instance_2_2_3.txt", refinement_method = "SGM_SOCP_model", err_pwlh = Absolute(0.05), PWL_general_constraint = false)
-
+@time SGM_PWL_absolute_direct_solver("instance_2_2_3.txt", refinement_method = "SGM_NL_model", err_pwlh = Absolute(0.05), NL_term = "S+inverse_square_root")
+if false # just used to launch multiple terminal on the benchmarks
+    benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], abs_gaps = [0.01], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/abs_gap_1e-2/log234.txt")
+    benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], abs_gaps = [0.001], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/abs_gap_1e-3/log234.txt")
+    benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], abs_gaps = [0.0001], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/abs_gap_1e-4/log234.txt")
+end
 #SGM_PWL_absolute_direct_solver("instance_7_2_1.txt", refinement_method = "full_refinement", err_pwlh = Absolute(0.05)) # solved quite fast
 #SGM_PWL_absolute_direct_solver("instance_7_10_1.txt", refinement_method = "full_refinement", err_pwlh = Absolute(0.05)) # failed in iteration 155, maybe because of time limit of 900s
 #SGM_PWL_absolute_direct_solver("instance_10_3_1.txt", refinement_method = "full_refinement", err_pwlh = Absolute(0.05)) # solved in less than 900s
@@ -522,9 +523,22 @@ SGM_PWL_absolute_direct_solver("instance_2_2_3.txt", refinement_method = "SGM_SO
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_bigover7_small, refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "test_exps/nonconvex810_small.txt", PWL_general_constraint = false)
 #experience_error_relaunched = benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[261]], refinement_methods = ["SGM_gurobiNL_model"], err_pwlhs = [Absolute(0.05)], NL_terms = ["inverse_square_root"], filename_save = "test_exps/root567_small_errors_relaunched.txt")
 
+# full experiments
+if false
+    # create specific instance sets: 
+    # one with instances between 2 and 4 players, one between 5 and 7 and one between 8 and 10. 
+    # If more than half of 10-player instances finishes, add instances with more players
+
+    # make variations of abs_gap between 0.01 and 0.0001 (in two or three values?)
+
+    # keep 10 instances per (#player,#market), but do not put all combinations so that it is run faster
+end
+
 # tests for revision instances:
-benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], abs_gaps = [Absolute(0.01), Absolute(0.001), Absolute(0.0001)], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/log234.txt")
-benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[1,11,21,31,41,51,61,71,81,181,191,201,211,221,231,241,251,261]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], abs_gaps = [Absolute(0.01), Absolute(0.001), Absolute(0.0001)], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/root567_small.txt")
+#benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances[[1,2,3]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], abs_gaps = [0.01], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/abs_gap_1e-2/log234_mini.txt")
+#benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances[[1,2,3]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], abs_gaps = [0.001], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/abs_gap_1e-3/log234_mini.txt")
+#benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances[[1,2,3]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], abs_gaps = [0.0001], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/abs_gap_1e-4/log234_mini.txt")
+#benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_big567_complete[[1,11,21,31,41,51,61,71,81,181,191,201,211,221,231,241,251,261]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], abs_gaps = [Absolute(0.01), Absolute(0.001), Absolute(0.0001)], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/root567_small.txt")
 
 #SGM_PWL_absolute_direct_solver("instance_4_8_7.txt", refinement_method = "SGM_NL_model", err_pwlh = Absolute(0.05), NL_term = "S+inverse_square_root", PWL_general_constraint = false)
 #SGM_PWL_absolute_direct_solver("instance_2_2_1.txt", refinement_method = "sufficient_refinement", err_pwlh = Absolute(0.05), NL_term = "S+inverse_square_root") # working with new launch_cmd (base conda python environment)

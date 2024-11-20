@@ -957,6 +957,8 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_stati
 
     exps = load_all_outputs(filename)
 
+    println(file, "total number of instances: $(length(exps))")
+
     # create list_categories if not given
     if list_categories == []
         #println("list_categories:\n")
