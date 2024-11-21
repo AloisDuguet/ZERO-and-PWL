@@ -1045,6 +1045,14 @@ for i in 2:4
         end
     end
 end
+filename_instances_234_one_third = []
+for i in 2:4
+    for j in [2,6,10]
+        for k in 1:10
+            push!(filename_instances_234_one_third, "instance_$(i)_$(j)_$(k).txt")
+        end
+    end
+end
 filename_instances_half = []
 for i in 2:4
     for j in 2:10
@@ -1089,6 +1097,14 @@ filename_instances_big567 = []
 for i in 5:7
     for j in 2:10
         push!(filename_instances_big567, "instance_$(i)_$(j)_1.txt")
+    end
+end
+filename_instances_big567_one_third = []
+for i in 5:7
+    for j in [2,6,10]
+        for k in 1:10 # 90 instances
+            push!(filename_instances_big567_one_third, "instance_$(i)_$(j)_$(k).txt")
+        end
     end
 end
 filename_instances_bigover7 = []
