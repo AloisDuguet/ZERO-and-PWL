@@ -220,7 +220,7 @@ def BestReactionSCIPCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
 
     try:
         if m_p.getStatus() == "timelimit":
-            print("time limit for best response of $time_limit seconds reached with SCIP")
+            print("time limit for best response of ", time_limit, " seconds reached with SCIP")
             exit(209) # time limit reached in SCIP best reaction
         #sol = [i.x for i in m_p.getVars()]
         #print("getting best sol SCIP")

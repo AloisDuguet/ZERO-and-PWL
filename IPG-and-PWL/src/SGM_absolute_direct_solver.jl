@@ -425,7 +425,7 @@ function benchmark_SGM_absolute_direct_solver(; filename_instances, fixed_costss
         SGM_PWL_absolute_direct_solver(inst.filename_instance, fixed_costs = inst.fixed_costs, refinement_method = inst.refinement_method,
         rel_gap = inst.rel_gap, abs_gap = inst.abs_gap, err_pwlh = inst.err_pwlh, big_weights_on_NL_part = big_weights_on_NL_part, NL_term = inst.NL_term, PWL_general_constraint = false)
     catch e
-        println("last warming failed due to: $e")
+        println("last warming up in benchmark function failed due to: $e")
     end
 
     for inst in instance_queue
@@ -499,6 +499,12 @@ function benchmark_SGM_absolute_direct_solver(; filename_instances, fixed_costss
     return experiences
 end
 
+# filename_save = "revision_exps/abs_gap_1e-2/log567.txt"
+# filename_statistics = filename_save[1:end-4]*"_statistics.txt"
+# refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"]
+# err_pwlhs = [Absolute(0.05)]
+# prepare_real_performance_profile_cybersecurity(filename_save, filename_statistics, filename_save[1:end-4]*"_perf_profile.pdf", refinement_methods = refinement_methods, errs = err_pwlhs)
+
 #SGM_PWL_absolute_direct_solver("instance_2_2_1.txt")
 
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances2[1:27], refinement_methods = ["SGM_SOCP_model"], filename_save = "test_absolute_direct.txt")
@@ -513,7 +519,7 @@ end
 
 
 SGM_PWL_absolute_direct_solver("instance_2_3_4.txt", refinement_method = "full_refinement", abs_gap = 0.0001, err_pwlh = Absolute(0.05))
-SGM_PWL_absolute_direct_solver("instance_4_10_5.txt", refinement_method = "full_refinement", abs_gap = 0.001, err_pwlh = Absolute(0.05), NL_term = "S+inverse_square_root")
+#SGM_PWL_absolute_direct_solver("instance_4_10_5.txt", refinement_method = "full_refinement", abs_gap = 0.001, err_pwlh = Absolute(0.05), NL_term = "S+inverse_square_root")
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_mega[[1]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], abs_gaps = [0.01], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/abs_gap_1e-2/log8-15_test.txt")
     
 if false # just used to launch multiple terminal on the benchmarks

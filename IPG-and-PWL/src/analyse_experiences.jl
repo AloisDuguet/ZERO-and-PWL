@@ -1125,6 +1125,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_stati
     println(file, "total number of instances solved under 10 seconds: $total_below10")
     println(file, "fraction of all instances below 10 seconds: $(total_below10/810)")
 
+    println("filename of length $(length(filename)) is equal to '$filename'")
     p = plot(legend = :bottomright, title = filename[32:length(filename)-4])
     for i in 1:length(list_categories)
         c = list_categories[i]
