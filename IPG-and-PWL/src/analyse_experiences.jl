@@ -1114,7 +1114,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_stati
         println(file, "mean number of iterations for last SGM call: $(round(mean_iterations, digits=2)) with standard deviation $(round(standard_deviation_iterations, digits=2))")
         #sum_SGM_iterations = [sum(iterations[j][k] for k in 1:length(iterations[j])) for j in 1:length(iterations) if exps[j] < Inf]
         mean_iterations2 = sum(sum(iterations[j][k] for k in 1:length(iterations[j])) for j in 1:length(iterations) if exps[j] < Inf)/count_non_inf # accesses the number of iterations of all SGM calls for each instance solved
-        standard_deviation_iterations2 = sqrt(sum((sum_SGM_iterations[j]-mean_iterations2)^2 for j in 1:length(iterations) if exps[j] < Inf)/count_non_inf)
+        standard_deviation_iterations2 = sqrt(sum((sum(iterations[j][k] for k in 1:length(iterations[j]))-mean_iterations2)^2 for j in 1:length(iterations) if exps[j] < Inf)/count_non_inf)
         println(file, "mean number of iterations counting all SGM calls: $(round(mean_iterations2, digits=2)) with standard deviation $(round(standard_deviation_iterations2, digits=2))")
     end
     #savefig(pp,"repartition_times_indicator_exps.txt")
