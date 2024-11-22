@@ -957,6 +957,13 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_stati
 
     exps = load_all_outputs(filename)
 
+    # add errs missing for sufficient_refinement in prepare_real_performance_profile_cybersecurity
+    # copy from benchmark so that launching this function from elsewhere than benchmark function will still work
+    abs_gaps = [0.01,0.001,0.0001] # works only if those abs_gaps were used. Else, add them manually
+    for abs_gap in abs_gaps
+        push!(errs, Absolute(abs_gap/4))
+    end
+
     println(file, "total number of instances: $(length(exps))")
 
     # create list_categories if not given
@@ -979,7 +986,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_stati
                     end
                     cat = category([charac1,charac2], name)
                     push!(list_categories, cat)
-                    #println(file, "$(list_categories[end])\n")
+                    println("$(list_categories[end])\n")
                 end
             end
         end
@@ -996,13 +1003,13 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_stati
     iterationss_by_category = [[] for i in 1:length(list_categories)]
     for i in 1:length(list_categories)
         category = list_categories[i]
-        #println(file, "category $category has a number of exps of $(length(exps))")
+        println("fulfilling category $category")
         for exp in exps
             in_category = true
             # does it meet the required characteristics?
             for characteristic in category.l_option
                 if getfield(exp.options, characteristic.option) != characteristic.option_value
-                    #println("exp does not match category $category: $exp")
+                    println("exp does not match category: $exp")
                     in_category = false
                     break
                 end
@@ -1119,7 +1126,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_stati
     end
     #savefig(pp,"repartition_times_indicator_exps.txt")
     #display(pp)
-    println(file, "\ntotal solved: $(100*round(tot_solved/n_exps/3,digits=3))")
+    println(file, "\ntotal solved: $(100*round(tot_solved/n_exps/3,digits=3))%")
     println(file, "total mean time: $(round(tot_mean/tot_solved, digits=2))")
     println(file, "total geometric mean time: $(round(exp(geom_total_mean/total_count_non_inf), digits=2))")
     println(file, "total number of instances solved under 10 seconds: $total_below10")
