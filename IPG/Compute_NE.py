@@ -42,12 +42,12 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
 
     # to facilitate the parsing of the number of iteration: (works with another writing in file at the usual exit)
     print("nonlinear term" : ", G.NL_term())
-    file = open("save_number_of_iteration", "a")
-    if G.type() == "CyberSecuritygurobiNL" or G.type() == "CyberSecuritySOCP" or G.type() == "CyberSecurityNL":
-        file.write("\n")
-    #file.write("count = %d\t%s"%(count,G.type()))
-    file.write("_")
-    file.close()
+    # file = open("save_number_of_iteration", "a")
+    # if G.type() == "CyberSecuritygurobiNL" or G.type() == "CyberSecuritySOCP" or G.type() == "CyberSecurityNL":
+    #     file.write("\n")
+    # #file.write("count = %d\t%s"%(count,G.type()))
+    # file.write("_")
+    # file.close()
 
     # handle parameters for stopping criterion and solver relative gap and absolute gap
     if rel_gap != 0:
@@ -256,12 +256,12 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
         if aux:
             if time()-time_aux <= TIME_LIMIT:
                 print("usual return")
-                file = open("save_number_of_iteration", "a")
-                #if G.type() == "CyberSecuritygurobiNL" or G.type() == "CyberSecuritySOCP":
-                #    file.write("\n")
-                #file.write("count = %d\t%s"%(count,G.type()))
-                file.write("%d "%count)
-                file.close()
+                # file = open("save_number_of_iteration", "a")
+                # #if G.type() == "CyberSecuritygurobiNL" or G.type() == "CyberSecuritySOCP":
+                # #    file.write("\n")
+                # #file.write("count = %d\t%s"%(count,G.type()))
+                # file.write("%d "%count)
+                # file.close()
                 return ne, Profits, S,count,time()-time_aux
             else:
                 exit(5) # time limit reached during the iteration that proved the solution of the SGM
