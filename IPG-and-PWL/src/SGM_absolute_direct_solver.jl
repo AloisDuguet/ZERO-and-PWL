@@ -14,6 +14,11 @@ function SGM_PWL_absolute_direct_solver(filename_instance; fixed_costs = true, r
     end
     #println("after if\nrefinement_method: $refinement_method\nerr_pwlh: $err_pwlh")
 
+    # if NL function is nonconvex, forces PWL_general_constraint to be false
+    if NL_term == "S+inverse_square_root"
+        PWL_general_constraint = false
+    end
+
     # compute filename_save, the name of the instance
     filename_save = compute_filename_SGM_solve(filename_instance, err_pwlh, fixed_costs) # to adapt later
 
@@ -508,6 +513,7 @@ end
 
 
 SGM_PWL_absolute_direct_solver("instance_2_3_4.txt", refinement_method = "full_refinement", abs_gap = 0.0001, err_pwlh = Absolute(0.05))
+SGM_PWL_absolute_direct_solver("instance_4_10_5.txt", refinement_method = "full_refinement", abs_gap = 0.001, err_pwlh = Absolute(0.05), NL_term = "S+inverse_square_root")
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_mega[[1]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], abs_gaps = [0.01], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/abs_gap_1e-2/log8-15_test.txt")
     
 if false # just used to launch multiple terminal on the benchmarks
