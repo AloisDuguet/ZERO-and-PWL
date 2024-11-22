@@ -41,7 +41,7 @@ def IterativeSG_NOT_DFS(G,max_iter,opt_solver=1, S=[], rel_gap=10**-6, abs_gap=1
     """
 
     # to facilitate the parsing of the number of iteration: (works with another writing in file at the usual exit)
-    print("nonlinear term" : ", G.NL_term())
+    print("nonlinear term : ", G.NL_term())
     # file = open("save_number_of_iteration", "a")
     # if G.type() == "CyberSecuritygurobiNL" or G.type() == "CyberSecuritySOCP" or G.type() == "CyberSecurityNL":
     #     file.write("\n")
