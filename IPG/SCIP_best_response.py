@@ -213,9 +213,9 @@ def BestReactionSCIPCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
     m_p.setParam('lp/threads', THREADS_NUMBER)
     m_p.setParam('parallel/maxnthreads', THREADS_NUMBER)
     print("absgap: ", ABS_GAP_SOLVER, " and relgap: ", REL_GAP_SOLVER)
+    print("starting resolution with SCIP...")
     # I could not find the parameter for integer feasibility tolerance for SCIP
     m_p.optimize()
-    print(type(m_p.getStatus()))
     print("SCIP status : ", m_p.getStatus())
 
     try:
