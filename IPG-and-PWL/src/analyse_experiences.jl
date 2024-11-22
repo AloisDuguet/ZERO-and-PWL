@@ -1112,8 +1112,8 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_stati
         mean_iterations = sum(iterations[j][1] for j in 1:length(iterations) if exps[j] < Inf)/count_non_inf # iterations[j][1] accesses the number of iterations of the first call to SGM
         standard_deviation_iterations = sqrt(sum((iterations[j][end]-mean_iterations)^2 for j in 1:length(iterations) if exps[j] < Inf)/count_non_inf)
         println(file, "mean number of iterations for last SGM call: $(round(mean_iterations, digits=2)) with standard deviation $(round(standard_deviation_iterations, digits=2))")
-        sum_SGM_iterations = [sum(iterations[j][k] for k in 1:length(iterations[j])) for j in 1:length(iterations) if exps[j] < Inf]
-        mean_iterations2 = sum(sum_SGM_iterations[j] for j in 1:length(iterations) if exps[j] < Inf)/count_non_inf # sum_SGM_iterations[j] accesses the number of iterations of all SGM calls
+        #sum_SGM_iterations = [sum(iterations[j][k] for k in 1:length(iterations[j])) for j in 1:length(iterations) if exps[j] < Inf]
+        mean_iterations2 = sum(sum(iterations[j][k] for k in 1:length(iterations[j])) for j in 1:length(iterations) if exps[j] < Inf)/count_non_inf # accesses the number of iterations of all SGM calls for each instance solved
         standard_deviation_iterations2 = sqrt(sum((sum_SGM_iterations[j]-mean_iterations2)^2 for j in 1:length(iterations) if exps[j] < Inf)/count_non_inf)
         println(file, "mean number of iterations counting all SGM calls: $(round(mean_iterations2, digits=2)) with standard deviation $(round(standard_deviation_iterations2, digits=2))")
     end
