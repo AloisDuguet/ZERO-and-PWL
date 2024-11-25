@@ -1,10 +1,12 @@
-function generate_cybersecurity_instance(n_players, n_markets, foldername = "../instances/")
+function generate_cybersecurity_instance(n_players, n_markets, number = 0, foldername = "../instances/")
     # generate a cybersecurity instance with n_players players, n_markets markets, in the folder foldername
     # under the name "instance_{n_players}_{n_markets}_{number}.txt" where number is 1 plus the number of already existing "instance_{n_players}_{n_markets}" in folder foldername
 
     # building instance name
     partial_name = "instance_$(n_players)_$(n_markets)"
-    number = length(findall(x->occursin(partial_name, x), readdir(foldername))) + 1
+    if number == 0 # if argument number is filled, then it is used to name the instance file
+        number = length(findall(x->occursin(partial_name, x), readdir(foldername))) + 1
+    end
     filename = foldername*partial_name*"_$number.txt"
     println("adding instance $filename")
 
@@ -74,7 +76,16 @@ if false # already generated
     for i in 1:k
         for n_players in 11:15
             for n_markets in 2:20
-                generate_cybersecurity_instance(n_players, n_markets)
+                generate_cybersecurity_instance(n_players, n_markets, i)
+            end
+        end
+    end
+
+    k = 10
+    for i in 1:k
+        for n_players in 8:10
+            for n_markets in 11:20
+                generate_cybersecurity_instance(n_players, n_markets, i)
             end
         end
     end

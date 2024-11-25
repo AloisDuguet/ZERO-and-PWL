@@ -961,7 +961,9 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_stati
     # copy from benchmark so that launching this function from elsewhere than benchmark function will still work
     abs_gaps = [0.01,0.001,0.0001] # works only if those abs_gaps were used. Else, add them manually
     for abs_gap in abs_gaps
-        push!(errs, Absolute(abs_gap/4))
+        if !(Absolute(abs_gap/4) in errs)
+            push!(errs, Absolute(abs_gap/4))
+        end
     end
 
     println(file, "total number of instances: $(length(exps))")
