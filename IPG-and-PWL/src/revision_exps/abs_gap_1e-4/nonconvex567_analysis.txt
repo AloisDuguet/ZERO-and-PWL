@@ -1,0 +1,78 @@
+methods	%solved	#inst	time	iter	
+NL	0.611	90	27.67	1.0	
+sufficient_refinement_0.05	0	0	undef	undef	
+sufficient_refinement_2.5e-5	0.956	90	9.73	1.0	
+full_refinement_0.05	0.944	90	6.52	1.0	
+full_refinement_2.5e-5	0	0	undef	undef	
+
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c|c}
+ & methods & %solved & #inst & time & iter \\ \hline
+NL & 0.611 & 90 & 27.67 & 1.0 & 1.0 \\
+sufficient\_refinement\_0.05 & 0 & 0 & undef & undef & undef \\
+sufficient\_refinement\_2.5e-5 & 0.956 & 90 & 9.73 & 1.0 & 1.0 \\
+full\_refinement\_0.05 & 0.944 & 90 & 6.52 & 1.0 & 1.0 \\
+full\_refinement\_2.5e-5 & 0 & 0 & undef & undef & undef \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+
+			Absolute(0.05) Absolute(2.5e-5)
+instances solved:	0	0	
+instances comparable:	0	0	
+
+			true
+instances solved:	237	
+instances comparable:	270	
+average cpu times:	30.24	
+average iterations:	1.0	
+			SGM_NL_model sufficient_refinement full_refinement
+instances solved:	0	0	0	
+instances comparable:	0	0	0	
+
+Total number of experiences: 270
+
+33 occured, with errors :
+ErrorException("ERROR time limit reached in SGM")
+0 experiences stopped because of a failed resolution of Couenne in julia
+the indices of those experiences are in l_failed:
+Any[]
+
+
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c}
+ & solved & comparable & time & iterations \\ \hline
+Absolute(0.05) & 0 & 0 & undef & undef \\
+Absolute(2.5e-5) & 0 & 0 & undef & undef \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c}
+ & solved & comparable & time & iterations \\ \hline
+true & 237 & 270 & 30.24 & 1.0 \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c}
+ & solved & comparable & time & iterations \\ \hline
+SGM\_NL\_model & 0 & 0 & undef & undef \\
+sufficient\_refinement & 0 & 0 & undef & undef \\
+full\_refinement & 0 & 0 & undef & undef \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+
