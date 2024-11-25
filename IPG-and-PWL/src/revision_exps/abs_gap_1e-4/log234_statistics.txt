@@ -1,0 +1,54 @@
+total number of instances: 270
+
+
+----- max julia time is 0.3075400909999999 seconds -----
+
+
+90 instances in category category(characteristic[characteristic(:refinement_method, "SGM_SOCP_model")], "SOCP")
+90 instances in category category(characteristic[characteristic(:refinement_method, "sufficient_refinement"), characteristic(:err_pwlh, Absolute(2.5e-5))], "sufficient_refinement")
+90 instances in category category(characteristic[characteristic(:refinement_method, "full_refinement"), characteristic(:err_pwlh, Absolute(0.05))], "full_refinement 0.05")
+
+
+category: SOCP
+%solved: 100.0
+number of instances below 10 seconds: 82
+maximum time of solved instance: 15.1
+mean time: 3.78
+geometric mean time: 2.52
+mean number of iterations for last SGM call: 15.31 with standard deviation 7.23
+mean number of iterations counting all SGM calls: 15.31 with standard deviation 7.23
+
+
+category: sufficient_refinement
+%solved: 100.0
+number of instances below 10 seconds: 88
+maximum time of solved instance: 11.85
+mean time: 2.37
+geometric mean time: 1.65
+mean number of iterations for last SGM call: 15.63 with standard deviation 7.69
+mean number of iterations counting all SGM calls: 15.63 with standard deviation 7.69
+
+
+category: full_refinement 0.05
+%solved: 98.9
+number of instances below 10 seconds: 89
+maximum time of solved instance: 4.9
+mean time: 1.07
+geometric mean time: 0.8
+mean number of iterations for last SGM call: 15.35 with standard deviation 7.22
+mean number of iterations counting all SGM calls: 16.61 with standard deviation 7.26
+
+total solved: 99.6%
+total mean time: 2.41
+total geometric mean time: 1.5
+total number of instances solved under 10 seconds: 259
+fraction of all instances below 10 seconds: 0.3197530864197531
+
+proportion of best instances for SOCP: 0.011111111111111112
+with last point of the performance curve (8.015362674072204, 1.0)
+proportion of best instances for sufficient_refinement: 0.011111111111111112
+with last point of the performance curve (8.527870693652194, 1.0)
+proportion of best instances for full_refinement 0.05: 0.9777777777777777
+with last point of the performance curve (1.091547336512569, 0.9888888888888889)
+
+last solved instance had a performance ratio of 8.527870693652194

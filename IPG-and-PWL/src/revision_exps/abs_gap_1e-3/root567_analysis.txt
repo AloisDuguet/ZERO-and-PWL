@@ -1,0 +1,78 @@
+methods	%solved	#inst	time	iter	
+gurobiNL	0.956	90	5.4	1.0	
+sufficient_refinement_0.05	0	0	undef	undef	
+sufficient_refinement_0.00025	0.933	90	6.45	1.0	
+full_refinement_0.05	0.922	90	3.59	1.0	
+full_refinement_0.00025	0	0	undef	undef	
+
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c|c}
+ & methods & %solved & #inst & time & iter \\ \hline
+gurobiNL & 0.956 & 90 & 5.4 & 1.0 & 1.0 \\
+sufficient\_refinement\_0.05 & 0 & 0 & undef & undef & undef \\
+sufficient\_refinement\_0.00025 & 0.933 & 90 & 6.45 & 1.0 & 1.0 \\
+full\_refinement\_0.05 & 0.922 & 90 & 3.59 & 1.0 & 1.0 \\
+full\_refinement\_0.00025 & 0 & 0 & undef & undef & undef \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+
+			Absolute(0.05) Absolute(0.00025)
+instances solved:	0	0	
+instances comparable:	0	0	
+
+			true
+instances solved:	259	
+instances comparable:	270	
+average cpu times:	18.3	
+average iterations:	1.0	
+			SGM_gurobiNL_model sufficient_refinement full_refinement
+instances solved:	0	0	0	
+instances comparable:	0	0	0	
+
+Total number of experiences: 270
+
+11 occured, with errors :
+ErrorException("ERROR time limit reached in SGM")
+0 experiences stopped because of a failed resolution of Couenne in julia
+the indices of those experiences are in l_failed:
+Any[]
+
+
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c}
+ & solved & comparable & time & iterations \\ \hline
+Absolute(0.05) & 0 & 0 & undef & undef \\
+Absolute(0.00025) & 0 & 0 & undef & undef \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c}
+ & solved & comparable & time & iterations \\ \hline
+true & 259 & 270 & 18.3 & 1.0 \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c}
+ & solved & comparable & time & iterations \\ \hline
+SGM\_gurobiNL\_model & 0 & 0 & undef & undef \\
+sufficient\_refinement & 0 & 0 & undef & undef \\
+full\_refinement & 0 & 0 & undef & undef \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+

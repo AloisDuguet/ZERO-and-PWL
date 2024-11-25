@@ -2,3 +2,4 @@ tests
 !revision_exps/
 test_exps/
 MNE_distance_variation.txt
+script.jl

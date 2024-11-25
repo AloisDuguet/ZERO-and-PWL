@@ -1,0 +1,78 @@
+methods	%solved	#inst	time	iter	
+gurobiNL	1.0	90	0.64	1.0	
+sufficient_refinement_0.05	0	0	undef	undef	
+sufficient_refinement_0.00025	1.0	90	1.68	1.0	
+full_refinement_0.05	1.0	90	1.07	1.0	
+full_refinement_0.00025	0	0	undef	undef	
+
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c|c}
+ & methods & %solved & #inst & time & iter \\ \hline
+gurobiNL & 1.0 & 90 & 0.64 & 1.0 & 1.0 \\
+sufficient\_refinement\_0.05 & 0 & 0 & undef & undef & undef \\
+sufficient\_refinement\_0.00025 & 1.0 & 90 & 1.68 & 1.0 & 1.0 \\
+full\_refinement\_0.05 & 1.0 & 90 & 1.07 & 1.0 & 1.0 \\
+full\_refinement\_0.00025 & 0 & 0 & undef & undef & undef \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+
+			Absolute(0.05) Absolute(0.00025)
+instances solved:	0	0	
+instances comparable:	0	0	
+
+			true
+instances solved:	270	
+instances comparable:	270	
+average cpu times:	1.13	
+average iterations:	1.0	
+			SGM_gurobiNL_model sufficient_refinement full_refinement
+instances solved:	0	0	0	
+instances comparable:	0	0	0	
+
+Total number of experiences: 270
+
+0 occured, with errors :
+no errors
+0 experiences stopped because of a failed resolution of Couenne in julia
+the indices of those experiences are in l_failed:
+Any[]
+
+
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c}
+ & solved & comparable & time & iterations \\ \hline
+Absolute(0.05) & 0 & 0 & undef & undef \\
+Absolute(0.00025) & 0 & 0 & undef & undef \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c}
+ & solved & comparable & time & iterations \\ \hline
+true & 270 & 270 & 1.13 & 1.0 \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+
+\begin{table}[]
+\centering
+\begin{tabular}{c||c|c|c|c}
+ & solved & comparable & time & iterations \\ \hline
+SGM\_gurobiNL\_model & 0 & 0 & undef & undef \\
+sufficient\_refinement & 0 & 0 & undef & undef \\
+full\_refinement & 0 & 0 & undef & undef \\
+ \hline
+\end{tabular}
+\caption{}
+\end{table}
+
