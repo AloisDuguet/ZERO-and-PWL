@@ -226,7 +226,7 @@ def BestReactionSCIPCyberSecurity(m, n_I_p, n_C_p, n_constr_p, c_p, Q_p, A_p, b_
         #print("getting best sol SCIP")
         sol = m_p.getBestSol()
         t = m_p.getSolvingTime()
-        print("SCIP best response solved in {} seconds".format(t))
+        print("SCIP best response solved or stopped in {} seconds".format(t))
         # write the time in a file
         file = open("SCIP_time.txt", "a")
         file.write("{} ".format(t))
