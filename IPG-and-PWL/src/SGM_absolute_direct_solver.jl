@@ -500,6 +500,33 @@ function benchmark_SGM_absolute_direct_solver(; filename_instances, fixed_costss
     return experiences
 end
 
+# filenames = ["revision_exps/abs_gap_1e-2/log8-15.txt","revision_exps/abs_gap_1e-3/log8-15.txt","revision_exps/abs_gap_1e-4/log8-15.txt"]
+# for filename_save in filenames
+#     filename_analysis = filename_save[1:end-4]*"_analysis.txt"
+#     filename_statistics = filename_save[1:end-4]*"_statistics.txt"
+#     refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"]
+#     err_pwlhs = [Absolute(0.05), Absolute(0.0125)]
+#     prepare_real_performance_profile_cybersecurity(filename_save, filename_statistics, filename_save[1:end-4]*"_perf_profile.pdf", refinement_methods = refinement_methods, errs = err_pwlhs)
+# end
+
+# filenames = ["revision_exps/abs_gap_1e-2/root8-15.txt","revision_exps/abs_gap_1e-3/root8-15.txt","revision_exps/abs_gap_1e-4/root8-15.txt"]
+# for filename_save in filenames
+#     filename_analysis = filename_save[1:end-4]*"_analysis.txt"
+#     filename_statistics = filename_save[1:end-4]*"_statistics.txt"
+#     refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"]
+#     err_pwlhs = [Absolute(0.05), Absolute(0.0125)]
+#     prepare_real_performance_profile_cybersecurity(filename_save, filename_statistics, filename_save[1:end-4]*"_perf_profile.pdf", refinement_methods = refinement_methods, errs = err_pwlhs)
+# end
+
+filenames = ["revision_exps/abs_gap_1e-2/nonconvex8-15.txt","revision_exps/abs_gap_1e-3/nonconvex8-15.txt","revision_exps/abs_gap_1e-4/nonconvex8-15.txt"]
+for filename_save in filenames
+    filename_analysis = filename_save[1:end-4]*"_analysis.txt"
+    filename_statistics = filename_save[1:end-4]*"_statistics.txt"
+    refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"]
+    err_pwlhs = [Absolute(0.05), Absolute(0.0125)]
+    prepare_real_performance_profile_cybersecurity(filename_save, filename_statistics, filename_save[1:end-4]*"_perf_profile.pdf", refinement_methods = refinement_methods, errs = err_pwlhs)
+end
+
 # filename_save = "revision_exps/abs_gap_1e-2/log567.txt"
 # filename_statistics = filename_save[1:end-4]*"_statistics.txt"
 # refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"]
@@ -519,7 +546,10 @@ end
 
 
 
-SGM_PWL_absolute_direct_solver("instance_2_3_4.txt", refinement_method = "full_refinement", abs_gap = 0.0001, err_pwlh = Absolute(0.05))
+#SGM_PWL_absolute_direct_solver("instance_2_3_4.txt", refinement_method = "full_refinement", abs_gap = 0.0001, err_pwlh = Absolute(0.05))
+
+
+
 #SGM_PWL_absolute_direct_solver("instance_4_10_5.txt", refinement_method = "full_refinement", abs_gap = 0.001, err_pwlh = Absolute(0.05), NL_term = "S+inverse_square_root")
 #benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances_mega[[1]], refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"], abs_gaps = [0.01], err_pwlhs = [Absolute(0.05)], filename_save = "test_exps/abs_gap_1e-2/log8-15_test.txt")
     

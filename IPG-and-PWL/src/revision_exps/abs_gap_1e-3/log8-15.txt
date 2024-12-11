@@ -69,4 +69,4 @@ instance_15_15_1.txt::delta0.00025 epsilon0.0::true::sufficient_refinement::1::0
 instance_15_15_1.txt::delta0.05 epsilon0.0::true::full_refinement::1::0::0.001::log::false::true::ERROR: ErrorException("ERROR time limit reached in SGM")
 instance_15_15_2.txt::delta0.00025 epsilon0.0::true::SGM_SOCP_model::1::0::0.001::log::false::true::ERROR: ErrorException("ERROR time limit reached in SGM")
 instance_15_15_2.txt::delta0.00025 epsilon0.0::true::sufficient_refinement::1::0::0.001::log::false::true::ERROR: ErrorException("ERROR time limit reached in SGM")
-instance_15_15_2.txt::delta0.00025 epsilon0.0::true::SGM_SOCP_model::1::0::0.001::log::false::true::ERROR: ErrorException("ERROR time limit reached in SGM")
+instance_15_15_2.txt::delta0.05 epsilon0.0::true::full_refinement::1::0::0.001::log::false::true::ERROR: ErrorException("ERROR time limit reached in SGM")

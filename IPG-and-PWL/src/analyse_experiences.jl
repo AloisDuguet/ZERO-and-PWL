@@ -740,12 +740,12 @@ struct Performance_profile
     dict_options # In case I forgot some things
 end
 
-function performance_profile(profiles; xlog = false)
+function performance_profile(profiles; xlog = false, legend = :bottomright)
     # plot a performance profile of the profiles in profiles
     # display a title, an x_axis, a y_axis...
 
     # general informations
-    p = plot(legend=:bottomright)
+    p = plot(legend=legend)
     plot_font = "Computer Modern"
     title!(p,profiles.title, fontfamily = plot_font)
     xlabel!(p,profiles.x_axis, fontfamily = plot_font)
@@ -1305,7 +1305,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_stati
     #return profiles
 
     # launch Performance_profile
-    p = performance_profile(profiles, xlog=true)
+    p = performance_profile(profiles, xlog=true, legend=:topright)
 
     # save plot to filename_save
     savefig(filename_save)
