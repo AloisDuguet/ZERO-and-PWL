@@ -421,12 +421,13 @@ function benchmark_SGM_absolute_direct_solver(; filename_instances, fixed_costss
     SGM_PWL_absolute_direct_solver("instance_2_2_1.txt", refinement_method = "SGM_NL_model", err_pwlh = Absolute(0.05), NL_term = "S+inverse_square_root", PWL_general_constraint = false)
     #SGM_PWL_absolute_direct_solver("instance_1.txt", fixed_costs = true, refinement_method = "SGM_gurobiNL_model", NL_term = "cube+inverse_square_root")
     inst = instance_queue[1]
-    try
-        SGM_PWL_absolute_direct_solver(inst.filename_instance, fixed_costs = inst.fixed_costs, refinement_method = inst.refinement_method,
-        rel_gap = inst.rel_gap, abs_gap = inst.abs_gap, err_pwlh = inst.err_pwlh, big_weights_on_NL_part = big_weights_on_NL_part, NL_term = inst.NL_term, PWL_general_constraint = false)
-    catch e
-        println("last warming up in benchmark function failed due to: $e")
-    end
+    # try-catch statement removed because it creates problems when the instance launched errors, maybe because some file is not closed...
+    # try
+    #     SGM_PWL_absolute_direct_solver(inst.filename_instance, fixed_costs = inst.fixed_costs, refinement_method = inst.refinement_method,
+    #     rel_gap = inst.rel_gap, abs_gap = inst.abs_gap, err_pwlh = inst.err_pwlh, big_weights_on_NL_part = big_weights_on_NL_part, NL_term = inst.NL_term, PWL_general_constraint = false)
+    # catch e
+    #     println("last warming up in benchmark function failed due to: $e")
+    # end
 
     for inst in instance_queue
         # detect MOI.INFEASIBLE because max_delta == 1e12
