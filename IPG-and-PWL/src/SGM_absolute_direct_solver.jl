@@ -518,14 +518,14 @@ end
 #     prepare_real_performance_profile_cybersecurity(filename_save, filename_statistics, filename_save[1:end-4]*"_perf_profile.pdf", refinement_methods = refinement_methods, errs = err_pwlhs)
 # end
 
-filenames = ["revision_exps/abs_gap_1e-2/nonconvex8-15.txt","revision_exps/abs_gap_1e-3/nonconvex8-15.txt","revision_exps/abs_gap_1e-4/nonconvex8-15.txt"]
-for filename_save in filenames
-    filename_analysis = filename_save[1:end-4]*"_analysis.txt"
-    filename_statistics = filename_save[1:end-4]*"_statistics.txt"
-    refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"]
-    err_pwlhs = [Absolute(0.05), Absolute(0.0125)]
-    prepare_real_performance_profile_cybersecurity(filename_save, filename_statistics, filename_save[1:end-4]*"_perf_profile.pdf", refinement_methods = refinement_methods, errs = err_pwlhs)
-end
+# filenames = ["revision_exps/abs_gap_1e-2/nonconvex8-15.txt","revision_exps/abs_gap_1e-3/nonconvex8-15.txt","revision_exps/abs_gap_1e-4/nonconvex8-15.txt"]
+# for filename_save in filenames
+#     filename_analysis = filename_save[1:end-4]*"_analysis.txt"
+#     filename_statistics = filename_save[1:end-4]*"_statistics.txt"
+#     refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"]
+#     err_pwlhs = [Absolute(0.05), Absolute(0.0125)]
+#     prepare_real_performance_profile_cybersecurity(filename_save, filename_statistics, filename_save[1:end-4]*"_perf_profile.pdf", refinement_methods = refinement_methods, errs = err_pwlhs)
+# end
 
 # filename_save = "revision_exps/abs_gap_1e-2/log567.txt"
 # filename_statistics = filename_save[1:end-4]*"_statistics.txt"

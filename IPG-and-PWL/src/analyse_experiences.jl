@@ -1305,7 +1305,8 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_stati
     #return profiles
 
     # launch Performance_profile
-    p = performance_profile(profiles, xlog=true, legend=:topright)
+    p = performance_profile(profiles, xlog=true)
+    # p = performance_profile(profiles, xlog=true, legend=:topright)
 
     # save plot to filename_save
     savefig(filename_save)
