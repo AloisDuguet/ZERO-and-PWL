@@ -1599,10 +1599,52 @@ function player_number(filename)
     return parse(Int64, sp[2])
 end
 
+function check_player_number(filename, values)
+    # extract the number of players from filename
+    sp = split(filename, "_")
+    nb_player = parse(Int64, sp[2])
+    if typeof(values) == Int64
+        return nb_player == values
+    else
+        if nb_player in values
+            return true
+        else
+            return false
+        end
+    end
+end
+
 function market_number(filename)
     # extract the number of players from filename
     sp = split(filename, "_")
     return parse(Int64, sp[3])
+end
+
+function check_market_number(filename, values)
+    # extract the number of players from filename
+    sp = split(filename, "_")
+    nb_market = parse(Int64, sp[3])
+    if typeof(values) == Int64
+        return nb_market == values
+    else
+        if nb_market in values
+            return true
+        else
+            return false
+        end
+    end
+end
+
+function check_characteristic_special_case(exp, charac)
+    # handles if charac is in exp when a '*' is in charac.option_value
+    # remove '*' from charac.option_value
+    option_value = replace(charac.option_value, "*" => "")
+    # check for the remainder in exp.options.(charac.option)
+    if occursin(option_value, getfield(exp.options, charac.option))
+        return true
+    else
+        return false
+    end
 end
 
 mutable struct statistics_exps
@@ -1612,6 +1654,10 @@ mutable struct statistics_exps
     number_solved_instances
     mean_time_900_unsolved # mean time of all instances with the same characteristics, with 900s for unsolved instances
     mean_time_among_solved # same but with only times from solved instances
+    mean_iteration_among_solved
+    solved # list of outputs.solved results
+    cpu_time # list of outputs.cpu_time results
+    iterations # list of outputs.iterations results
 end
 
 function find_exp_in_category(exps, option_characs)
@@ -1620,6 +1666,10 @@ function find_exp_in_category(exps, option_characs)
     nb_solved_instances = 0
     mean_time_900_unsolved = 0
     mean_time_among_solved = 0
+    mean_iteration_among_solved = 0
+    solved = []
+    cpu_time = []
+    iterations = []
 
     for exp in exps
         # identify if exp is in category
@@ -1627,12 +1677,21 @@ function find_exp_in_category(exps, option_characs)
         is_inside_category = true
         for charac in option_characs
             if charac.option == :player
-                if player_number(exp.options.filename_instance) != charac.option_value
+                # if player_number(exp.options.filename_instance) != charac.option_value
+                if !check_player_number(exp.options.filename_instance, charac.option_value)
                     is_inside_category = false
+                    break
                 end
             elseif charac.option == :market
-                if market_number(exp.options.filename_instance) != charac.option_value
+                # if market_number(exp.options.filename_instance) != charac.option_value
+                if !check_market_number(exp.options.filename_instance, charac.option_value)
                     is_inside_category = false
+                    break
+                end
+            elseif '*' in charac.option_value # special case in which a '*' is used. It means any string with charac.option_value stripped from * as substring matches charac.
+                if !check_characteristic_special_case(exp, charac)
+                    is_inside_category = false
+                    break
                 end
             elseif getfield(exp.options, charac.option) != charac.option_value
                 is_inside_category = false
@@ -1642,23 +1701,29 @@ function find_exp_in_category(exps, option_characs)
         
         # update counters
         if is_inside_category
-            println(exp)
+            # println(exp)
             nb_instances += 1
             if exp.outputs.solved
                 nb_solved_instances += 1
                 mean_time_among_solved += exp.outputs.cpu_time
                 mean_time_900_unsolved += exp.outputs.cpu_time
+                mean_iteration_among_solved += sum(i for i in exp.outputs.iterations)
+                push!(iterations, sum(i for i in exp.outputs.iterations))
             else
                 mean_time_900_unsolved += 900.0 # special case where the time is Inf, which we transform to 900
+                push!(iterations, -1)
             end
+            push!(solved, exp.outputs.solved)
+            push!(cpu_time, exp.outputs.cpu_time)
             end
     end
     # compute means out of sums
     mean_time_900_unsolved /= nb_instances
     mean_time_among_solved /= nb_solved_instances
+    mean_iteration_among_solved /= nb_solved_instances
 
     # build statistics_exps structure
-    return statistics_exps(option_characs, nb_instances, nb_solved_instances, mean_time_900_unsolved, mean_time_among_solved)
+    return statistics_exps(option_characs, nb_instances, nb_solved_instances, mean_time_900_unsolved, mean_time_among_solved, mean_iteration_among_solved, solved, cpu_time, iterations)
 end
 
 function load_all_exps()
@@ -1695,6 +1760,8 @@ function scalability_analysis()
             push!(option_characs, characteristic(:player,nb_player))
 
             push!(all_stats_player_increase[end], find_exp_in_category(exps, option_characs)) # save statistics
+            print(all_stats_player_increase[end][end].number_instances)
+            println(" instances")
         end
     end
 
@@ -1721,6 +1788,10 @@ function scalability_analysis()
     end
     # add a black horizontal line to show the mean time if all instances time out
     plot!(p, [1.8, list_nb_player[end]], [900,900], label = "", color = :black, linewidth = 2) # give it a name?
+    
+    # # add a vertical line to separate points with 30 instances and points with 6 instances
+    # plot!(p, [7.5,7.5], [1,910], label = "", color = :grey)
+
     savefig("revision_exps/plots/"*title)
     display(p)
 
@@ -1768,6 +1839,8 @@ function scalability_analysis()
             push!(option_characs, characteristic(:market,nb_market))
 
             push!(all_stats_market_increase[end], find_exp_in_category(exps, option_characs)) # save statistics
+            print(all_stats_market_increase[end][end].number_instances)
+            println(" instances")
         end
     end
 
@@ -1832,19 +1905,20 @@ function absgap_analysis()
     
     # build categories and plots for increasing number of players
     all_stats_player_increase = []
-    NL_terms_names = ["log","root","nonconvex"]
-    NL_terms = ["log","inverse_square_root","S+inverse_square_root"]
+    absgaps = [0.01,0.001,0.0001]
+    absgaps_names = ["0.01","0.001","0.0001"]
     list_nb_player = [2,3,4,5,6,7,8,10,12,15]
-    for NL_term in NL_terms
-        push!(all_stats_player_increase, []) # elements of all_stats_player_increase consider only one NL_term
+    for absgap in absgaps
+        push!(all_stats_player_increase, []) # elements of all_stats_player_increase consider only one absgap
         for nb_player in list_nb_player
             option_characs = []
-            push!(option_characs, characteristic(:abs_gap,0.0001)) # abs_gap fixed
+            push!(option_characs, characteristic(:abs_gap,absgap))
             push!(option_characs, characteristic(:refinement_method,"sufficient_refinement")) # method fixed
-            push!(option_characs, characteristic(:NL_term,NL_term))
             push!(option_characs, characteristic(:player,nb_player))
 
             push!(all_stats_player_increase[end], find_exp_in_category(exps, option_characs)) # save statistics
+            print(all_stats_player_increase[end][end].number_instances)
+            println(" instances")
         end
     end
 
@@ -1853,12 +1927,12 @@ function absgap_analysis()
     title = "absgap mean time with aggregation in number of players_900_unsolved"
     xlabel!(p, "number of players")
     ylabel!(p, "mean time (in seconds)")
-    xlims!(p, 1.8, list_nb_player[end])
+    xlims!(p, list_nb_player[1], list_nb_player[end])
     xticks!(p, list_nb_player)
     yticks!(p, ([1,10,100,900],["1","10","100","900"]))
     ylims!(p, 1, 910)
-    for i in 1:length(NL_terms)
-        NL_term = NL_terms_names[i]
+    for i in 1:length(absgaps)
+        absgap = absgaps_names[i]
         x = []
         y = []
         for j in 1:length(list_nb_player)
@@ -1866,7 +1940,7 @@ function absgap_analysis()
             push!(x, nb_player)
             push!(y, all_stats_player_increase[i][j].mean_time_900_unsolved)
         end
-        plot!(p, x, y, label = NL_term)
+        plot!(p, x, y, label = absgap)
         println(y)
     end
     # add a black horizontal line to show the mean time if all instances time out
@@ -1875,16 +1949,16 @@ function absgap_analysis()
     display(p)
 
     # build plot % solved
-    p = plot(legend=:bottomleft, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
+    p = plot(legend=:bottomleft, linewidth = 1.5, thickness_scaling = 1.6)
     title = "absgap percentage solved with aggregation in number of players"
     xlabel!(p, "number of players")
     ylabel!(p, "percentage solved")
-    xlims!(p, 1.8, list_nb_player[end])
+    xlims!(p, list_nb_player[1], list_nb_player[end])
     xticks!(p, list_nb_player)
     yticks!(p, ([0,25,50,75,100],["0","25","50","75","100"]))
     ylims!(p, 0, 100)
-    for i in 1:length(NL_terms)
-        NL_term = NL_terms_names[i]
+    for i in 1:length(absgaps)
+        absgap = absgaps_names[i]
         x = []
         y = []
         for j in 1:length(list_nb_player)
@@ -1892,7 +1966,81 @@ function absgap_analysis()
             push!(x, nb_player)
             push!(y, all_stats_player_increase[i][j].number_solved_instances / all_stats_player_increase[i][j].number_instances * 100)
         end
-        plot!(p, x, y, label = NL_term)
+        plot!(p, x, y, label = absgap)
+        println(y)
+    end
+    savefig("revision_exps/plots/"*title)
+    display(p)
+
+
+
+
+    # build categories and plots for increasing number of markets
+    all_stats_market_increase = []
+    absgaps = [0.01,0.001,0.0001]
+    list_nb_market = [2,6,8,10,15]
+    false_list_nb_market = [2,6,10] # fake values so that the place corresponds to the same for 6 and 8 (average) and the same for 10 and 15 (high)
+    list_nb_market_names = ["low","average","high"]
+    println("market increasing")
+    for absgap in absgaps
+        push!(all_stats_market_increase, []) # elements of all_stats_market_increase consider only one absgap
+        for nb_market in list_nb_market
+            option_characs = []
+            push!(option_characs, characteristic(:abs_gap,absgap))
+            push!(option_characs, characteristic(:refinement_method,"sufficient_refinement")) # method fixed
+            push!(option_characs, characteristic(:market,nb_market))
+
+            push!(all_stats_market_increase[end], find_exp_in_category(exps, option_characs)) # save statistics
+            print(all_stats_market_increase[end][end].number_instances)
+            println(" instances")
+        end
+    end
+
+    # build plot mean time with 900 for unsolved instances
+    p = plot(legend=:bottomright, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
+    title = "absgap mean time with aggregation in number of markets_900_unsolved"
+    xlabel!(p, "number of markets")
+    ylabel!(p, "mean time (in seconds)")
+    xlims!(p, 1.5, false_list_nb_market[end]+0.5)
+    xticks!(p, (false_list_nb_market,list_nb_market_names))
+    yticks!(p, ([1,10,100,900],["1","10","100","900"]))
+    ylims!(p, 1, 910)
+    for i in 1:length(absgaps)
+        absgap = absgaps_names[i]
+        x = []
+        y = []
+        for j in 1:length(false_list_nb_market)
+            nb_market = false_list_nb_market[j]
+            push!(x, nb_market)
+            push!(y, all_stats_market_increase[i][j].mean_time_900_unsolved)
+        end
+        plot!(p, x, y, label = absgap)
+        println(y)
+    end
+    # add a black horizontal line to show the mean time if all instances time out
+    plot!(p, [1.8, list_nb_player[end]], [900,900], label = "", color = :black, linewidth = 2) # give it a name?
+    savefig("revision_exps/plots/"*title)
+    display(p)
+
+    # build plot % solved
+    p = plot(legend=:bottomleft, linewidth = 1.5, thickness_scaling = 1.6)
+    title = "absgap percentage solved with aggregation in number of markets"
+    xlabel!(p, "number of markets")
+    ylabel!(p, "percentage solved")
+    xlims!(p, 1.5, false_list_nb_market[end]+0.5)
+    xticks!(p, (false_list_nb_market,list_nb_market_names))
+    yticks!(p, ([0,25,50,75,100],["0","25","50","75","100"]))
+    ylims!(p, 0, 100)
+    for i in 1:length(absgaps)
+        absgap = absgaps_names[i]
+        x = []
+        y = []
+        for j in 1:length(false_list_nb_market)
+            nb_market = false_list_nb_market[j]
+            push!(x, nb_market)
+            push!(y, all_stats_market_increase[i][j].number_solved_instances / all_stats_market_increase[i][j].number_instances * 100)
+        end
+        plot!(p, x, y, label = absgap)
         println(y)
     end
     savefig("revision_exps/plots/"*title)
@@ -1901,4 +2049,61 @@ function absgap_analysis()
 
 
     return all_stats_player_increase
+end
+
+function iteration_analysis()
+    # get all exps in one list
+    exps = load_all_exps()
+    
+    # build categories and plots for increasing number of players
+    all_stats = []
+    NL_terms_names = ["log","root","nonconvex"]
+    NL_terms = ["log","inverse_square_root","S+inverse_square_root"]
+    problem_types = ["Exp. cone","MIQCQP","MINLP"]
+    list_nb_player = [[2,3,4],[5,6,7],[8,10,12,15]]
+    list_nb_player_names = ["234","567","8-15"]
+    refinement_methods = ["SGM_*","sufficient_refinement","full_refinement"]
+    for NL_term in NL_terms
+        for nb_player in list_nb_player
+                for refinement_method in refinement_methods
+                option_characs = []
+                push!(option_characs, characteristic(:abs_gap,0.0001)) # abs_gap fixed
+                push!(option_characs, characteristic(:refinement_method, refinement_method)) # method fixed
+                push!(option_characs, characteristic(:NL_term,NL_term))
+                push!(option_characs, characteristic(:player,nb_player))
+
+                push!(all_stats, find_exp_in_category(exps, option_characs)) # save statistics
+                print(all_stats[end].number_instances)
+                println(" instances")
+            end
+        end
+    end
+
+    # build table
+    sep1 = " \\hline\n"
+    sep2 = " \\\\"
+    sep3 = " & "
+    str = "& Type & \\multicolumn{3}{c}{\\textbf{SGM}} & \\multicolumn{3}{c}{\\textbf{direct approximation}} & \\multicolumn{3}{c}{\\textbf{\$2\$-level approximation}} \\\\"
+    str = str*" && \\% solved & "
+    str = str*"time (s) & iter. & \\% solved & time (s) & iter. & \\% solved & time (s) & iter. \\\\ \\hline \n"
+    for i in 1:length(NL_terms)
+        NL_term = NL_terms_names[i]
+        problem_type = problem_types[i]
+        for j in 1:length(list_nb_player_names)
+            nb_player = list_nb_player_names[j]
+            str = str*NL_term*nb_player*sep3*problem_type
+            for k in 1:length(refinement_methods)
+                refinement_method = refinement_methods[k]
+
+                index = 9*(i-1)+3*(j-1)+k
+                perc_solved = string(round(100*all_stats[index].number_solved_instances/all_stats[index].number_instances, digits=0))
+                mean_time = string(round(all_stats[index].mean_time_among_solved, digits=2))
+                mean_iter = string(round(all_stats[index].mean_iteration_among_solved, digits=2))
+                str = str*sep3*perc_solved*sep3*mean_time*sep3*mean_iter
+            end
+            str = str*sep2
+        end
+        str = str*sep1
+    end
+    return str
 end
