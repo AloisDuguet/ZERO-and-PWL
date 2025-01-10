@@ -1661,9 +1661,10 @@ function find_exp_in_category(exps, option_characs)
     return statistics_exps(option_characs, nb_instances, nb_solved_instances, mean_time_900_unsolved, mean_time_among_solved)
 end
 
-function scalability_analysis()
+function load_all_exps()
     # find all filenames with exps
-    filenames = get_exps_filenames(list_folder = ["abs_gap_1e-4"])
+    filenames = get_exps_filenames()
+    # filenames = get_exps_filenames(list_folder = ["abs_gap_1e-4"])
     println(filenames)
     exps = []
 
@@ -1672,30 +1673,232 @@ function scalability_analysis()
         # println("loading "*filename)
         append!(exps, load_all_outputs(filename))
     end
+    return exps
+end
 
-    # compute percentage solved and mean time (with 900s for unsolved) for all experiences separated by:
-    # abs_gap, NL_function, size, method, number of players, number of markets
-    all_stats = []
-    # find all instances with "abs4", "sufficient_refinement" (2-level approx), "log", "2 players", "2 markets"
-    nb_instances = 0
-    nb_solved_instances = 0
-    mean_time_900_unsolved = 0
-    mean_time_among_solved = 0
-    # build category
-    option_characs = []
-    push!(option_characs, characteristic(:abs_gap,0.0001))
-    push!(option_characs, characteristic(:refinement_method,"sufficient_refinement"))
-    push!(option_characs, characteristic(:NL_term,"log"))
-    push!(option_characs, characteristic(:player,12))
-    # push!(option_characs, characteristic(:market,2))
+function scalability_analysis()
+    # get all exps in one list
+    exps = load_all_exps()
+    
+    # build categories and plots for increasing number of players
+    all_stats_player_increase = []
+    NL_terms_names = ["log","root","nonconvex"]
+    NL_terms = ["log","inverse_square_root","S+inverse_square_root"]
+    list_nb_player = [2,3,4,5,6,7,8,10,12,15]
+    for NL_term in NL_terms
+        push!(all_stats_player_increase, []) # elements of all_stats_player_increase consider only one NL_term
+        for nb_player in list_nb_player
+            option_characs = []
+            push!(option_characs, characteristic(:abs_gap,0.0001)) # abs_gap fixed
+            push!(option_characs, characteristic(:refinement_method,"sufficient_refinement")) # method fixed
+            push!(option_characs, characteristic(:NL_term,NL_term))
+            push!(option_characs, characteristic(:player,nb_player))
 
-    # if getfield(exp.options, characteristic.option) != characteristic.option_value
-    #     println("exp does not match category: $exp")
-    #     in_category = false
-    #     break
-    # end
+            push!(all_stats_player_increase[end], find_exp_in_category(exps, option_characs)) # save statistics
+        end
+    end
 
-    push!(all_stats, find_exp_in_category(exps, option_characs))
+    # build plot mean time with 900 for unsolved instances
+    p = plot(legend=:bottomright, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
+    title = "scalability mean time with aggregation in number of players_900_unsolved"
+    xlabel!(p, "number of players")
+    ylabel!(p, "mean time (in seconds)")
+    xlims!(p, list_nb_player[1], list_nb_player[end])
+    xticks!(p, list_nb_player)
+    yticks!(p, ([1,10,100,900],["1","10","100","900"]))
+    ylims!(p, 1, 910)
+    for i in 1:length(NL_terms)
+        NL_term = NL_terms_names[i]
+        x = []
+        y = []
+        for j in 1:length(list_nb_player)
+            nb_player = list_nb_player[j]
+            push!(x, nb_player)
+            push!(y, all_stats_player_increase[i][j].mean_time_900_unsolved)
+        end
+        plot!(p, x, y, label = NL_term)
+        println(y)
+    end
+    # add a black horizontal line to show the mean time if all instances time out
+    plot!(p, [1.8, list_nb_player[end]], [900,900], label = "", color = :black, linewidth = 2) # give it a name?
+    savefig("revision_exps/plots/"*title)
+    display(p)
 
-    return all_stats
+    # build plot % solved
+    p = plot(legend=:bottomleft, linewidth = 1.5, thickness_scaling = 1.6)
+    title = "scalability percentage solved with aggregation in number of players"
+    xlabel!(p, "number of players")
+    ylabel!(p, "percentage solved")
+    xlims!(p, list_nb_player[1], list_nb_player[end])
+    xticks!(p, list_nb_player)
+    yticks!(p, ([0,25,50,75,100],["0","25","50","75","100"]))
+    ylims!(p, 0, 100)
+    for i in 1:length(NL_terms)
+        NL_term = NL_terms_names[i]
+        x = []
+        y = []
+        for j in 1:length(list_nb_player)
+            nb_player = list_nb_player[j]
+            push!(x, nb_player)
+            push!(y, all_stats_player_increase[i][j].number_solved_instances / all_stats_player_increase[i][j].number_instances * 100)
+        end
+        plot!(p, x, y, label = NL_term)
+        println(y)
+    end
+    savefig("revision_exps/plots/"*title)
+    display(p)
+
+
+
+
+    # build categories and plots for increasing number of markets
+    all_stats_market_increase = []
+    NL_terms_names = ["log","root","nonconvex"]
+    NL_terms = ["log","inverse_square_root","S+inverse_square_root"]
+    list_nb_market = [2,6,8,10,15]
+    false_list_nb_market = [2,6,10] # fake values so that the place corresponds to the same for 6 and 8 (average) and the same for 10 and 15 (high)
+    list_nb_market_names = ["low","average","high"]
+    for NL_term in NL_terms
+        push!(all_stats_market_increase, []) # elements of all_stats_market_increase consider only one NL_term
+        for nb_market in list_nb_market
+            option_characs = []
+            push!(option_characs, characteristic(:abs_gap,0.0001)) # abs_gap fixed
+            push!(option_characs, characteristic(:refinement_method,"sufficient_refinement")) # method fixed
+            push!(option_characs, characteristic(:NL_term,NL_term))
+            push!(option_characs, characteristic(:market,nb_market))
+
+            push!(all_stats_market_increase[end], find_exp_in_category(exps, option_characs)) # save statistics
+        end
+    end
+
+    # build plot mean time with 900 for unsolved instances
+    p = plot(legend=:bottomright, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
+    title = "scalability mean time with aggregation in number of markets_900_unsolved"
+    xlabel!(p, "number of markets")
+    ylabel!(p, "mean time (in seconds)")
+    xlims!(p, 1.5, false_list_nb_market[end]+0.5)
+    xticks!(p, (false_list_nb_market,list_nb_market_names))
+    yticks!(p, ([1,10,100,900],["1","10","100","900"]))
+    ylims!(p, 1, 910)
+    for i in 1:length(NL_terms)
+        NL_term = NL_terms_names[i]
+        x = []
+        y = []
+        for j in 1:length(false_list_nb_market)
+            nb_market = false_list_nb_market[j]
+            push!(x, nb_market)
+            push!(y, all_stats_market_increase[i][j].mean_time_900_unsolved)
+        end
+        plot!(p, x, y, label = NL_term)
+        println(y)
+    end
+    # add a black horizontal line to show the mean time if all instances time out
+    plot!(p, [1.8, list_nb_player[end]], [900,900], label = "", color = :black, linewidth = 2) # give it a name?
+    savefig("revision_exps/plots/"*title)
+    display(p)
+
+    # build plot % solved
+    p = plot(legend=:bottomleft, linewidth = 1.5, thickness_scaling = 1.6)
+    title = "scalability percentage solved with aggregation in number of markets"
+    xlabel!(p, "number of markets")
+    ylabel!(p, "percentage solved")
+    xlims!(p, 1.5, false_list_nb_market[end]+0.5)
+    xticks!(p, (false_list_nb_market,list_nb_market_names))
+    yticks!(p, ([0,25,50,75,100],["0","25","50","75","100"]))
+    ylims!(p, 0, 100)
+    for i in 1:length(NL_terms)
+        NL_term = NL_terms_names[i]
+        x = []
+        y = []
+        for j in 1:length(false_list_nb_market)
+            nb_market = false_list_nb_market[j]
+            push!(x, nb_market)
+            push!(y, all_stats_market_increase[i][j].number_solved_instances / all_stats_market_increase[i][j].number_instances * 100)
+        end
+        plot!(p, x, y, label = NL_term)
+        println(y)
+    end
+    savefig("revision_exps/plots/"*title)
+    display(p)
+
+
+
+    return all_stats_player_increase
+end
+
+function absgap_analysis()
+    # get all exps in one list
+    exps = load_all_exps()
+    
+    # build categories and plots for increasing number of players
+    all_stats_player_increase = []
+    NL_terms_names = ["log","root","nonconvex"]
+    NL_terms = ["log","inverse_square_root","S+inverse_square_root"]
+    list_nb_player = [2,3,4,5,6,7,8,10,12,15]
+    for NL_term in NL_terms
+        push!(all_stats_player_increase, []) # elements of all_stats_player_increase consider only one NL_term
+        for nb_player in list_nb_player
+            option_characs = []
+            push!(option_characs, characteristic(:abs_gap,0.0001)) # abs_gap fixed
+            push!(option_characs, characteristic(:refinement_method,"sufficient_refinement")) # method fixed
+            push!(option_characs, characteristic(:NL_term,NL_term))
+            push!(option_characs, characteristic(:player,nb_player))
+
+            push!(all_stats_player_increase[end], find_exp_in_category(exps, option_characs)) # save statistics
+        end
+    end
+
+    # build plot mean time with 900 for unsolved instances
+    p = plot(legend=:bottomright, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
+    title = "absgap mean time with aggregation in number of players_900_unsolved"
+    xlabel!(p, "number of players")
+    ylabel!(p, "mean time (in seconds)")
+    xlims!(p, 1.8, list_nb_player[end])
+    xticks!(p, list_nb_player)
+    yticks!(p, ([1,10,100,900],["1","10","100","900"]))
+    ylims!(p, 1, 910)
+    for i in 1:length(NL_terms)
+        NL_term = NL_terms_names[i]
+        x = []
+        y = []
+        for j in 1:length(list_nb_player)
+            nb_player = list_nb_player[j]
+            push!(x, nb_player)
+            push!(y, all_stats_player_increase[i][j].mean_time_900_unsolved)
+        end
+        plot!(p, x, y, label = NL_term)
+        println(y)
+    end
+    # add a black horizontal line to show the mean time if all instances time out
+    plot!(p, [1.8, list_nb_player[end]], [900,900], label = "", color = :black, linewidth = 2) # give it a name?
+    savefig("revision_exps/plots/"*title)
+    display(p)
+
+    # build plot % solved
+    p = plot(legend=:bottomleft, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
+    title = "absgap percentage solved with aggregation in number of players"
+    xlabel!(p, "number of players")
+    ylabel!(p, "percentage solved")
+    xlims!(p, 1.8, list_nb_player[end])
+    xticks!(p, list_nb_player)
+    yticks!(p, ([0,25,50,75,100],["0","25","50","75","100"]))
+    ylims!(p, 0, 100)
+    for i in 1:length(NL_terms)
+        NL_term = NL_terms_names[i]
+        x = []
+        y = []
+        for j in 1:length(list_nb_player)
+            nb_player = list_nb_player[j]
+            push!(x, nb_player)
+            push!(y, all_stats_player_increase[i][j].number_solved_instances / all_stats_player_increase[i][j].number_instances * 100)
+        end
+        plot!(p, x, y, label = NL_term)
+        println(y)
+    end
+    savefig("revision_exps/plots/"*title)
+    display(p)
+
+
+
+    return all_stats_player_increase
 end
