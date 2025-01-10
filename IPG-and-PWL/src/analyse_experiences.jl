@@ -1578,3 +1578,29 @@ function rebuild_iteration_NL()
 
     return 0
 end
+
+function get_exps_filenames(list_folder = ["abs_gap_1e-2","abs_gap_1e-3","abs_gap_1e-4"],
+    list_function_name = ["log","nonconvex","root"],
+    list_size_name = ["234","567","8-15"])
+    filenames = []
+    for folder in list_folder
+        for function_name in list_function_name
+            for size_name in list_size_name
+                push!(filenames,"revision_exps/"*folder*"/"*function_name*size_name*".txt")
+            end
+        end
+    end
+    return filenames
+end
+
+function scalability_analysis()
+    filenames = get_exps_filenames()
+    println(filenames)
+    list_exps = []
+    for filename in filenames
+        println("loading "*filename)
+        push!(list_exps, load_all_outputs(filename))
+    end
+    println(size(list_exps))
+    println(size(list_exps[1]))
+end
