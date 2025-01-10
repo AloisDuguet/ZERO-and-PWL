@@ -1579,7 +1579,7 @@ function rebuild_iteration_NL()
     return 0
 end
 
-function get_exps_filenames(list_folder = ["abs_gap_1e-2","abs_gap_1e-3","abs_gap_1e-4"],
+function get_exps_filenames(;list_folder = ["abs_gap_1e-2","abs_gap_1e-3","abs_gap_1e-4"],
     list_function_name = ["log","nonconvex","root"],
     list_size_name = ["234","567","8-15"])
     filenames = []
@@ -1593,14 +1593,109 @@ function get_exps_filenames(list_folder = ["abs_gap_1e-2","abs_gap_1e-3","abs_ga
     return filenames
 end
 
-function scalability_analysis()
-    filenames = get_exps_filenames()
-    println(filenames)
-    list_exps = []
-    for filename in filenames
-        println("loading "*filename)
-        push!(list_exps, load_all_outputs(filename))
+function player_number(filename)
+    # extract the number of players from filename
+    sp = split(filename, "_")
+    return parse(Int64, sp[2])
+end
+
+function market_number(filename)
+    # extract the number of players from filename
+    sp = split(filename, "_")
+    return parse(Int64, sp[3])
+end
+
+mutable struct statistics_exps
+    #list_characteristics # list of string which identify the experiences, like ["abs2","log","234","full_refinement","number of players","number of markets"]
+    option_characs # list of options that can be checked in option_cs_instance structures. Two special cases: option ":player" and ":market" that are to be checked for example with player_number(option_cs_instance.filename_instance) != ... for :player
+    number_instances
+    number_solved_instances
+    mean_time_900_unsolved # mean time of all instances with the same characteristics, with 900s for unsolved instances
+    mean_time_among_solved # same but with only times from solved instances
+end
+
+function find_exp_in_category(exps, option_characs)
+    # initialize counters
+    nb_instances = 0
+    nb_solved_instances = 0
+    mean_time_900_unsolved = 0
+    mean_time_among_solved = 0
+
+    for exp in exps
+        # identify if exp is in category
+        # with options
+        is_inside_category = true
+        for charac in option_characs
+            if charac.option == :player
+                if player_number(exp.options.filename_instance) != charac.option_value
+                    is_inside_category = false
+                end
+            elseif charac.option == :market
+                if market_number(exp.options.filename_instance) != charac.option_value
+                    is_inside_category = false
+                end
+            elseif getfield(exp.options, charac.option) != charac.option_value
+                is_inside_category = false
+                break
+            end
+        end
+        
+        # update counters
+        if is_inside_category
+            println(exp)
+            nb_instances += 1
+            if exp.outputs.solved
+                nb_solved_instances += 1
+                mean_time_among_solved += exp.outputs.cpu_time
+                mean_time_900_unsolved += exp.outputs.cpu_time
+            else
+                mean_time_900_unsolved += 900.0 # special case where the time is Inf, which we transform to 900
+            end
+            end
     end
-    println(size(list_exps))
-    println(size(list_exps[1]))
+    # compute means out of sums
+    mean_time_900_unsolved /= nb_instances
+    mean_time_among_solved /= nb_solved_instances
+
+    # build statistics_exps structure
+    return statistics_exps(option_characs, nb_instances, nb_solved_instances, mean_time_900_unsolved, mean_time_among_solved)
+end
+
+function scalability_analysis()
+    # find all filenames with exps
+    filenames = get_exps_filenames(list_folder = ["abs_gap_1e-4"])
+    println(filenames)
+    exps = []
+
+    # load all experience results in exps
+    for filename in filenames
+        # println("loading "*filename)
+        append!(exps, load_all_outputs(filename))
+    end
+
+    # compute percentage solved and mean time (with 900s for unsolved) for all experiences separated by:
+    # abs_gap, NL_function, size, method, number of players, number of markets
+    all_stats = []
+    # find all instances with "abs4", "sufficient_refinement" (2-level approx), "log", "2 players", "2 markets"
+    nb_instances = 0
+    nb_solved_instances = 0
+    mean_time_900_unsolved = 0
+    mean_time_among_solved = 0
+    # build category
+    option_characs = []
+    push!(option_characs, characteristic(:abs_gap,0.0001))
+    push!(option_characs, characteristic(:refinement_method,"sufficient_refinement"))
+    push!(option_characs, characteristic(:NL_term,"log"))
+    push!(option_characs, characteristic(:player,12))
+    # push!(option_characs, characteristic(:market,2))
+
+    # if getfield(exp.options, characteristic.option) != characteristic.option_value
+    #     println("exp does not match category: $exp")
+    #     in_category = false
+    #     break
+    # end
+
+    push!(all_stats, find_exp_in_category(exps, option_characs))
+
+    return all_stats
 end

@@ -195,6 +195,8 @@ function load_output_instance(line)
             end
             outputs = output_cs_instance(solved, solution, profits, cpu_time,
             iter, delta_eq, length_pwls, variations, SGM_time, julia_time, iterations)
+        elseif occursin("ProcessExited(9)", line) # problem in ComputeNE_MIP, the one from the final exps were manually checked
+            outputs = output_cs_instance(false, [[]], [], Inf, -1, [], [], [], -1, -1, [])
         elseif occursin("ProcessExited(10)", line) # SGM finished with TIME LIMIT reached
             outputs = output_cs_instance(false, [[]], [], Inf, -1, [], [], [], -1, -1, [])
         elseif occursin("ProcessExited(11)", line) # SGM finished with MAX ITER reached
