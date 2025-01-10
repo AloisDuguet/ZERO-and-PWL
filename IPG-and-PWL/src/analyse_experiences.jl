@@ -1767,7 +1767,7 @@ function scalability_analysis()
 
     # build plot mean time with 900 for unsolved instances
     p = plot(legend=:bottomright, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
-    title = "scalability mean time with aggregation in number of players_900_unsolved"
+    title = "scalability mean time with aggregation in number of players_900_unsolved.pdf"
     xlabel!(p, "number of players")
     ylabel!(p, "mean time (in seconds)")
     xlims!(p, list_nb_player[1], list_nb_player[end])
@@ -1797,7 +1797,7 @@ function scalability_analysis()
 
     # build plot % solved
     p = plot(legend=:bottomleft, linewidth = 1.5, thickness_scaling = 1.6)
-    title = "scalability percentage solved with aggregation in number of players"
+    title = "scalability percentage solved with aggregation in number of players.pdf"
     xlabel!(p, "number of players")
     ylabel!(p, "percentage solved")
     xlims!(p, list_nb_player[1], list_nb_player[end])
@@ -1846,7 +1846,7 @@ function scalability_analysis()
 
     # build plot mean time with 900 for unsolved instances
     p = plot(legend=:bottomright, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
-    title = "scalability mean time with aggregation in number of markets_900_unsolved"
+    title = "scalability mean time with aggregation in number of markets_900_unsolved.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "mean time (in seconds)")
     xlims!(p, 1.5, false_list_nb_market[end]+0.5)
@@ -1872,7 +1872,7 @@ function scalability_analysis()
 
     # build plot % solved
     p = plot(legend=:bottomleft, linewidth = 1.5, thickness_scaling = 1.6)
-    title = "scalability percentage solved with aggregation in number of markets"
+    title = "scalability percentage solved with aggregation in number of markets.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "percentage solved")
     xlims!(p, 1.5, false_list_nb_market[end]+0.5)
@@ -1924,7 +1924,7 @@ function absgap_analysis()
 
     # build plot mean time with 900 for unsolved instances
     p = plot(legend=:bottomright, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
-    title = "absgap mean time with aggregation in number of players_900_unsolved"
+    title = "absgap mean time with aggregation in number of players_900_unsolved.pdf"
     xlabel!(p, "number of players")
     ylabel!(p, "mean time (in seconds)")
     xlims!(p, list_nb_player[1], list_nb_player[end])
@@ -1950,7 +1950,7 @@ function absgap_analysis()
 
     # build plot % solved
     p = plot(legend=:bottomleft, linewidth = 1.5, thickness_scaling = 1.6)
-    title = "absgap percentage solved with aggregation in number of players"
+    title = "absgap percentage solved with aggregation in number of players.pdf"
     xlabel!(p, "number of players")
     ylabel!(p, "percentage solved")
     xlims!(p, list_nb_player[1], list_nb_player[end])
@@ -1998,7 +1998,7 @@ function absgap_analysis()
 
     # build plot mean time with 900 for unsolved instances
     p = plot(legend=:bottomright, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
-    title = "absgap mean time with aggregation in number of markets_900_unsolved"
+    title = "absgap mean time with aggregation in number of markets_900_unsolved.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "mean time (in seconds)")
     xlims!(p, 1.5, false_list_nb_market[end]+0.5)
@@ -2024,7 +2024,7 @@ function absgap_analysis()
 
     # build plot % solved
     p = plot(legend=:bottomleft, linewidth = 1.5, thickness_scaling = 1.6)
-    title = "absgap percentage solved with aggregation in number of markets"
+    title = "absgap percentage solved with aggregation in number of markets.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "percentage solved")
     xlims!(p, 1.5, false_list_nb_market[end]+0.5)
