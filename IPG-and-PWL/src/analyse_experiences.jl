@@ -1660,6 +1660,29 @@ mutable struct statistics_exps
     iterations # list of outputs.iterations results
 end
 
+function geometric_mean(values)
+    return exp(1)^(sum([log(values[i]) for i in 1:length(values)])/length(values))
+end
+
+function geometric_mean_threshold_time_limit(values, time_limit)
+    for i in 1:length(values)
+        if values[i] == Inf
+            values[i] = time_limit
+        end
+    end
+    return geometric_mean(values)
+end
+
+function geometric_mean_among_non_infinite(values)
+    new_values = []
+    for i in 1:length(values)
+        if values[i] != Inf
+            push!(new_values, values[i])
+        end
+    end
+    return geometric_mean(new_values)
+end
+
 function find_exp_in_category(exps, option_characs)
     # initialize counters
     nb_instances = 0
@@ -1796,7 +1819,8 @@ function scalability_analysis()
         for j in 1:length(list_nb_player)
             nb_player = list_nb_player[j]
             push!(x, nb_player)
-            push!(y, all_stats_player_increase[i][j].mean_time_900_unsolved)
+            # push!(y, all_stats_player_increase[i][j].mean_time_900_unsolved)
+            push!(y, geometric_mean_threshold_time_limit(all_stats_player_increase[i][j].cpu_time, 900))
         end
         plot!(p, x, y, label = NL_term)
         println(y)
@@ -1873,9 +1897,11 @@ function scalability_analysis()
         x = []
         y = []
         for j in 1:length(false_list_nb_market)
+            stats = all_stats_market_increase[i][j]
             nb_market = false_list_nb_market[j]
             push!(x, nb_market)
-            push!(y, all_stats_market_increase[i][j].mean_time_900_unsolved)
+            # push!(y, stats.mean_time_900_unsolved)
+            push!(y, geometric_mean_threshold_time_limit(stats.cpu_time, 900))
         end
         plot!(p, x, y, label = NL_term)
         println(y)
@@ -1953,7 +1979,8 @@ function absgap_analysis()
         for j in 1:length(list_nb_player)
             nb_player = list_nb_player[j]
             push!(x, nb_player)
-            push!(y, all_stats_player_increase[i][j].mean_time_900_unsolved)
+            # push!(y, all_stats_player_increase[i][j].mean_time_900_unsolved)
+            push!(y, geometric_mean_threshold_time_limit(all_stats_player_increase[i][j].cpu_time, 900))
         end
         plot!(p, x, y, label = absgap)
         println(y)
@@ -2027,7 +2054,8 @@ function absgap_analysis()
         for j in 1:length(false_list_nb_market)
             nb_market = false_list_nb_market[j]
             push!(x, nb_market)
-            push!(y, all_stats_market_increase[i][j].mean_time_900_unsolved)
+            # push!(y, all_stats_market_increase[i][j].mean_time_900_unsolved)
+            push!(y, geometric_mean_threshold_time_limit(all_stats_market_increase[i][j].cpu_time, 900))
         end
         plot!(p, x, y, label = absgap)
         println(y)
@@ -2112,15 +2140,17 @@ function iteration_analysis()
 
                 index = 9*(i-1)+3*(j-1)+k
                 perc_solved = string(round(100*all_stats[index].number_solved_instances/all_stats[index].number_instances, digits=0))
-                mean_time = string(round(all_stats[index].mean_time_among_solved, digits=2))
+                mean_time = string(round(geometric_mean_among_non_infinite(all_stats[index].cpu_time), digits=2))
                 mean_iter = string(round(all_stats[index].mean_iteration_among_solved, digits=2))
                 str = str*sep3*perc_solved*sep3*mean_time*sep3*mean_iter
+                println(NL_terms, " ", nb_player, " ", refinement_method, " ", mean_time)
             end
             str = str*sep2
         end
         str = str*sep1
     end
-    return str
+    println(str)
+    return all_stats
 end
 
 function check_no_over_time_limit()
