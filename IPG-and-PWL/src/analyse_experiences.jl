@@ -1624,9 +1624,9 @@ function check_market_number(filename, values)
     # extract the number of players from filename
     sp = split(filename, "_")
     nb_market = parse(Int64, sp[3])
-    if typeof(values) == Int64
+    if typeof(values) == Int64 # values is one numerical value
         return nb_market == values
-    else
+    else # values is a list of valid option values
         if nb_market in values
             return true
         else
@@ -1658,6 +1658,7 @@ mutable struct statistics_exps
     solved # list of outputs.solved results
     cpu_time # list of outputs.cpu_time results
     iterations # list of outputs.iterations results
+    iterations_last_call_SGM
 end
 
 function geometric_mean(values)
@@ -1673,13 +1674,14 @@ function geometric_mean_threshold_time_limit(values, time_limit)
     return geometric_mean(values)
 end
 
-function geometric_mean_among_non_infinite(values)
+function geometric_mean_among_non_infinite(values, forbidden_value = Inf)
     new_values = []
     for i in 1:length(values)
-        if values[i] != Inf
+        if values[i] != forbidden_value
             push!(new_values, values[i])
         end
     end
+    println("new_values without Inf: ", new_values)
     return geometric_mean(new_values)
 end
 
@@ -1693,6 +1695,8 @@ function find_exp_in_category(exps, option_characs)
     solved = []
     cpu_time = []
     iterations = []
+    iterations_last_call_SGM = []
+    max_second_iter = 0
 
     for exp in exps
         # identify if exp is in category
@@ -1732,9 +1736,16 @@ function find_exp_in_category(exps, option_characs)
                 mean_time_900_unsolved += exp.outputs.cpu_time
                 mean_iteration_among_solved += sum(i for i in exp.outputs.iterations)
                 push!(iterations, sum(i for i in exp.outputs.iterations))
+                push!(iterations_last_call_SGM, exp.outputs.iterations[1])
+                if exp.options.refinement_method == "full_refinement"
+                    if exp.outputs.iterations[end] > max_second_iter
+                        max_second_iter = exp.outputs.iterations[end]
+                    end
+                end
             else
                 mean_time_900_unsolved += 900.0 # special case where the time is Inf, which we transform to 900
                 push!(iterations, -1)
+                push!(iterations_last_call_SGM, -1)
             end
             push!(solved, exp.outputs.solved)
             push!(cpu_time, exp.outputs.cpu_time)
@@ -1745,8 +1756,10 @@ function find_exp_in_category(exps, option_characs)
     mean_time_among_solved /= nb_solved_instances
     mean_iteration_among_solved /= nb_solved_instances
 
+    println("\n\n\n-----> the max number of second iteration is ", max_second_iter, "\n\n\n")
+
     # build statistics_exps structure
-    return statistics_exps(option_characs, nb_instances, nb_solved_instances, mean_time_900_unsolved, mean_time_among_solved, mean_iteration_among_solved, solved, cpu_time, iterations)
+    return statistics_exps(option_characs, nb_instances, nb_solved_instances, mean_time_900_unsolved, mean_time_among_solved, mean_iteration_among_solved, solved, cpu_time, iterations, iterations_last_call_SGM)
 end
 
 function load_all_exps(time_limit = 900)
@@ -1793,7 +1806,7 @@ function scalability_analysis()
         for nb_player in list_nb_player
             option_characs = []
             push!(option_characs, characteristic(:abs_gap,0.0001)) # abs_gap fixed
-            push!(option_characs, characteristic(:refinement_method,"sufficient_refinement")) # method fixed
+            push!(option_characs, characteristic(:refinement_method,"full_refinement")) # method fixed
             push!(option_characs, characteristic(:NL_term,NL_term))
             push!(option_characs, characteristic(:player,nb_player))
 
@@ -1807,10 +1820,10 @@ function scalability_analysis()
     p = plot(legend=:bottomright, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
     title = "scalability_mean_time_with_aggregation_in_number_of_players_900_unsolved.pdf"
     xlabel!(p, "number of players")
-    ylabel!(p, "mean time (in seconds)")
+    ylabel!(p, "geometric mean time (s)")
     xlims!(p, list_nb_player[1], list_nb_player[end])
     xticks!(p, list_nb_player)
-    yticks!(p, ([1,10,100,900],["1","10","100","time limit"]))
+    yticks!(p, ([1,10,100,900],["1","10","100","TL"]))
     ylims!(p, 1, 910)
     for i in 1:length(NL_terms)
         NL_term = NL_terms_names[i]
@@ -1861,44 +1874,43 @@ function scalability_analysis()
 
 
 
-    # build categories and plots for increasing number of markets
-    all_stats_market_increase = []
+    # build categories and plots for increasing number of markets and players <= 7
+    all_stats_market_increase1 = []
     NL_terms_names = ["log","root","nonconvex"]
     NL_terms = ["log","inverse_square_root","S+inverse_square_root"]
-    list_nb_market = [2,6,8,10,15]
-    false_list_nb_market = [2,6,10] # fake values so that the place corresponds to the same for 6 and 8 (average) and the same for 10 and 15 (high)
-    list_nb_market_names = ["low","average","high"]
+    list_nb_market = [2,6,10]
     for NL_term in NL_terms
-        push!(all_stats_market_increase, []) # elements of all_stats_market_increase consider only one NL_term
+        push!(all_stats_market_increase1, []) # elements of all_stats_market_increase1 consider only one NL_term
         for nb_market in list_nb_market
             option_characs = []
             push!(option_characs, characteristic(:abs_gap,0.0001)) # abs_gap fixed
-            push!(option_characs, characteristic(:refinement_method,"sufficient_refinement")) # method fixed
+            push!(option_characs, characteristic(:refinement_method,"full_refinement")) # method fixed
             push!(option_characs, characteristic(:NL_term,NL_term))
             push!(option_characs, characteristic(:market,nb_market))
+            push!(option_characs, characteristic(:player,[2,3,4,5,6,7]))
 
-            push!(all_stats_market_increase[end], find_exp_in_category(exps, option_characs)) # save statistics
-            print(all_stats_market_increase[end][end].number_instances)
+            push!(all_stats_market_increase1[end], find_exp_in_category(exps, option_characs)) # save statistics
+            print(all_stats_market_increase1[end][end].number_instances)
             println(" instances")
         end
     end
 
     # build plot mean time with 900 for unsolved instances
-    p = plot(legend=:bottomright, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
-    title = "scalability_mean_time_with_aggregation_in_number_of_markets_900_unsolved.pdf"
+    p = plot(legend=:topleft, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
+    title = "scalability_234567_mean_time_with_aggregation_in_number_of_markets_900_unsolved.pdf"
     xlabel!(p, "number of markets")
-    ylabel!(p, "mean time (in seconds)")
-    xlims!(p, 1.5, false_list_nb_market[end]+0.5)
-    xticks!(p, (false_list_nb_market,list_nb_market_names))
-    yticks!(p, ([1,10,100,900],["1","10","100","time limit"]))
+    ylabel!(p, "geometric mean time (s)")
+    xlims!(p, 1.5, 10.5)
+    xticks!(p, list_nb_market)
+    yticks!(p, ([1,10,100,900],["1","10","100","TL"]))
     ylims!(p, 1, 910)
     for i in 1:length(NL_terms)
         NL_term = NL_terms_names[i]
         x = []
         y = []
-        for j in 1:length(false_list_nb_market)
-            stats = all_stats_market_increase[i][j]
-            nb_market = false_list_nb_market[j]
+        for j in 1:length(list_nb_market)
+            stats = all_stats_market_increase1[i][j]
+            nb_market = list_nb_market[j]
             push!(x, nb_market)
             # push!(y, stats.mean_time_900_unsolved)
             push!(y, geometric_mean_threshold_time_limit(stats.cpu_time, 900))
@@ -1907,27 +1919,27 @@ function scalability_analysis()
         println(y)
     end
     # add a black horizontal line to show the mean time if all instances time out
-    plot!(p, [1.5, false_list_nb_market[end]+0.5], [900,900], label = "", color = :black, linewidth = 2) # give it a name?
+    plot!(p, [1.5, 10.5], [900,900], label = "", color = :black, linewidth = 2) # give it a name?
     savefig("revision_exps/plots/"*title)
     display(p)
 
     # build plot % solved
     p = plot(legend=:bottomleft, linewidth = 1.5, thickness_scaling = 1.6)
-    title = "scalability_percentage_solved_with_aggregation_in_number_of_markets.pdf"
+    title = "scalability_234567_percentage_solved_with_aggregation_in_number_of_markets.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "percentage solved")
-    xlims!(p, 1.5, false_list_nb_market[end]+0.5)
-    xticks!(p, (false_list_nb_market,list_nb_market_names))
+    xlims!(p, 1.5, 10.5)
+    xticks!(p, list_nb_market)
     yticks!(p, ([0,25,50,75,100],["0","25","50","75","100"]))
-    ylims!(p, 0, 100)
+    ylims!(p, 0, 102)
     for i in 1:length(NL_terms)
         NL_term = NL_terms_names[i]
         x = []
         y = []
-        for j in 1:length(false_list_nb_market)
-            nb_market = false_list_nb_market[j]
+        for j in 1:length(list_nb_market)
+            nb_market = list_nb_market[j]
             push!(x, nb_market)
-            push!(y, all_stats_market_increase[i][j].number_solved_instances / all_stats_market_increase[i][j].number_instances * 100)
+            push!(y, all_stats_market_increase1[i][j].number_solved_instances / all_stats_market_increase1[i][j].number_instances * 100)
         end
         plot!(p, x, y, label = NL_term)
         println(y)
@@ -1937,7 +1949,91 @@ function scalability_analysis()
 
 
 
-    return all_stats_player_increase
+
+
+    # build categories and plots for increasing number of markets and players >= 8
+    all_stats_market_increase2 = []
+    NL_terms_names = ["log","root","nonconvex"]
+    NL_terms = ["log","inverse_square_root","S+inverse_square_root"]
+    list_nb_market = [2,8,15]
+    for NL_term in NL_terms
+        push!(all_stats_market_increase2, []) # elements of all_stats_market_increase2 consider only one NL_term
+        for nb_market in list_nb_market
+            option_characs = []
+            push!(option_characs, characteristic(:abs_gap,0.0001)) # abs_gap fixed
+            push!(option_characs, characteristic(:refinement_method,"full_refinement")) # method fixed
+            push!(option_characs, characteristic(:NL_term,NL_term))
+            push!(option_characs, characteristic(:market,nb_market))
+            push!(option_characs, characteristic(:player,[8,10,12,15]))
+
+            push!(all_stats_market_increase2[end], find_exp_in_category(exps, option_characs)) # save statistics
+            print(all_stats_market_increase2[end][end].number_instances)
+            println(" instances")
+        end
+    end
+
+    # build plot mean time with 900 for unsolved instances
+    p = plot(legend=:bottomright, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
+    title = "scalability_8-15_mean_time_with_aggregation_in_number_of_markets_900_unsolved.pdf"
+    xlabel!(p, "number of markets")
+    ylabel!(p, "geometric mean time (s)")
+    xlims!(p, 1.5, 15.5)
+    xticks!(p, list_nb_market)
+    yticks!(p, ([1,10,100,900],["1","10","100","TL"]))
+    ylims!(p, 1, 910)
+    for i in 1:length(NL_terms)
+        NL_term = NL_terms_names[i]
+        x = []
+        y = []
+        for j in 1:length(list_nb_market)
+            stats = all_stats_market_increase2[i][j]
+            nb_market = list_nb_market[j]
+            push!(x, nb_market)
+            # push!(y, stats.mean_time_900_unsolved)
+            push!(y, geometric_mean_threshold_time_limit(stats.cpu_time, 900))
+        end
+        plot!(p, x, y, label = NL_term)
+        println(y)
+    end
+    # add a black horizontal line to show the mean time if all instances time out
+    plot!(p, [1.5, 15.5], [900,900], label = "", color = :black, linewidth = 2) # give it a name?
+    savefig("revision_exps/plots/"*title)
+    display(p)
+
+    # build plot % solved
+    p = plot(legend=:bottomleft, linewidth = 1.5, thickness_scaling = 1.6)
+    title = "scalability_8-15_percentage_solved_with_aggregation_in_number_of_markets.pdf"
+    xlabel!(p, "number of markets")
+    ylabel!(p, "percentage solved")
+    linestyles = [:solid,:dash,:dot]
+    xlims!(p, 1.5, 15.5)
+    xticks!(p, list_nb_market)
+    yticks!(p, ([0,25,50,75,100],["0","25","50","75","100"]))
+    ylims!(p, 0, 102)
+    for i in 1:length(NL_terms)
+        NL_term = NL_terms_names[i]
+        x = []
+        y = []
+        for j in 1:length(list_nb_market)
+            nb_market = list_nb_market[j]
+            push!(x, nb_market)
+            push!(y, all_stats_market_increase2[i][j].number_solved_instances / all_stats_market_increase2[i][j].number_instances * 100)
+        end
+        if i == 1
+            plot!(p, x, y, label = NL_term, markershape = :+)
+        else
+            plot!(p, x, y, label = NL_term)
+        end
+        # plot!(p, x, y, label = NL_term, linestyle = linestyles[i])
+        println(y)
+    end
+    savefig("revision_exps/plots/"*title)
+    display(p)
+
+
+
+
+    return all_stats_market_increase2
 end
 
 function absgap_analysis()
@@ -1954,7 +2050,7 @@ function absgap_analysis()
         for nb_player in list_nb_player
             option_characs = []
             push!(option_characs, characteristic(:abs_gap,absgap))
-            push!(option_characs, characteristic(:refinement_method,"sufficient_refinement")) # method fixed
+            push!(option_characs, characteristic(:refinement_method,"full_refinement")) # method fixed
             push!(option_characs, characteristic(:player,nb_player))
 
             push!(all_stats_player_increase[end], find_exp_in_category(exps, option_characs)) # save statistics
@@ -1967,10 +2063,10 @@ function absgap_analysis()
     p = plot(legend=:bottomright, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
     title = "absgap_mean_time_with_aggregation_in_number_of_players_900_unsolved.pdf"
     xlabel!(p, "number of players")
-    ylabel!(p, "mean time (in seconds)")
+    ylabel!(p, "geometric mean time (s)")
     xlims!(p, list_nb_player[1], list_nb_player[end])
     xticks!(p, list_nb_player)
-    yticks!(p, ([1,10,100,900],["1","10","100","900"]))
+    yticks!(p, ([1,10,100,900],["1","10","100","TL"]))
     ylims!(p, 1, 910)
     for i in 1:length(absgaps)
         absgap = absgaps_names[i]
@@ -2017,71 +2113,74 @@ function absgap_analysis()
 
 
 
-    # build categories and plots for increasing number of markets
-    all_stats_market_increase = []
+    # build categories and plots for increasing number of markets and players <= 7
+    all_stats_market_increase1 = []
     absgaps = [0.01,0.001,0.0001]
-    list_nb_market = [2,6,8,10,15]
+    # list_nb_market = [2,[6,8],[10,15]]
+    # list_nb_market_names = ["low","average","high"]
+    list_nb_player = [2,3,4,5,6,7] #[8,10,12,15]
+    list_nb_market = [2,6,10]
     false_list_nb_market = [2,6,10] # fake values so that the place corresponds to the same for 6 and 8 (average) and the same for 10 and 15 (high)
-    list_nb_market_names = ["low","average","high"]
     println("market increasing")
     for absgap in absgaps
-        push!(all_stats_market_increase, []) # elements of all_stats_market_increase consider only one absgap
+        push!(all_stats_market_increase1, []) # elements of all_stats_market_increase1 consider only one absgap
         for nb_market in list_nb_market
             option_characs = []
             push!(option_characs, characteristic(:abs_gap,absgap))
-            push!(option_characs, characteristic(:refinement_method,"sufficient_refinement")) # method fixed
+            push!(option_characs, characteristic(:refinement_method,"full_refinement")) # method fixed
             push!(option_characs, characteristic(:market,nb_market))
+            push!(option_characs, characteristic(:player,list_nb_player)) # small number of players
 
-            push!(all_stats_market_increase[end], find_exp_in_category(exps, option_characs)) # save statistics
-            print(all_stats_market_increase[end][end].number_instances)
+            push!(all_stats_market_increase1[end], find_exp_in_category(exps, option_characs)) # save statistics
+            print(all_stats_market_increase1[end][end].number_instances)
             println(" instances")
         end
     end
 
     # build plot mean time with 900 for unsolved instances
-    p = plot(legend=:bottomright, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
-    title = "absgap_mean_time_with_aggregation_in_number_of_markets_900_unsolved.pdf"
+    p = plot(legend=:topleft, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
+    title = "absgap_234567_mean_time_with_aggregation_in_number_of_markets_900_unsolved.pdf"
     xlabel!(p, "number of markets")
-    ylabel!(p, "mean time (in seconds)")
-    xlims!(p, 1.5, false_list_nb_market[end]+0.5)
-    xticks!(p, (false_list_nb_market,list_nb_market_names))
-    yticks!(p, ([1,10,100,900],["1","10","100","900"]))
+    ylabel!(p, "geometric mean time (s)")
+    xlims!(p, 1.5, 10.5)
+    # xticks!(p, (false_list_nb_market,list_nb_market_names))
+    xticks!(p, list_nb_market)
+    yticks!(p, ([1,10,100,900],["1","10","100","TL"]))
     ylims!(p, 1, 910)
     for i in 1:length(absgaps)
         absgap = absgaps_names[i]
         x = []
         y = []
-        for j in 1:length(false_list_nb_market)
-            nb_market = false_list_nb_market[j]
+        for j in 1:length(list_nb_market)
+            nb_market = list_nb_market[j]
             push!(x, nb_market)
-            # push!(y, all_stats_market_increase[i][j].mean_time_900_unsolved)
-            push!(y, geometric_mean_threshold_time_limit(all_stats_market_increase[i][j].cpu_time, 900))
+            push!(y, geometric_mean_threshold_time_limit(all_stats_market_increase1[i][j].cpu_time, 900))
         end
         plot!(p, x, y, label = absgap)
         println(y)
     end
     # add a black horizontal line to show the mean time if all instances time out
-    plot!(p, [1.5, false_list_nb_market[end]+0.5], [900,900], label = "", color = :black, linewidth = 2) # give it a name?
+    plot!(p, [1.5, 10.5], [900,900], label = "", color = :black, linewidth = 2) # give it a name?
     savefig("revision_exps/plots/"*title)
     display(p)
 
     # build plot % solved
     p = plot(legend=:bottomleft, linewidth = 1.5, thickness_scaling = 1.6)
-    title = "absgap_percentage_solved_with_aggregation_in_number_of_markets.pdf"
+    title = "absgap_234567_percentage_solved_with_aggregation_in_number_of_markets.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "percentage solved")
-    xlims!(p, 1.5, false_list_nb_market[end]+0.5)
-    xticks!(p, (false_list_nb_market,list_nb_market_names))
+    xlims!(p, 1.5, 10.5)
+    xticks!(p, list_nb_market)
     yticks!(p, ([0,25,50,75,100],["0","25","50","75","100"]))
     ylims!(p, 0, 100)
     for i in 1:length(absgaps)
         absgap = absgaps_names[i]
         x = []
         y = []
-        for j in 1:length(false_list_nb_market)
-            nb_market = false_list_nb_market[j]
+        for j in 1:length(list_nb_market)
+            nb_market = list_nb_market[j]
             push!(x, nb_market)
-            push!(y, all_stats_market_increase[i][j].number_solved_instances / all_stats_market_increase[i][j].number_instances * 100)
+            push!(y, all_stats_market_increase1[i][j].number_solved_instances / all_stats_market_increase1[i][j].number_instances * 100)
         end
         plot!(p, x, y, label = absgap)
         println(y)
@@ -2090,6 +2189,124 @@ function absgap_analysis()
     display(p)
 
 
+
+
+
+
+    # build categories and plots for increasing number of markets and players >= 8
+    all_stats_market_increase2 = []
+    absgaps = [0.01,0.001,0.0001]
+    # list_nb_market = [2,[6,8],[10,15]]
+    # list_nb_market_names = ["low","average","high"]
+    list_nb_player = [8,10,12,15]
+    list_nb_market = [2,8,15]
+    println("market increasing big number of players")
+    for absgap in absgaps
+        push!(all_stats_market_increase2, []) # elements of all_stats_market_increase1 consider only one absgap
+        for nb_market in list_nb_market
+            option_characs = []
+            push!(option_characs, characteristic(:abs_gap,absgap))
+            push!(option_characs, characteristic(:refinement_method,"full_refinement")) # method fixed
+            push!(option_characs, characteristic(:market,nb_market))
+            push!(option_characs, characteristic(:player,list_nb_player)) # small number of players
+
+            push!(all_stats_market_increase2[end], find_exp_in_category(exps, option_characs)) # save statistics
+            print(all_stats_market_increase2[end][end].number_instances)
+            println(" instances")
+        end
+    end
+
+    # build plot mean time with 900 for unsolved instances
+    p = plot(legend=:bottomright, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
+    title = "absgap_8-15_mean_time_with_aggregation_in_number_of_markets_900_unsolved.pdf"
+    xlabel!(p, "number of markets")
+    ylabel!(p, "geometric mean time (s)")
+    xlims!(p, 1.5, 15.5)
+    # xticks!(p, (false_list_nb_market,list_nb_market_names))
+    xticks!(p, list_nb_market)
+    yticks!(p, ([1,10,100,900],["1","10","100","TL"]))
+    ylims!(p, 1, 910)
+    for i in 1:length(absgaps)
+        absgap = absgaps_names[i]
+        x = []
+        y = []
+        for j in 1:length(list_nb_market)
+            nb_market = list_nb_market[j]
+            push!(x, nb_market)
+            push!(y, geometric_mean_threshold_time_limit(all_stats_market_increase2[i][j].cpu_time, 900))
+        end
+        plot!(p, x, y, label = absgap)
+        println(y)
+    end
+    # add a black horizontal line to show the mean time if all instances time out
+    plot!(p, [1.5, 15.5], [900,900], label = "", color = :black, linewidth = 2) # give it a name?
+    savefig("revision_exps/plots/"*title)
+    display(p)
+
+    # build plot % solved
+    p = plot(legend=:bottomleft, linewidth = 1.5, thickness_scaling = 1.6)
+    title = "absgap_8-15_percentage_solved_with_aggregation_in_number_of_markets.pdf"
+    xlabel!(p, "number of markets")
+    ylabel!(p, "percentage solved")
+    xlims!(p, 1.5, 15.5)
+    xticks!(p, list_nb_market)
+    yticks!(p, ([0,25,50,75,100],["0","25","50","75","100"]))
+    ylims!(p, 0, 100)
+    for i in 1:length(absgaps)
+        absgap = absgaps_names[i]
+        x = []
+        y = []
+        for j in 1:length(list_nb_market)
+            nb_market = list_nb_market[j]
+            push!(x, nb_market)
+            push!(y, all_stats_market_increase2[i][j].number_solved_instances / all_stats_market_increase2[i][j].number_instances * 100)
+        end
+        if i == 2
+            plot!(p, x, y, label = absgap, markershape = :+)
+        else
+            plot!(p, x, y, label = absgap)
+        end
+        println(y)
+    end
+    savefig("revision_exps/plots/"*title)
+    display(p)
+
+
+
+
+    # compute geometric mean for just 3 categories (the 3 absgap) and only counting the instances solved by the three different absgap
+    # build categories and plots for increasing number of players
+    all_stats = []
+    absgaps = [0.01,0.001,0.0001]
+    absgaps_names = ["10^{-2}","10^{-3}","10^{-4}"]
+    for absgap in absgaps
+        push!(all_stats, []) # elements of all_stats_player_increase consider only one absgap
+            option_characs = []
+            push!(option_characs, characteristic(:abs_gap,absgap))
+            push!(option_characs, characteristic(:refinement_method,"full_refinement")) # method fixed
+
+            push!(all_stats[end], find_exp_in_category(exps, option_characs)) # save statistics
+            print(all_stats[end][end].number_instances)
+            println(" instances")
+    end
+
+    # prepare 3 lists with the cpu_time of instances with all three absgap solving them
+    cpu_times = [[],[],[]]
+    for i in 1:length(all_stats[1][1].cpu_time)
+        if all_stats[1][1].solved[i] && all_stats[2][1].solved[i] && all_stats[3][1].solved[i]
+            push!(cpu_times[1], all_stats[1][1].cpu_time[i])
+            push!(cpu_times[2], all_stats[2][1].cpu_time[i])
+            push!(cpu_times[3], all_stats[3][1].cpu_time[i])
+        end
+    end
+    geomeans = Float64[0,0,0]
+    for j in 1:3
+        println(length(cpu_times[j]), " instances for ", absgaps_names[j])
+        geomeans[j] = geometric_mean(cpu_times[j])
+        println("geometric mean with only triple solved instances for a tolerance of ", absgaps_names[j], " = ", geomeans[j])
+    end
+    println(geomeans[3]/geomeans[1])
+    println(geomeans[3]/geomeans[2])
 
     return all_stats_player_increase
 end
@@ -2128,21 +2345,62 @@ function iteration_analysis()
     sep3 = " & "
     str = "& Type & \\multicolumn{3}{c}{\\textbf{SGM}} & \\multicolumn{3}{c}{\\textbf{direct approximation}} & \\multicolumn{3}{c}{\\textbf{\$2\$-level approximation}} \\\\"
     str = str*" && \\% solved & "
-    str = str*"time (s) & iter. & \\% solved & time (s) & iter. & \\% solved & time (s) & iter. \\\\ \\hline \n"
+    str = str*"time (s) & iter. & \\% solved & time (s) & iter. & \\% solved & time (s) & iter. & first iter. \\\\ \\hline \n"
+    mean_times = []
+    mean_iters = []
+    mean_iters_last_call_SGM = []
     for i in 1:length(NL_terms)
         NL_term = NL_terms_names[i]
         problem_type = problem_types[i]
         for j in 1:length(list_nb_player_names)
             nb_player = list_nb_player_names[j]
             str = str*NL_term*nb_player*sep3*problem_type
+
+            # computing the mean times and mean iterations among only triple solved instances
+            index1 = 9*(i-1)+3*(j-1)+1
+            index2 = 9*(i-1)+3*(j-1)+2
+            index3 = 9*(i-1)+3*(j-1)+3
+            times1 = []
+            times2 = []
+            times3 = []
+            iters1 = []
+            iters2 = []
+            iters3 = []
+            iters1_SGM = []
+            iters2_SGM = []
+            iters3_SGM = []
+            for it in 1:length(all_stats[index1].solved)
+                if all_stats[index1].solved[it] && all_stats[index2].solved[it] && all_stats[index3].solved[it]
+                    push!(times1, all_stats[index1].cpu_time[it])
+                    push!(times2, all_stats[index2].cpu_time[it])
+                    push!(times3, all_stats[index3].cpu_time[it])
+                    push!(iters1, all_stats[index1].iterations[it])
+                    push!(iters2, all_stats[index2].iterations[it])
+                    push!(iters3, all_stats[index3].iterations[it])
+                    push!(iters1_SGM, all_stats[index1].iterations_last_call_SGM[it])
+                    push!(iters2_SGM, all_stats[index2].iterations_last_call_SGM[it])
+                    push!(iters3_SGM, all_stats[index3].iterations_last_call_SGM[it])
+                end
+            end
+            timess = [times1,times2,times3]
+            iterss = [iters1,iters2,iters3]
+            iterss_SGM = [iters1_SGM,iters2_SGM,iters3_SGM]
+
             for k in 1:length(refinement_methods)
                 refinement_method = refinement_methods[k]
-
                 index = 9*(i-1)+3*(j-1)+k
                 perc_solved = string(round(100*all_stats[index].number_solved_instances/all_stats[index].number_instances, digits=0))
-                mean_time = string(round(geometric_mean_among_non_infinite(all_stats[index].cpu_time), digits=2))
-                mean_iter = string(round(all_stats[index].mean_iteration_among_solved, digits=2))
-                str = str*sep3*perc_solved*sep3*mean_time*sep3*mean_iter
+                push!(mean_times, geometric_mean(timess[k]))
+                mean_time = string(round(mean_times[end], digits=2))
+                push!(mean_iters, geometric_mean(iterss[k]))
+                mean_iter = string(round(mean_iters[end], digits=2))
+                push!(mean_iters_last_call_SGM, geometric_mean(iterss_SGM[k]))
+                mean_iter_SGM = string(round(mean_iters_last_call_SGM[end], digits=2))
+                if k == 3
+                    str = str*sep3*perc_solved*sep3*mean_time*sep3*mean_iter*sep3*mean_iter_SGM
+                else
+                    str = str*sep3*perc_solved*sep3*mean_time*sep3*mean_iter
+                end
                 println(NL_terms, " ", nb_player, " ", refinement_method, " ", mean_time)
             end
             str = str*sep2
@@ -2150,7 +2408,9 @@ function iteration_analysis()
         str = str*sep1
     end
     println(str)
-    return all_stats
+
+    # further analysis of the iterations: variance-like computation
+    return all_stats, mean_times, mean_iters
 end
 
 function check_no_over_time_limit()
@@ -2169,4 +2429,49 @@ function check_no_over_time_limit()
     end
 
     return exps;
+end
+
+function find_biggest_second_iter_number()
+    # get all exps in one list
+    exps = load_all_exps()
+    
+    # build categories and plots for increasing number of players
+    all_stats = []
+
+    option_characs = []
+
+    push!(all_stats, find_exp_in_category(exps, option_characs)) # save statistics
+    print(all_stats[end].number_instances)
+    println(" instances")
+end
+
+function check_iteration_difference_with_varying_tolerance()
+    # get all exps in one list
+    exps = load_all_exps()
+    
+    # build categories and plots for increasing number of players
+    all_stats = []
+    NL_terms_names = ["log","root","nonconvex"]
+    NL_terms = ["log","inverse_square_root","S+inverse_square_root"]
+    problem_types = ["Exp. cone","MIQCQP","MINLP"]
+    list_nb_player = [[2,3,4],[5,6,7],[8,10,12,15]]
+    list_nb_player_names = ["234","567","8-15"]
+    refinement_methods = ["SGM_*","sufficient_refinement","full_refinement"]
+    tolerances = [0.01,0.001,0.0001]
+    for tolerance in tolerances
+        for nb_player in list_nb_player
+                for refinement_method in refinement_methods
+                option_characs = []
+                push!(option_characs, characteristic(:abs_gap,0.0001)) # abs_gap fixed
+                push!(option_characs, characteristic(:refinement_method, "full_refinement")) # method fixed
+                push!(option_characs, characteristic(:NL_term,NL_term))
+                push!(option_characs, characteristic(:player,nb_player))
+
+                push!(all_stats, find_exp_in_category(exps, option_characs)) # save statistics
+                print(all_stats[end].number_instances)
+                println(" instances")
+            end
+        end
+    end
+
 end
