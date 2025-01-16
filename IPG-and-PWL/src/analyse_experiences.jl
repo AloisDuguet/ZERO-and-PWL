@@ -1,6 +1,8 @@
 using Plots
 using LaTeXStrings
 
+LINEWIDTH = 2.0
+
 function find_comparable_experiences(i, experiences, option, option_values)
     # find the set of indices of experiences which have the same setting than experiences[i] except for option which is in option_values
     # those indices corresponds to the order of option_values
@@ -767,7 +769,7 @@ function performance_profile(profiles; xlog = false, legend = :bottomright)
         if xlog
             println("\n\n\n---------------------- using xlog $xlog -----------------------\n\n\n")
             #plot!(p,profile.x, profile.y, label = profile.name, xaxis=:log) # simplest
-            plot!(p,profile.x, profile.y, label = profile.name, fontfamily = plot_font, linewidth = 1.5, thickness_scaling = 1.6, xaxis=:log, linestyle = ls, foreground_color_grid = :white) # tailored for the article
+            plot!(p,profile.x, profile.y, label = profile.name, fontfamily = plot_font, linewidth = LINEWIDTH, thickness_scaling = 1.6, xaxis=:log, linestyle = ls, foreground_color_grid = :white) # tailored for the article
             #plot!(p,profile.x, profile.y, label = profile.name, fontfamily = "Computer Modern", tickfontsize = 15, guidefontsize = 20, xaxis=:log, linewidth = 3, linestyle = ls) # tailored for the article
         else
             plot!(p,profile.x, profile.y, label = profile.name)
@@ -1817,7 +1819,7 @@ function scalability_analysis()
     end
 
     # build plot mean time with 900 for unsolved instances
-    p = plot(legend=:bottomright, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
+    p = plot(legend=:bottomright, yaxis=:log, linewidth = LINEWIDTH, thickness_scaling = 1.6)
     title = "scalability_mean_time_with_aggregation_in_number_of_players_900_unsolved.pdf"
     xlabel!(p, "number of players")
     ylabel!(p, "geometric mean time (s)")
@@ -1848,7 +1850,7 @@ function scalability_analysis()
     display(p)
 
     # build plot % solved
-    p = plot(legend=:bottomleft, linewidth = 1.5, thickness_scaling = 1.6)
+    p = plot(legend=:bottomleft, linewidth = LINEWIDTH, thickness_scaling = 1.6)
     title = "scalability_percentage_solved_with_aggregation_in_number_of_players.pdf"
     xlabel!(p, "number of players")
     ylabel!(p, "percentage solved")
@@ -1896,7 +1898,7 @@ function scalability_analysis()
     end
 
     # build plot mean time with 900 for unsolved instances
-    p = plot(legend=:topleft, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
+    p = plot(legend=:topleft, yaxis=:log, linewidth = LINEWIDTH, thickness_scaling = 1.6)
     title = "scalability_234567_mean_time_with_aggregation_in_number_of_markets_900_unsolved.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "geometric mean time (s)")
@@ -1924,7 +1926,7 @@ function scalability_analysis()
     display(p)
 
     # build plot % solved
-    p = plot(legend=:bottomleft, linewidth = 1.5, thickness_scaling = 1.6)
+    p = plot(legend=:bottomleft, linewidth = LINEWIDTH, thickness_scaling = 1.6)
     title = "scalability_234567_percentage_solved_with_aggregation_in_number_of_markets.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "percentage solved")
@@ -1973,7 +1975,7 @@ function scalability_analysis()
     end
 
     # build plot mean time with 900 for unsolved instances
-    p = plot(legend=:bottomright, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
+    p = plot(legend=:bottomright, yaxis=:log, linewidth = LINEWIDTH, thickness_scaling = 1.6)
     title = "scalability_8-15_mean_time_with_aggregation_in_number_of_markets_900_unsolved.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "geometric mean time (s)")
@@ -2001,7 +2003,7 @@ function scalability_analysis()
     display(p)
 
     # build plot % solved
-    p = plot(legend=:bottomleft, linewidth = 1.5, thickness_scaling = 1.6)
+    p = plot(legend=:bottomleft, linewidth = LINEWIDTH, thickness_scaling = 1.6)
     title = "scalability_8-15_percentage_solved_with_aggregation_in_number_of_markets.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "percentage solved")
@@ -2060,7 +2062,7 @@ function absgap_analysis()
     end
 
     # build plot mean time with 900 for unsolved instances
-    p = plot(legend=:bottomright, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
+    p = plot(legend=:bottomright, yaxis=:log, linewidth = LINEWIDTH, thickness_scaling = 1.6)
     title = "absgap_mean_time_with_aggregation_in_number_of_players_900_unsolved.pdf"
     xlabel!(p, "number of players")
     ylabel!(p, "geometric mean time (s)")
@@ -2087,7 +2089,7 @@ function absgap_analysis()
     display(p)
 
     # build plot % solved
-    p = plot(legend=:bottomleft, linewidth = 1.5, thickness_scaling = 1.6)
+    p = plot(legend=:bottomleft, linewidth = LINEWIDTH, thickness_scaling = 1.6)
     title = "absgap_percentage_solved_with_aggregation_in_number_of_players.pdf"
     xlabel!(p, "number of players")
     ylabel!(p, "percentage solved")
@@ -2138,7 +2140,7 @@ function absgap_analysis()
     end
 
     # build plot mean time with 900 for unsolved instances
-    p = plot(legend=:topleft, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
+    p = plot(legend=:topleft, yaxis=:log, linewidth = LINEWIDTH, thickness_scaling = 1.6)
     title = "absgap_234567_mean_time_with_aggregation_in_number_of_markets_900_unsolved.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "geometric mean time (s)")
@@ -2165,7 +2167,7 @@ function absgap_analysis()
     display(p)
 
     # build plot % solved
-    p = plot(legend=:bottomleft, linewidth = 1.5, thickness_scaling = 1.6)
+    p = plot(legend=:bottomleft, linewidth = LINEWIDTH, thickness_scaling = 1.6)
     title = "absgap_234567_percentage_solved_with_aggregation_in_number_of_markets.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "percentage solved")
@@ -2217,7 +2219,7 @@ function absgap_analysis()
     end
 
     # build plot mean time with 900 for unsolved instances
-    p = plot(legend=:bottomright, yaxis=:log, linewidth = 1.5, thickness_scaling = 1.6)
+    p = plot(legend=:bottomright, yaxis=:log, linewidth = LINEWIDTH, thickness_scaling = 1.6)
     title = "absgap_8-15_mean_time_with_aggregation_in_number_of_markets_900_unsolved.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "geometric mean time (s)")
@@ -2244,7 +2246,7 @@ function absgap_analysis()
     display(p)
 
     # build plot % solved
-    p = plot(legend=:bottomleft, linewidth = 1.5, thickness_scaling = 1.6)
+    p = plot(legend=:bottomleft, linewidth = LINEWIDTH, thickness_scaling = 1.6)
     title = "absgap_8-15_percentage_solved_with_aggregation_in_number_of_markets.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "percentage solved")
@@ -2340,7 +2342,6 @@ function keep_only_fully_solved(attribute, stats)
 
     return res
 end
-
 
 function iteration_analysis()
     # get all exps in one list
@@ -2561,7 +2562,7 @@ function check_iteration_difference_with_varying_tolerance()
     end
 
     # build plot
-    p = plot(legend=:bottomright, linewidth = 1.5, thickness_scaling = 1.6)
+    p = plot(legend=:bottomright, linewidth = LINEWIDTH, thickness_scaling = 1.6)
     title = "iteration_depending_on_tolerance_by_subset_of_instances.pdf"
     xlabel!(p, "subset of instances")
     ylabel!(p, "iteration mean")
@@ -2586,7 +2587,7 @@ function check_iteration_difference_with_varying_tolerance()
     display(p)
 
     # build plot with proportions of increase
-    p = plot(legend=:bottomright, linewidth = 1.5, thickness_scaling = 1.6)
+    p = plot(legend=:bottomright, linewidth = LINEWIDTH, thickness_scaling = 1.6)
     title = "iteration_proportion_depending_on_tolerance_by_subset_of_instances.pdf"
     xlabel!(p, "subset of instances")
     ylabel!(p, "iteration mean")
