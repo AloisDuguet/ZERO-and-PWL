@@ -2311,6 +2311,37 @@ function absgap_analysis()
     return all_stats_player_increase
 end
 
+function keep_only_fully_solved(attribute, stats)
+    # stats is a list of statistics_exps structures
+    # return a list of list of attribute_value of attribute for which all similar instances (ie same index j in stats[i]) solve the instance
+    number_exps = length(stats)
+    number_instances = length(stats[1].solved)
+    res = []
+    # initialize res with the proper number of lists
+    for i in 1:number_exps
+        push!(res, [])
+    end
+
+    # keep only fully solved instances
+    for j in 1:number_instances
+        solved = true
+        for i in 1:number_exps
+            if !stats[i].solved[j]
+                solved = false
+                break
+            end
+        end
+        if solved
+            for i in 1:number_exps
+                push!(res[i], getfield(stats[i], attribute)[j])
+            end
+        end
+    end
+
+    return res
+end
+
+
 function iteration_analysis()
     # get all exps in one list
     exps = load_all_exps()
@@ -2456,22 +2487,276 @@ function check_iteration_difference_with_varying_tolerance()
     problem_types = ["Exp. cone","MIQCQP","MINLP"]
     list_nb_player = [[2,3,4],[5,6,7],[8,10,12,15]]
     list_nb_player_names = ["234","567","8-15"]
+
+    NL_term = "log"
     refinement_methods = ["SGM_*","sufficient_refinement","full_refinement"]
     tolerances = [0.01,0.001,0.0001]
     for tolerance in tolerances
+        option_characs = []
+        push!(option_characs, characteristic(:abs_gap,tolerance)) # abs_gap fixed
+        push!(option_characs, characteristic(:refinement_method, "full_refinement")) # method fixed
+        push!(option_characs, characteristic(:NL_term,NL_term))
+
+        push!(all_stats, find_exp_in_category(exps, option_characs)) # save statistics
+        print(all_stats[end].number_instances)
+        println(" instances")
+    end
+    println(all_stats)
+    println("length of all_stats: ", length(all_stats))
+
+    # keep only iterations from instances solved for each absgap
+    proper_iterations0 = keep_only_fully_solved(:iterations_last_call_SGM, all_stats)
+
+    # check that the last function works properly
+    println("\n\n\n")
+    for i in 1:length(all_stats)
+        println(all_stats[i].iterations_last_call_SGM)
+    end
+    println()
+    for i in 1:length(all_stats)
+        println(proper_iterations0[i])
+    end
+
+    # compute means
+    for i in 1:length(all_stats)
+        println("geom mean among fully solved of tolerance ", tolerances[i], ": ", geometric_mean(proper_iterations0[i]))
+    end
+
+
+
+
+
+    # build categories and plots for increasing number of players
+    stats = []
+    NL_terms_names = ["log","root","nonconvex"]
+    NL_terms = ["log","inverse_square_root","S+inverse_square_root"]
+    problem_types = ["Exp. cone","MIQCQP","MINLP"]
+    list_nb_player = [[2,3,4],[5,6,7],[8,10,12,15]]
+    list_nb_player_names = ["234","567","8-15"]
+
+    refinement_methods = ["SGM_*","sufficient_refinement","full_refinement"]
+    tolerances = [0.01,0.001,0.0001]
+    for NL_term in NL_terms
         for nb_player in list_nb_player
-                for refinement_method in refinement_methods
+            push!(stats, [])
+            for tolerance in tolerances
                 option_characs = []
-                push!(option_characs, characteristic(:abs_gap,0.0001)) # abs_gap fixed
+                push!(option_characs, characteristic(:abs_gap,tolerance)) # abs_gap fixed
                 push!(option_characs, characteristic(:refinement_method, "full_refinement")) # method fixed
                 push!(option_characs, characteristic(:NL_term,NL_term))
                 push!(option_characs, characteristic(:player,nb_player))
 
-                push!(all_stats, find_exp_in_category(exps, option_characs)) # save statistics
-                print(all_stats[end].number_instances)
-                println(" instances")
+                push!(stats[end], find_exp_in_category(exps, option_characs)) # save statistics
+            end
+            print(stats[end][end].number_instances)
+            println(" instances")
+        end
+    end
+    println("length of stats: ", length(stats))
+
+    # keep only iterations from instances solved for each absgap
+    proper_iterations = []
+    for i in 1:length(stats)
+        push!(proper_iterations, keep_only_fully_solved(:iterations_last_call_SGM, stats[i]))
+    end
+
+    # build plot
+    p = plot(legend=:bottomright, linewidth = 1.5, thickness_scaling = 1.6)
+    title = "iteration_depending_on_tolerance_by_subset_of_instances.pdf"
+    xlabel!(p, "subset of instances")
+    ylabel!(p, "iteration mean")
+    subset_instance_names = ["log234","log567","log8-15","root234","root567","root8-15","nonconvex234","nonconvex567","nonconvex8-15"]
+    tolerances_names = ["10^{-2}","10^{-3}","10^{-4}"]
+    xticks!(p, (1:9,subset_instance_names))
+    # yticks!(p, ([1,10,100,900],["1","10","100","TL"]))
+    ylims!(p, 0, 50)
+    for i in 1:length(tolerances)
+        tolerance = tolerances_names[i]
+        x = []
+        y = []
+        for j in 1:length(proper_iterations)
+            x_name = subset_instance_names[j]
+            push!(x, j)
+            push!(y, geometric_mean(proper_iterations[j][i]))
+        end
+        plot!(p, x, y, label = tolerance, markershape = :+, xrotation = 20)
+        println(y)
+    end
+    savefig("revision_exps/plots/"*title)
+    display(p)
+
+    # build plot with proportions of increase
+    p = plot(legend=:bottomright, linewidth = 1.5, thickness_scaling = 1.6)
+    title = "iteration_proportion_depending_on_tolerance_by_subset_of_instances.pdf"
+    xlabel!(p, "subset of instances")
+    ylabel!(p, "iteration mean")
+    subset_instance_names = ["log234","log567","log8-15","root234","root567","root8-15","nonconvex234","nonconvex567","nonconvex8-15"]
+    tolerances_names = ["10^{-2}","10^{-3}","10^{-4}"]
+    xticks!(p, (1:9,subset_instance_names))
+    # yticks!(p, ([1,10,100,900],["1","10","100","TL"]))
+    # ylims!(p, 1, 1.5)
+    for i in 1:length(tolerances)
+        tolerance = tolerances_names[i]
+        x = []
+        y = []
+        for j in 1:length(proper_iterations)
+            x_name = subset_instance_names[j]
+            push!(x, j)
+            push!(y, geometric_mean(proper_iterations[j][i])/geometric_mean(proper_iterations[j][1]))
+        end
+        plot!(p, x, y, label = tolerance, markershape = :+, xrotation = 20)
+        println(y)
+    end
+    savefig("revision_exps/plots/"*title)
+    display(p)
+
+    return proper_iterations, stats
+end
+
+function complete_result_table()
+    # produces a latex table with one line for each parameters (m,n,delta_f,method), 
+    # respectively the number of players, of markets, the tolerance of the SGM and the method
+
+    # get all exps in one list
+    exps = load_all_exps()
+
+    # build categories and plots for increasing number of players
+    all_stats = []
+    tolerances = [0.01,0.001,0.0001]
+    tolerances_names = ["10^{-2}","10^{-3}","10^{-4}"]
+    NL_terms_names = ["log","root","nonconvex"]
+    NL_terms = ["log","inverse_square_root","S+inverse_square_root"]
+    problem_types = ["Exp. cone","MIQCQP","MINLP"]
+    list_nb_player = [2,3,4,5,6,7]
+    list_nb_player_names = ["2","3","4","5","6","7"]
+    list_nb_market = [2,6,10]
+    list_nb_market_names = ["2","6","10"]
+    refinement_methods = ["SGM_*","sufficient_refinement","full_refinement"]
+    refinement_method_names = ["SGM", "direct approx.", "2-level approx."]
+    SGM_names = ["SGM-ExpCone","SGM-MIQCQP","SGM-MINLP"]
+    for tolerance in tolerances
+        for NL_term in NL_terms
+            for nb_player in list_nb_player
+                for nb_market in list_nb_market
+                    for refinement_method in refinement_methods
+                        option_characs = []
+                        push!(option_characs, characteristic(:abs_gap,tolerance)) # abs_gap fixed
+                        push!(option_characs, characteristic(:refinement_method, refinement_method)) # method fixed
+                        push!(option_characs, characteristic(:NL_term,NL_term))
+                        push!(option_characs, characteristic(:player,nb_player))
+                        push!(option_characs, characteristic(:market,nb_market))
+
+                        push!(all_stats, find_exp_in_category(exps, option_characs)) # save statistics
+                        print(all_stats[end].number_instances)
+                        println(" instances")
+                    end
+                end
             end
         end
     end
 
+    all_stats2 = []
+    list_nb_player2 = [8,10,12,15]
+    list_nb_market2 = [2,8,15]
+    list_nb_player_names2 = ["8","10","12","15"]
+    list_nb_market_names2 = ["2","8","15"]
+    for tolerance in tolerances
+        for NL_term in NL_terms
+            for nb_player in list_nb_player2
+                for nb_market in list_nb_market2
+                    for refinement_method in refinement_methods
+                        option_characs = []
+                        push!(option_characs, characteristic(:abs_gap,tolerance)) # abs_gap fixed
+                        push!(option_characs, characteristic(:refinement_method, refinement_method)) # method fixed
+                        push!(option_characs, characteristic(:NL_term,NL_term))
+                        push!(option_characs, characteristic(:player,nb_player))
+                        push!(option_characs, characteristic(:market,nb_market))
+
+                        push!(all_stats2, find_exp_in_category(exps, option_characs)) # save statistics
+                        print(all_stats2[end].number_instances)
+                        println(" instances")
+                    end
+                end
+            end
+        end
+    end
+    println(length(all_stats))
+    println(length(all_stats2))
+
+    # build table
+    sep1 = " \\hline\n"
+    sep2 = " \\\\"
+    sep3 = " & "
+    #str = "cyber. cost & #players & #markets & method & #solved / #instances & time (s) & #iteration \\\\ \\hline \n" # creates problem with # in latex and julia
+    index = 1
+    index2 = 1
+    for h in 1:length(tolerances)
+        str = ""
+        tolerance = tolerances[h]
+        for i in 1:length(NL_terms)
+            NL_term = NL_terms_names[i]
+            for j in 1:length(list_nb_player_names)
+                nb_player = list_nb_player_names[j]
+                for jj in 1:length(list_nb_market_names)
+                    nb_market = list_nb_market_names[jj]
+                    for k in 1:length(refinement_methods)
+                        refinement_method = refinement_method_names[k]
+                        if k == 1
+                            refinement_method = SGM_names[i]
+                        end
+                        str = str*NL_term*sep3*nb_player*sep3*nb_market*sep3*refinement_method
+                        solved = string(all_stats[index].number_solved_instances)
+                        card_instances = string(all_stats[index].number_instances)
+                        mean_time = string(round(all_stats[index].mean_time_among_solved, digits=2))
+                        mean_iter = string(round(all_stats[index].mean_iteration_among_solved, digits=2))
+                        str = str*sep3*solved*"/"*card_instances*sep3*mean_time*sep3*mean_iter*sep2*"\n"
+                        # println(all_stats[index])
+                        if index in [5,15,35,69,100,140]
+                            println("index = ", index)
+                            println(NL_term*sep3*nb_player*sep3*nb_market*sep3*refinement_method*sep3*solved*"/"*card_instances*sep3*mean_time*sep3*mean_iter*sep2)
+                            println(all_stats[index])
+                            # return all_stats
+                        end
+                        index += 1
+                    end
+                    str = str*sep1
+                end
+            end
+
+            for j in 1:length(list_nb_player_names2)
+                nb_player = list_nb_player_names2[j]
+                for jj in 1:length(list_nb_market_names2)
+                    nb_market = list_nb_market_names2[jj]
+                    for k in 1:length(refinement_methods)
+                        refinement_method = refinement_method_names[k]
+                        if k == 1
+                            refinement_method = SGM_names[i]
+                        end
+                        str = str*NL_term*sep3*nb_player*sep3*nb_market*sep3*refinement_method
+                        solved = string(all_stats2[index2].number_solved_instances)
+                        card_instances = string(all_stats2[index2].number_instances)
+                        mean_time = string(round(all_stats2[index2].mean_time_among_solved, digits=2))
+                        mean_iter = string(round(all_stats2[index2].mean_iteration_among_solved, digits=2))
+                        str = str*sep3*solved*"/"*card_instances*sep3*mean_time*sep3*mean_iter*sep2*"\n"
+                        # println(all_stats2[index2])
+                        if index2 in [5,15,35,69,100,140]
+                            println(index2)
+                            println(NL_term*sep3*nb_player*sep3*nb_market*sep3*refinement_method*sep3*solved*"/"*card_instances*sep3*mean_time*sep3*mean_iter*sep2)
+                            println(all_stats2[index2])
+                            # return all_stats2
+                        end
+                        index2 += 1
+                    end
+                    str = str*sep1
+                end
+            end
+        end
+        #println(str)
+        title = "table_full_result"*string(1+h)*".txt"
+        file = open("revision_exps/plots/"*title, "w")
+        println(file,str)
+        close(file)
+    end
+
+    return str
 end
