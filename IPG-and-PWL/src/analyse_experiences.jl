@@ -1,7 +1,7 @@
 using Plots
 using LaTeXStrings
 
-LINEWIDTH = 2.0
+LINEWIDTH = 1.5
 
 function find_comparable_experiences(i, experiences, option, option_values)
     # find the set of indices of experiences which have the same setting than experiences[i] except for option which is in option_values
@@ -769,7 +769,7 @@ function performance_profile(profiles; xlog = false, legend = :bottomright)
         if xlog
             println("\n\n\n---------------------- using xlog $xlog -----------------------\n\n\n")
             #plot!(p,profile.x, profile.y, label = profile.name, xaxis=:log) # simplest
-            plot!(p,profile.x, profile.y, label = profile.name, fontfamily = plot_font, linewidth = LINEWIDTH, thickness_scaling = 1.6, xaxis=:log, linestyle = ls, foreground_color_grid = :white) # tailored for the article
+            plot!(p,profile.x, profile.y, label = profile.name, fontfamily = plot_font, linewidth = LINEWIDTH, thickness_scaling = 1.6, xaxis=:log, linestyle = ls, foreground_color_grid = :white, legendfontsize = 10) # tailored for the article
             #plot!(p,profile.x, profile.y, label = profile.name, fontfamily = "Computer Modern", tickfontsize = 15, guidefontsize = 20, xaxis=:log, linewidth = 3, linestyle = ls) # tailored for the article
         else
             plot!(p,profile.x, profile.y, label = profile.name)
@@ -1819,7 +1819,7 @@ function scalability_analysis()
     end
 
     # build plot mean time with 900 for unsolved instances
-    p = plot(legend=:bottomright, yaxis=:log, linewidth = LINEWIDTH, thickness_scaling = 1.6)
+    p = plot(legend=:bottomright, yaxis=:log, thickness_scaling = 1.6, legendfontsize = 10)
     title = "scalability_mean_time_with_aggregation_in_number_of_players_900_unsolved.pdf"
     xlabel!(p, "number of players")
     ylabel!(p, "geometric mean time (s)")
@@ -1837,11 +1837,11 @@ function scalability_analysis()
             # push!(y, all_stats_player_increase[i][j].mean_time_900_unsolved)
             push!(y, geometric_mean_threshold_time_limit(all_stats_player_increase[i][j].cpu_time, 900))
         end
-        plot!(p, x, y, label = NL_term)
+        plot!(p, x, y, label = NL_term, linewidth = LINEWIDTH)
         println(y)
     end
     # add a black horizontal line to show the mean time if all instances time out
-    plot!(p, [1.8, list_nb_player[end]], [900,900], label = "", color = :black, linewidth = 2) # give it a name?
+    plot!(p, [1.8, list_nb_player[end]], [900,900], label = "", color = :black) # give it a name?
     
     # # add a vertical line to separate points with 30 instances and points with 6 instances
     # plot!(p, [7.5,7.5], [1,910], label = "", color = :grey)
@@ -1850,7 +1850,7 @@ function scalability_analysis()
     display(p)
 
     # build plot % solved
-    p = plot(legend=:bottomleft, linewidth = LINEWIDTH, thickness_scaling = 1.6)
+    p = plot(legend=:bottomleft, thickness_scaling = 1.6, legendfontsize = 10)
     title = "scalability_percentage_solved_with_aggregation_in_number_of_players.pdf"
     xlabel!(p, "number of players")
     ylabel!(p, "percentage solved")
@@ -1867,7 +1867,7 @@ function scalability_analysis()
             push!(x, nb_player)
             push!(y, all_stats_player_increase[i][j].number_solved_instances / all_stats_player_increase[i][j].number_instances * 100)
         end
-        plot!(p, x, y, label = NL_term)
+        plot!(p, x, y, label = NL_term, linewidth = LINEWIDTH)
         println(y)
     end
     savefig("revision_exps/plots/"*title)
@@ -1898,7 +1898,7 @@ function scalability_analysis()
     end
 
     # build plot mean time with 900 for unsolved instances
-    p = plot(legend=:topleft, yaxis=:log, linewidth = LINEWIDTH, thickness_scaling = 1.6)
+    p = plot(legend=:topleft, yaxis=:log, thickness_scaling = 1.6, legendfontsize = 10)
     title = "scalability_234567_mean_time_with_aggregation_in_number_of_markets_900_unsolved.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "geometric mean time (s)")
@@ -1917,16 +1917,16 @@ function scalability_analysis()
             # push!(y, stats.mean_time_900_unsolved)
             push!(y, geometric_mean_threshold_time_limit(stats.cpu_time, 900))
         end
-        plot!(p, x, y, label = NL_term)
+        plot!(p, x, y, label = NL_term, linewidth = LINEWIDTH)
         println(y)
     end
     # add a black horizontal line to show the mean time if all instances time out
-    plot!(p, [1.5, 10.5], [900,900], label = "", color = :black, linewidth = 2) # give it a name?
+    plot!(p, [1.5, 10.5], [900,900], label = "", color = :black) # give it a name?
     savefig("revision_exps/plots/"*title)
     display(p)
 
     # build plot % solved
-    p = plot(legend=:bottomleft, linewidth = LINEWIDTH, thickness_scaling = 1.6)
+    p = plot(legend=:bottomleft, thickness_scaling = 1.6, legendfontsize = 10)
     title = "scalability_234567_percentage_solved_with_aggregation_in_number_of_markets.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "percentage solved")
@@ -1943,7 +1943,7 @@ function scalability_analysis()
             push!(x, nb_market)
             push!(y, all_stats_market_increase1[i][j].number_solved_instances / all_stats_market_increase1[i][j].number_instances * 100)
         end
-        plot!(p, x, y, label = NL_term)
+        plot!(p, x, y, label = NL_term, linewidth = LINEWIDTH)
         println(y)
     end
     savefig("revision_exps/plots/"*title)
@@ -1975,7 +1975,7 @@ function scalability_analysis()
     end
 
     # build plot mean time with 900 for unsolved instances
-    p = plot(legend=:bottomright, yaxis=:log, linewidth = LINEWIDTH, thickness_scaling = 1.6)
+    p = plot(legend=:bottomright, yaxis=:log, thickness_scaling = 1.6, legendfontsize = 10)
     title = "scalability_8-15_mean_time_with_aggregation_in_number_of_markets_900_unsolved.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "geometric mean time (s)")
@@ -1994,16 +1994,16 @@ function scalability_analysis()
             # push!(y, stats.mean_time_900_unsolved)
             push!(y, geometric_mean_threshold_time_limit(stats.cpu_time, 900))
         end
-        plot!(p, x, y, label = NL_term)
+        plot!(p, x, y, label = NL_term, linewidth = LINEWIDTH)
         println(y)
     end
     # add a black horizontal line to show the mean time if all instances time out
-    plot!(p, [1.5, 15.5], [900,900], label = "", color = :black, linewidth = 2) # give it a name?
+    plot!(p, [1.5, 15.5], [900,900], label = "", color = :black) # give it a name?
     savefig("revision_exps/plots/"*title)
     display(p)
 
     # build plot % solved
-    p = plot(legend=:bottomleft, linewidth = LINEWIDTH, thickness_scaling = 1.6)
+    p = plot(legend=:bottomleft, thickness_scaling = 1.6, legendfontsize = 10)
     title = "scalability_8-15_percentage_solved_with_aggregation_in_number_of_markets.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "percentage solved")
@@ -2022,9 +2022,9 @@ function scalability_analysis()
             push!(y, all_stats_market_increase2[i][j].number_solved_instances / all_stats_market_increase2[i][j].number_instances * 100)
         end
         if i == 1
-            plot!(p, x, y, label = NL_term, markershape = :+)
+            plot!(p, x, y, label = NL_term, markershape = :+, linewidth = LINEWIDTH)
         else
-            plot!(p, x, y, label = NL_term)
+            plot!(p, x, y, label = NL_term, linewidth = LINEWIDTH)
         end
         # plot!(p, x, y, label = NL_term, linestyle = linestyles[i])
         println(y)
@@ -2062,7 +2062,7 @@ function absgap_analysis()
     end
 
     # build plot mean time with 900 for unsolved instances
-    p = plot(legend=:bottomright, yaxis=:log, linewidth = LINEWIDTH, thickness_scaling = 1.6)
+    p = plot(legend=:bottomright, yaxis=:log, thickness_scaling = 1.6, legendfontsize = 10)
     title = "absgap_mean_time_with_aggregation_in_number_of_players_900_unsolved.pdf"
     xlabel!(p, "number of players")
     ylabel!(p, "geometric mean time (s)")
@@ -2080,16 +2080,16 @@ function absgap_analysis()
             # push!(y, all_stats_player_increase[i][j].mean_time_900_unsolved)
             push!(y, geometric_mean_threshold_time_limit(all_stats_player_increase[i][j].cpu_time, 900))
         end
-        plot!(p, x, y, label = absgap)
+        plot!(p, x, y, label = absgap, linewidth = LINEWIDTH)
         println(y)
     end
     # add a black horizontal line to show the mean time if all instances time out
-    plot!(p, [1.8, list_nb_player[end]], [900,900], label = "", color = :black, linewidth = 2) # give it a name?
+    plot!(p, [1.8, list_nb_player[end]], [900,900], label = "", color = :black) # give it a name?
     savefig("revision_exps/plots/"*title)
     display(p)
 
     # build plot % solved
-    p = plot(legend=:bottomleft, linewidth = LINEWIDTH, thickness_scaling = 1.6)
+    p = plot(legend=:bottomleft, thickness_scaling = 1.6, legendfontsize = 10)
     title = "absgap_percentage_solved_with_aggregation_in_number_of_players.pdf"
     xlabel!(p, "number of players")
     ylabel!(p, "percentage solved")
@@ -2106,7 +2106,7 @@ function absgap_analysis()
             push!(x, nb_player)
             push!(y, all_stats_player_increase[i][j].number_solved_instances / all_stats_player_increase[i][j].number_instances * 100)
         end
-        plot!(p, x, y, label = absgap)
+        plot!(p, x, y, label = absgap, linewidth = LINEWIDTH)
         println(y)
     end
     savefig("revision_exps/plots/"*title)
@@ -2140,7 +2140,7 @@ function absgap_analysis()
     end
 
     # build plot mean time with 900 for unsolved instances
-    p = plot(legend=:topleft, yaxis=:log, linewidth = LINEWIDTH, thickness_scaling = 1.6)
+    p = plot(legend=:topleft, yaxis=:log, thickness_scaling = 1.6, legendfontsize = 10)
     title = "absgap_234567_mean_time_with_aggregation_in_number_of_markets_900_unsolved.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "geometric mean time (s)")
@@ -2158,16 +2158,16 @@ function absgap_analysis()
             push!(x, nb_market)
             push!(y, geometric_mean_threshold_time_limit(all_stats_market_increase1[i][j].cpu_time, 900))
         end
-        plot!(p, x, y, label = absgap)
+        plot!(p, x, y, label = absgap, linewidth = LINEWIDTH)
         println(y)
     end
     # add a black horizontal line to show the mean time if all instances time out
-    plot!(p, [1.5, 10.5], [900,900], label = "", color = :black, linewidth = 2) # give it a name?
+    plot!(p, [1.5, 10.5], [900,900], label = "", color = :black) # give it a name?
     savefig("revision_exps/plots/"*title)
     display(p)
 
     # build plot % solved
-    p = plot(legend=:bottomleft, linewidth = LINEWIDTH, thickness_scaling = 1.6)
+    p = plot(legend=:bottomleft, thickness_scaling = 1.6, legendfontsize = 10)
     title = "absgap_234567_percentage_solved_with_aggregation_in_number_of_markets.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "percentage solved")
@@ -2184,7 +2184,7 @@ function absgap_analysis()
             push!(x, nb_market)
             push!(y, all_stats_market_increase1[i][j].number_solved_instances / all_stats_market_increase1[i][j].number_instances * 100)
         end
-        plot!(p, x, y, label = absgap)
+        plot!(p, x, y, label = absgap, linewidth = LINEWIDTH)
         println(y)
     end
     savefig("revision_exps/plots/"*title)
@@ -2219,7 +2219,7 @@ function absgap_analysis()
     end
 
     # build plot mean time with 900 for unsolved instances
-    p = plot(legend=:bottomright, yaxis=:log, linewidth = LINEWIDTH, thickness_scaling = 1.6)
+    p = plot(legend=:bottomright, yaxis=:log, thickness_scaling = 1.6, legendfontsize = 10)
     title = "absgap_8-15_mean_time_with_aggregation_in_number_of_markets_900_unsolved.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "geometric mean time (s)")
@@ -2237,16 +2237,16 @@ function absgap_analysis()
             push!(x, nb_market)
             push!(y, geometric_mean_threshold_time_limit(all_stats_market_increase2[i][j].cpu_time, 900))
         end
-        plot!(p, x, y, label = absgap)
+        plot!(p, x, y, label = absgap, linewidth = LINEWIDTH)
         println(y)
     end
     # add a black horizontal line to show the mean time if all instances time out
-    plot!(p, [1.5, 15.5], [900,900], label = "", color = :black, linewidth = 2) # give it a name?
+    plot!(p, [1.5, 15.5], [900,900], label = "", color = :black) # give it a name?
     savefig("revision_exps/plots/"*title)
     display(p)
 
     # build plot % solved
-    p = plot(legend=:bottomleft, linewidth = LINEWIDTH, thickness_scaling = 1.6)
+    p = plot(legend=:bottomleft, thickness_scaling = 1.6, legendfontsize = 10)
     title = "absgap_8-15_percentage_solved_with_aggregation_in_number_of_markets.pdf"
     xlabel!(p, "number of markets")
     ylabel!(p, "percentage solved")
@@ -2264,9 +2264,9 @@ function absgap_analysis()
             push!(y, all_stats_market_increase2[i][j].number_solved_instances / all_stats_market_increase2[i][j].number_instances * 100)
         end
         if i == 2
-            plot!(p, x, y, label = absgap, markershape = :+)
+            plot!(p, x, y, label = absgap, markershape = :+, linewidth = LINEWIDTH)
         else
-            plot!(p, x, y, label = absgap)
+            plot!(p, x, y, label = absgap, linewidth = LINEWIDTH)
         end
         println(y)
     end
@@ -2562,7 +2562,7 @@ function check_iteration_difference_with_varying_tolerance()
     end
 
     # build plot
-    p = plot(legend=:bottomright, linewidth = LINEWIDTH, thickness_scaling = 1.6)
+    p = plot(legend=:bottomright, thickness_scaling = 1.6, legendfontsize = 10)
     title = "iteration_depending_on_tolerance_by_subset_of_instances.pdf"
     xlabel!(p, "subset of instances")
     ylabel!(p, "iteration mean")
@@ -2580,14 +2580,14 @@ function check_iteration_difference_with_varying_tolerance()
             push!(x, j)
             push!(y, geometric_mean(proper_iterations[j][i]))
         end
-        plot!(p, x, y, label = tolerance, markershape = :+, xrotation = 20)
+        plot!(p, x, y, label = tolerance, markershape = :+, xrotation = 20, linewidth = LINEWIDTH)
         println(y)
     end
     savefig("revision_exps/plots/"*title)
     display(p)
 
     # build plot with proportions of increase
-    p = plot(legend=:bottomright, linewidth = LINEWIDTH, thickness_scaling = 1.6)
+    p = plot(legend=:bottomright, thickness_scaling = 1.6, legendfontsize = 10)
     title = "iteration_proportion_depending_on_tolerance_by_subset_of_instances.pdf"
     xlabel!(p, "subset of instances")
     ylabel!(p, "iteration mean")
@@ -2605,7 +2605,7 @@ function check_iteration_difference_with_varying_tolerance()
             push!(x, j)
             push!(y, geometric_mean(proper_iterations[j][i])/geometric_mean(proper_iterations[j][1]))
         end
-        plot!(p, x, y, label = tolerance, markershape = :+, xrotation = 20)
+        plot!(p, x, y, label = tolerance, markershape = :+, xrotation = 20, linewidth = LINEWIDTH)
         println(y)
     end
     savefig("revision_exps/plots/"*title)
