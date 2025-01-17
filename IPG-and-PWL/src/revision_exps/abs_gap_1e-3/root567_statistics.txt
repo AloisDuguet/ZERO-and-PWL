@@ -20,13 +20,13 @@ mean number of iterations counting all SGM calls: 32.77 with standard deviation 
 
 
 category: sufficient_refinement
-%solved: 96.7
+%solved: 95.6
 number of instances below 10 seconds: 72
-maximum time of solved instance: 1957.04
-mean time: 36.58
-geometric mean time: 4.71
-mean number of iterations for last SGM call: 34.21 with standard deviation 15.32
-mean number of iterations counting all SGM calls: 34.21 with standard deviation 15.32
+maximum time of solved instance: 562.83
+mean time: 14.25
+geometric mean time: 4.39
+mean number of iterations for last SGM call: 34.22 with standard deviation 15.41
+mean number of iterations counting all SGM calls: 34.22 with standard deviation 15.41
 
 
 category: full_refinement 0.05
@@ -38,17 +38,17 @@ geometric mean time: 2.75
 mean number of iterations for last SGM call: 33.18 with standard deviation 15.42
 mean number of iterations counting all SGM calls: 34.8 with standard deviation 15.52
 
-total solved: 95.89999999999999%
-total mean time: 18.3
-total geometric mean time: 3.06
+total solved: 95.6%
+total mean time: 10.79
+total geometric mean time: 2.98
 total number of instances solved under 10 seconds: 233
 fraction of all instances below 10 seconds: 0.2876543209876543
 
 proportion of best instances for gurobiNL: 0.7555555555555555
 with last point of the performance curve (10.29342516383396, 0.9666666666666667)
 proportion of best instances for sufficient_refinement: 0.022222222222222223
-with last point of the performance curve (782.3269839372554, 0.9666666666666667)
+with last point of the performance curve (7.983948473572029, 0.9555555555555556)
 proportion of best instances for full_refinement 0.05: 0.2111111111111111
 with last point of the performance curve (8.440817838657006, 0.9444444444444444)
 
-last solved instance had a performance ratio of 782.3269839372554
+last solved instance had a performance ratio of 10.29342516383396

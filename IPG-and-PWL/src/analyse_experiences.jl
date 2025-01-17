@@ -769,7 +769,7 @@ function performance_profile(profiles; xlog = false, legend = :bottomright)
         if xlog
             println("\n\n\n---------------------- using xlog $xlog -----------------------\n\n\n")
             #plot!(p,profile.x, profile.y, label = profile.name, xaxis=:log) # simplest
-            plot!(p,profile.x, profile.y, label = profile.name, fontfamily = plot_font, linewidth = LINEWIDTH, thickness_scaling = 1.6, xaxis=:log, linestyle = ls, foreground_color_grid = :white, legendfontsize = 10) # tailored for the article
+            plot!(p,profile.x, profile.y, label = profile.name, fontfamily = plot_font, linewidth = 2.0, thickness_scaling = 1.6, xaxis=:log, linestyle = ls, foreground_color_grid = :white, legendfontsize = 10) # tailored for the article
             #plot!(p,profile.x, profile.y, label = profile.name, fontfamily = "Computer Modern", tickfontsize = 15, guidefontsize = 20, xaxis=:log, linewidth = 3, linestyle = ls) # tailored for the article
         else
             plot!(p,profile.x, profile.y, label = profile.name)
@@ -947,7 +947,7 @@ function add_PWLgen_failed_exps(filename)
 end
 
 function prepare_real_performance_profile_cybersecurity(filename, filename_statistics, filename_save = "performance_profile.png", list_categories = []; refinement_methods = ["full_refinement","SGM_SOCP_model"],
-    errs = [Absolute(0.5),Absolute(0.05),Absolute(0.005),Absolute(0.0005)], time_limit=900, fictive_times = false)
+    errs = [Absolute(0.5),Absolute(0.05),Absolute(0.005),Absolute(0.0005)], time_limit=900, fictive_times = false, legend = :bottomright)
     # prepare profiles for a call to function performance_profile
     # the performace profile will be:
     # computation time in x
@@ -1013,7 +1013,7 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_stati
             # does it meet the required characteristics?
             for characteristic in category.l_option
                 if getfield(exp.options, characteristic.option) != characteristic.option_value
-                    println("exp does not match category: $exp")
+                    #println("exp does not match category: $exp")
                     in_category = false
                     break
                 end
@@ -1143,8 +1143,8 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_stati
         exps = copy(exps_by_category[i])
         x = sort(exps)
         name = c.name
-        name = replace(name, "full_refinementPWLgen"=>"2-level approximation")
-        name = replace(name, "full_refinement"=>"2-level approximation")
+        name = replace(name, "full_refinementPWLgen 0.05"=>"2-level approximation")
+        name = replace(name, "full_refinement 0.05"=>"2-level approximation")
         name = replace(name, "SOCP"=>"SGM-ExpCone")
         name = replace(name, "gurobiNL"=>"SGM-MIQCQP")
         name = replace(name, "sufficient_refinementPWLgen"=>"direct approximation")
@@ -1242,9 +1242,9 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_stati
             name = list_categories[i].name
             # change some names to fit my slides: "full_refinement"=>"PWL-ANE", "SOCP"=>"SGM-MOSEK"
             #name = replace(name, "full_refinement"=>"PWL-ANE")
-            name = replace(name, "full_refinementPWLgen"=>"2-level approximation")
+            name = replace(name, "full_refinementPWLgen 0.05"=>"2-level approximation")
             name = replace(name, "sufficient_refinementPWLgen"=>"direct approximation")
-            name = replace(name, "full_refinement"=>"2-level approximation")
+            name = replace(name, "full_refinement 0.05"=>"2-level approximation")
             name = replace(name, "SOCP"=>"SGM-ExpCone")
             name = replace(name, "gurobiNL"=>"SGM-MIQCQP")
             name = replace(name, "sufficient_refinement"=>"direct approximation")
@@ -1307,13 +1307,29 @@ function prepare_real_performance_profile_cybersecurity(filename, filename_stati
     #return profiles
 
     # launch Performance_profile
-    p = performance_profile(profiles, xlog=true)
+    p = performance_profile(profiles, xlog=true, legend = legend)
     # p = performance_profile(profiles, xlog=true, legend=:topright)
 
     # save plot to filename_save
     savefig(filename_save)
 
     display(p)
+end
+
+function launch_prepare_real_performance_profile_cybersecurity(filename_save = "revision_exps/abs_gap_1e-2/log8-15.txt", legend = :bottomright)
+    s = split(filename_save, "/")[2]
+    abs_gap = "abs"*s[end]
+    filename_analysis = filename_save[1:end-4]*"_analysis.txt"
+    filename_statistics = filename_save[1:end-4]*"_statistics.txt"
+    if occursin("log", filename_save)
+        refinement_methods = ["SGM_SOCP_model","sufficient_refinement","full_refinement"]
+    elseif occursin("root", filename_save)
+       refinement_methods = ["SGM_gurobiNL_model","sufficient_refinement","full_refinement"]
+    elseif occursin("nonconvex", filename_save)
+       refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"]
+    end
+    err_pwlhs = [Absolute(0.05), Absolute(0.0125)]
+    prepare_real_performance_profile_cybersecurity(filename_save, filename_statistics, filename_save[1:end-4]*"_"*abs_gap*"_perf_profile.pdf", refinement_methods = refinement_methods, errs = err_pwlhs, legend = legend)
 end
 
 function compute_best_response_computation_time(filename = "../../IPG/SCIP_time.txt", str_spec = "CyberSecurityNL")
@@ -2760,4 +2776,11 @@ function complete_result_table()
     end
 
     return str
+end
+
+function check_julia_time()
+    # get all exps in one list
+    exps = load_all_exps()
+
+    return exps
 end
