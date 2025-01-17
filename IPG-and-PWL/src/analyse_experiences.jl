@@ -1747,11 +1747,27 @@ function find_exp_in_category(exps, option_characs)
         # update counters
         if is_inside_category
             # println(exp)
+
+            # remove python loading time
+            if exp.options.refinement_method == "sufficient_refinement" || exp.options.refinement_method == "full_refinement"
+                real_cpu_time = exp.outputs.SGM_time + exp.outputs.julia_time
+            else 
+                # do not count julia time for SGM method because sometimes it takes around 2s 
+                # because some julia code is recompiled. It does not happen for other methods
+                # it is slightly unfair to other methods, but on a scale that does not change the analysis (around 0.1s in average)
+                real_cpu_time = exp.outputs.SGM_time
+            end
+
+            # special case: transform times of unsolved instances to Inf
+            if !exp.outputs.solved
+                real_cpu_time = Inf
+            end
+
             nb_instances += 1
             if exp.outputs.solved
                 nb_solved_instances += 1
-                mean_time_among_solved += exp.outputs.cpu_time
-                mean_time_900_unsolved += exp.outputs.cpu_time
+                mean_time_among_solved += real_cpu_time
+                mean_time_900_unsolved += real_cpu_time
                 mean_iteration_among_solved += sum(i for i in exp.outputs.iterations)
                 push!(iterations, sum(i for i in exp.outputs.iterations))
                 push!(iterations_last_call_SGM, exp.outputs.iterations[1])
@@ -1766,7 +1782,7 @@ function find_exp_in_category(exps, option_characs)
                 push!(iterations_last_call_SGM, -1)
             end
             push!(solved, exp.outputs.solved)
-            push!(cpu_time, exp.outputs.cpu_time)
+            push!(cpu_time, real_cpu_time)
             end
     end
     # compute means out of sums
@@ -2781,6 +2797,39 @@ end
 function check_julia_time()
     # get all exps in one list
     exps = load_all_exps()
+
+    # build plots with julia time as well as a print when julia time is greater than 1s
+    y = []
+    colors = [:blue,:orange,:green]
+    color_values = []
+    method = 1 # 1 is SGM, 2 is direct approx, 3 is 2-level approx
+    high_julia_times_per_method = [0,0,0]
+    for exp in exps
+        julia_time = exp.outputs.julia_time
+        if julia_time != -1 # do not count unsolved instances
+            push!(y, julia_time)
+            if exp.options.refinement_method == "sufficient_refinement"
+                method = 2
+            elseif exp.options.refinement_method == "full_refinement"
+                method = 3
+            else # SGM method
+                method = 1
+            end
+            push!(color_values, colors[method])
+            if julia_time > 1
+                println(julia_time, " secondes for julia time in exp ", exp, "\n")
+                high_julia_times_per_method[method] += 1
+            end
+        end
+    end
+    p = plot(y, yaxis = :log, seriestype = :scatter, markercolor = color_values, markersize = 2.5)
+    savefig(p, "revision_exps/tests/julia_time.pdf")
+    display(p)
+
+    # print some results
+    for method in 1:3
+        println("high julia times for method ", method, ": ", high_julia_times_per_method[method])
+    end
 
     return exps
 end
