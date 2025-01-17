@@ -1858,7 +1858,7 @@ function scalability_analysis()
     xlims!(p, list_nb_player[1], list_nb_player[end])
     xticks!(p, list_nb_player)
     yticks!(p, ([1,10,100,900],["1","10","100","TL"]))
-    ylims!(p, 1, 910)
+    ylims!(p, 0.2, 910)
     for i in 1:length(NL_terms)
         NL_term = NL_terms_names[i]
         x = []
@@ -1937,7 +1937,7 @@ function scalability_analysis()
     xlims!(p, 1.5, 10.5)
     xticks!(p, list_nb_market)
     yticks!(p, ([1,10,100,900],["1","10","100","TL"]))
-    ylims!(p, 1, 910)
+    ylims!(p, 0.2, 910)
     for i in 1:length(NL_terms)
         NL_term = NL_terms_names[i]
         x = []
@@ -2014,7 +2014,7 @@ function scalability_analysis()
     xlims!(p, 1.5, 15.5)
     xticks!(p, list_nb_market)
     yticks!(p, ([1,10,100,900],["1","10","100","TL"]))
-    ylims!(p, 1, 910)
+    ylims!(p, 0.2, 910)
     for i in 1:length(NL_terms)
         NL_term = NL_terms_names[i]
         x = []
@@ -2101,7 +2101,7 @@ function absgap_analysis()
     xlims!(p, list_nb_player[1], list_nb_player[end])
     xticks!(p, list_nb_player)
     yticks!(p, ([1,10,100,900],["1","10","100","TL"]))
-    ylims!(p, 1, 910)
+    ylims!(p, 0.2, 910)
     for i in 1:length(absgaps)
         absgap = absgaps_names[i]
         x = []
@@ -2180,7 +2180,7 @@ function absgap_analysis()
     # xticks!(p, (false_list_nb_market,list_nb_market_names))
     xticks!(p, list_nb_market)
     yticks!(p, ([1,10,100,900],["1","10","100","TL"]))
-    ylims!(p, 1, 910)
+    ylims!(p, 0.2, 910)
     for i in 1:length(absgaps)
         absgap = absgaps_names[i]
         x = []
@@ -2259,7 +2259,7 @@ function absgap_analysis()
     # xticks!(p, (false_list_nb_market,list_nb_market_names))
     xticks!(p, list_nb_market)
     yticks!(p, ([1,10,100,900],["1","10","100","TL"]))
-    ylims!(p, 1, 910)
+    ylims!(p, 0.2, 910)
     for i in 1:length(absgaps)
         absgap = absgaps_names[i]
         x = []
@@ -2791,7 +2791,7 @@ function complete_result_table()
         close(file)
     end
 
-    return str
+    return all_stats2
 end
 
 function check_julia_time()
