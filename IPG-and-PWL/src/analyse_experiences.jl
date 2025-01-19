@@ -1899,7 +1899,11 @@ function scalability_analysis()
             push!(x, nb_player)
             push!(y, all_stats_player_increase[i][j].number_solved_instances / all_stats_player_increase[i][j].number_instances * 100)
         end
-        plot!(p, x, y, label = NL_term, linewidth = LINEWIDTH)
+        if i == 1
+            plot!(p, x, y, label = NL_term, markershape = :+, linewidth = LINEWIDTH)
+        else
+            plot!(p, x, y, label = NL_term, linewidth = LINEWIDTH)
+        end
         println(y)
     end
     savefig("revision_exps/plots/"*title)
