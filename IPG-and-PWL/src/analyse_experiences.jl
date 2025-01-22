@@ -1332,6 +1332,21 @@ function launch_prepare_real_performance_profile_cybersecurity(filename_save = "
     prepare_real_performance_profile_cybersecurity(filename_save, filename_statistics, filename_save[1:end-4]*"_"*abs_gap*"_perf_profile.pdf", refinement_methods = refinement_methods, errs = err_pwlhs, legend = legend)
 end
 
+function launch_batch_performance_profile_cybersecurity()
+    filenames = ["revision_exps/performance_profiles/log2-7.txt",
+    "revision_exps/performance_profiles/root2-7.txt",
+    "revision_exps/performance_profiles/nonconvex2-7.txt",
+    "revision_exps/performance_profiles/log8-15.txt",
+    "revision_exps/performance_profiles/root8-15.txt",
+    "revision_exps/performance_profiles/nonconvex8-15.txt"]
+    legends = [:bottomright,:bottomright,:bottomright,:topleft,:topleft,:topleft]
+    for i in 1:length(filenames)
+        filename = filenames[i]
+        legend = legends[i]
+        launch_prepare_real_performance_profile_cybersecurity(filename, legend)
+    end
+end
+
 function compute_best_response_computation_time(filename = "../../IPG/SCIP_time.txt", str_spec = "CyberSecurityNL")
     # sum the best response computation time by experience
 
