@@ -2403,8 +2403,8 @@ function iteration_analysis()
     NL_terms_names = ["log","root","nonconvex"]
     NL_terms = ["log","inverse_square_root","S+inverse_square_root"]
     problem_types = ["Exp. cone","MIQCQP","MINLP"]
-    list_nb_player = [[2,3,4],[5,6,7],[8,10,12,15]]
-    list_nb_player_names = ["234","567","8-15"]
+    list_nb_player = [[2,3,4,5,6,7],[8,10,12,15]]
+    list_nb_player_names = ["2-7","8-15"]
     refinement_methods = ["SGM_*","sufficient_refinement","full_refinement"]
     for NL_term in NL_terms
         for nb_player in list_nb_player
@@ -2426,7 +2426,7 @@ function iteration_analysis()
     sep1 = " \\hline\n"
     sep2 = " \\\\"
     sep3 = " & "
-    str = "& Type & \\multicolumn{3}{c}{\\textbf{SGM}} & \\multicolumn{3}{c}{\\textbf{direct approximation}} & \\multicolumn{3}{c}{\\textbf{\$2\$-level approximation}} \\\\"
+    str = "& Type & \\multicolumn{3}{c}{\\textbf{SGM}} & \\multicolumn{3}{c}{\\textbf{direct approximation}} & \\multicolumn{4}{c}{\\textbf{\$2\$-level approximation}} \\\\"
     str = str*" && \\% solved & "
     str = str*"time (s) & iter. & \\% solved & time (s) & iter. & \\% solved & time (s) & iter. & first iter. \\\\ \\hline \n"
     mean_times = []
@@ -2440,9 +2440,9 @@ function iteration_analysis()
             str = str*NL_term*nb_player*sep3*problem_type
 
             # computing the mean times and mean iterations among only triple solved instances
-            index1 = 9*(i-1)+3*(j-1)+1
-            index2 = 9*(i-1)+3*(j-1)+2
-            index3 = 9*(i-1)+3*(j-1)+3
+            index1 = 6*(i-1)+3*(j-1)+1
+            index2 = 6*(i-1)+3*(j-1)+2
+            index3 = 6*(i-1)+3*(j-1)+3
             times1 = []
             times2 = []
             times3 = []
@@ -2471,7 +2471,7 @@ function iteration_analysis()
 
             for k in 1:length(refinement_methods)
                 refinement_method = refinement_methods[k]
-                index = 9*(i-1)+3*(j-1)+k
+                index = 6*(i-1)+3*(j-1)+k
                 perc_solved = string(round(100*all_stats[index].number_solved_instances/all_stats[index].number_instances, digits=0))
                 push!(mean_times, geometric_mean(timess[k]))
                 mean_time = string(round(mean_times[end], digits=2))
