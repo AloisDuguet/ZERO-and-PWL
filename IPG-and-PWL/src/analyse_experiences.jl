@@ -2537,8 +2537,6 @@ function check_iteration_difference_with_varying_tolerance()
     NL_terms_names = ["log","root","nonconvex"]
     NL_terms = ["log","inverse_square_root","S+inverse_square_root"]
     problem_types = ["Exp. cone","MIQCQP","MINLP"]
-    list_nb_player = [[2,3,4],[5,6,7],[8,10,12,15]]
-    list_nb_player_names = ["234","567","8-15"]
 
     NL_term = "log"
     refinement_methods = ["SGM_*","sufficient_refinement","full_refinement"]
@@ -2581,28 +2579,25 @@ function check_iteration_difference_with_varying_tolerance()
     # build categories and plots for increasing number of players
     stats = []
     NL_terms_names = ["log","root","nonconvex"]
-    NL_terms = ["log","inverse_square_root","S+inverse_square_root"]
+    # NL_terms = ["log","inverse_square_root","S+inverse_square_root"]
     problem_types = ["Exp. cone","MIQCQP","MINLP"]
-    list_nb_player = [[2,3,4],[5,6,7],[8,10,12,15]]
-    list_nb_player_names = ["234","567","8-15"]
-
+    list_nb_player = [2,3,4,5,6,7,8,10,12,15]
+    list_nb_player_names = ["2","3","4","5","6","7","8","10","12","15"]
     refinement_methods = ["SGM_*","sufficient_refinement","full_refinement"]
     tolerances = [0.01,0.001,0.0001]
-    for NL_term in NL_terms
-        for nb_player in list_nb_player
-            push!(stats, [])
-            for tolerance in tolerances
-                option_characs = []
-                push!(option_characs, characteristic(:abs_gap,tolerance)) # abs_gap fixed
-                push!(option_characs, characteristic(:refinement_method, "full_refinement")) # method fixed
-                push!(option_characs, characteristic(:NL_term,NL_term))
-                push!(option_characs, characteristic(:player,nb_player))
+    for nb_player in list_nb_player
+        push!(stats, [])
+        for tolerance in tolerances
+            option_characs = []
+            push!(option_characs, characteristic(:abs_gap,tolerance)) # abs_gap fixed
+            push!(option_characs, characteristic(:refinement_method, "full_refinement")) # method fixed
+            # push!(option_characs, characteristic(:NL_term,NL_term))
+            push!(option_characs, characteristic(:player,nb_player))
 
-                push!(stats[end], find_exp_in_category(exps, option_characs)) # save statistics
-            end
-            print(stats[end][end].number_instances)
-            println(" instances")
+            push!(stats[end], find_exp_in_category(exps, option_characs)) # save statistics
         end
+        print(stats[end][end].number_instances)
+        println(" instances")
     end
     println("length of stats: ", length(stats))
 
@@ -2614,24 +2609,29 @@ function check_iteration_difference_with_varying_tolerance()
 
     # build plot
     p = plot(legend=:bottomright, thickness_scaling = 1.6, legendfontsize = 10)
-    title = "iteration_depending_on_tolerance_by_subset_of_instances.pdf"
-    xlabel!(p, "subset of instances")
+    title = "iteration_depending_on_tolerance_by_number_of_players.pdf"
+    xlabel!(p, "number of players")
     ylabel!(p, "iteration mean")
-    subset_instance_names = ["log234","log567","log8-15","root234","root567","root8-15","nonconvex234","nonconvex567","nonconvex8-15"]
+    subset_instance_names = ["log2","log3","log4","log5","log6","log7","log8","log10","log12","log15",
+    "root2","root3","root4","root5","root6","root7","root8","root10","root12","root15",
+    "nonconvex2","nonconvex3","nonconvex4","nonconvex5","nonconvex6","nonconvex7","nonconvex8","nonconvex10","nonconvex12","nonconvex15"]
+    subset_instance_names = ["2","3","4","5","6","7","8","10","12","15"]
     tolerances_names = ["10^{-2}","10^{-3}","10^{-4}"]
-    xticks!(p, (1:9,subset_instance_names))
+    xticks!(p, ([2,3,4,5,6,7,8,10,12,15],subset_instance_names))
+    xlims!(p, 2,15)
     # yticks!(p, ([1,10,100,900],["1","10","100","TL"]))
-    ylims!(p, 0, 50)
+    ylims!(p, 0, 60)
     for i in 1:length(tolerances)
         tolerance = tolerances_names[i]
         x = []
         y = []
         for j in 1:length(proper_iterations)
             x_name = subset_instance_names[j]
-            push!(x, j)
+            push!(x, list_nb_player[j])
             push!(y, geometric_mean(proper_iterations[j][i]))
         end
-        plot!(p, x, y, label = tolerance, markershape = :+, xrotation = 20, linewidth = LINEWIDTH)
+        plot!(p, x, y, label = tolerance, markershape = :+, linewidth = LINEWIDTH)
+        # plot!(p, x, y, label = tolerance, markershape = :+, xrotation = 20, linewidth = LINEWIDTH)
         println(y)
     end
     savefig("revision_exps/plots/"*title)
@@ -2642,7 +2642,9 @@ function check_iteration_difference_with_varying_tolerance()
     title = "iteration_proportion_depending_on_tolerance_by_subset_of_instances.pdf"
     xlabel!(p, "subset of instances")
     ylabel!(p, "iteration mean")
-    subset_instance_names = ["log234","log567","log8-15","root234","root567","root8-15","nonconvex234","nonconvex567","nonconvex8-15"]
+    subset_instance_names = ["log2","log3","log4","log5","log6","log7","log8","log10","log12","log15",
+    "root2","root3","root4","root5","root6","root7","root8","root10","root12","root15",
+    "nonconvex2","nonconvex3","nonconvex4","nonconvex5","nonconvex6","nonconvex7","nonconvex8","nonconvex10","nonconvex12","nonconvex15"]
     tolerances_names = ["10^{-2}","10^{-3}","10^{-4}"]
     xticks!(p, (1:9,subset_instance_names))
     # yticks!(p, ([1,10,100,900],["1","10","100","TL"]))
