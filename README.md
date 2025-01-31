@@ -1,7 +1,11 @@
 ## Forked from
 This git is a fork from ds4dm/ZERO of Gabriele Dragotto and Sriram Sankaranarayanan
 
-It contains the code and results associated with the project "Computing Approximate Nash Equilibria for Integer Programming Games" carried by Margarida Carvalho, Gabriele Dragotto, Aloïs Duguet and Sandra Ulrich Ngueveu. A preprint is available: https://arxiv.org/abs/2402.04250. Be careful, newer experiments than the one in the arXiv preprint have been done with file results in folder https://github.com/LICO-labs/SGM-and-PWL/tree/master/IPG-and-PWL/src/revision_exps. The full result table for those new results can be found at this address: https://github.com/LICO-labs/SGM-and-PWL/blob/master/Full_experimental_results.pdf. To retrieve the old results, one has to go to commit 2eee484dd18fdff5855219ea5414d36accf131ce.
+It contains the code and results associated with the project "Computing Approximate Nash Equilibria for Integer Programming Games" carried by Margarida Carvalho, Gabriele Dragotto, Aloïs Duguet and Sandra Ulrich Ngueveu. A **preprint** is available: https://arxiv.org/abs/2402.04250. 
+
+**Be careful**: newer experiments than the one in the arXiv preprint have been done with file results in folder https://github.com/LICO-labs/SGM-and-PWL/tree/master/IPG-and-PWL/src/revision_exps. The full result table for those new results can be found at this address: https://github.com/LICO-labs/SGM-and-PWL/blob/master/Full_experimental_results.pdf. 
+
+**To retrieve the results from the preprint**: go to commit 2eee484dd18fdff5855219ea5414d36accf131ce.
 
 ## License
 This code is distributed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International.
@@ -42,10 +46,15 @@ OUTPUT:
 
 ## Benchmark
 The function benchmark_SGM_absolute_direct_solver in file IPG-and-PWL/src/SGM_absolute_direct_solver.jl allows to launch many instances one after the other, created by taking all possibilities of parameters, while saving results in a file in a one-line fashion for each instance.
-The parameters with same name as for function SGM_PWL_absolute_direct_solver plus an "s" at the end are lists for which the elements have the same meaning as for function SGM_PWL_absolute_direct_solver. Example: refinement_methods = ["SGM_SOCP_model","sufficient_refinement"] means all instance files will be solved with the two methods called by refinement_method = "SGM_SOCP_model" and "sufficient_refinement".
+The parameters with same name as for function SGM_PWL_absolute_direct_solver plus an "s" at the end are lists for which the elements have the same meaning as for function SGM_PWL_absolute_direct_solver. You can find below a description of some of the parameters of the benchmark function: 
+
+-refinement_methods = ["SGM_SOCP_model","sufficient_refinement"] means all instance files will be solved with the two methods called by refinement_method = "SGM_SOCP_model" and "sufficient_refinement".
+
 -max_iters (DEFAULT = [1]) is a list. It is deprecated and thus should be left to the default value
+
 - filename_save (DEFAULT = "last_experiences.txt") is a String, indicating in which .txt file the results should be written
-EXAMPLE:
+
+You can find below an example of a call to the benchmark function:
 
 benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "revision_exps/abs_gap_1e-4/nonconvex234.txt", PWL_general_constraint = false)
 
