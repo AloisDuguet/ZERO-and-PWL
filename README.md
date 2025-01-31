@@ -48,9 +48,9 @@ OUTPUT:
 The function benchmark_SGM_absolute_direct_solver in file IPG-and-PWL/src/SGM_absolute_direct_solver.jl allows to launch many instances one after the other, created by taking all possibilities of parameters, while saving results in a file in a one-line fashion for each instance.
 The parameters with same name as for function SGM_PWL_absolute_direct_solver plus an "s" at the end are lists for which the elements have the same meaning as for function SGM_PWL_absolute_direct_solver. You can find below a description of some of the parameters of the benchmark function: 
 
--refinement_methods = ["SGM_SOCP_model","sufficient_refinement"] means all instance files will be solved with the two methods called by refinement_method = "SGM_SOCP_model" and "sufficient_refinement".
+- refinement_methods = ["SGM_SOCP_model","sufficient_refinement"] means all instance files will be solved with the two methods called by refinement_method = "SGM_SOCP_model" and "sufficient_refinement".
 
--max_iters (DEFAULT = [1]) is a list. It is deprecated and thus should be left to the default value
+- max_iters (DEFAULT = [1]) is a list. It is deprecated and thus should be left to the default value
 
 - filename_save (DEFAULT = "last_experiences.txt") is a String, indicating in which .txt file the results should be written
 
