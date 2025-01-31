@@ -89,12 +89,13 @@ This one-line result contains, in order of apparition:
 - iterations, vector with the number of iterations of the SGM each time it was used (one time for all experiences except 2-level approximation which launches SGM two times)
 
 EXAMPLE:
+
 instance_2_2_3.txt::delta0.05 epsilon0.0::true::full_refinement::1::0::0.0001::S+inverse_square_root::false::true::0.0_0.0_0.873427971_0.0_0.0__23.695903111_22.905812669_0.901771423_1.0_1.0::-3.707066878_1438.708576549::1.840723773 secondes::1 iterations::0.0001 observed delta::180_195::::0.6194970000000001::0.3238423719999999
 
 # Errors on one-line results
 Examples of one-line result if there is an error during computation:
 
-instance_4_5_3.txt::delta2.5e-5 epsilon0.0::true::SGM_NL_model::1::0::0.0001::S+inverse_square_root::false::ERROR WHILE WRITING IN FILE: MethodError(length, (ProcessFailedException(Base.Process[Process(`python launch_SGM.py`, ProcessExited(209))]),), 0x0000000000007c84)
+instance_4_5_3.txt::delta2.5e-5 epsilon0.0::true::SGM_NL_model::1::0::0.0001::S+inverse_square_root::false::ERROR WHILE WRITING IN FILE: MethodError(length, (ProcessFailedException(Base.Process[Process('python launch_SGM.py', ProcessExited(209))]),), 0x0000000000007c84)
 
 -> caused by "exit(209)" in python code (time limit reached during computation of best response by SCIP solver)
 
