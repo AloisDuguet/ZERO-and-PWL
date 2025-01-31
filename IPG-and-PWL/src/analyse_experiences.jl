@@ -1691,7 +1691,7 @@ mutable struct statistics_exps
     solved # list of outputs.solved results
     cpu_time # list of outputs.cpu_time results
     iterations # list of outputs.iterations results
-    iterations_last_call_SGM
+    iterations_first_call_SGM
 end
 
 function geometric_mean(values)
@@ -1728,7 +1728,7 @@ function find_exp_in_category(exps, option_characs)
     solved = []
     cpu_time = []
     iterations = []
-    iterations_last_call_SGM = []
+    iterations_first_call_SGM = []
     max_second_iter = 0
 
     for exp in exps
@@ -1785,7 +1785,7 @@ function find_exp_in_category(exps, option_characs)
                 mean_time_900_unsolved += real_cpu_time
                 mean_iteration_among_solved += sum(i for i in exp.outputs.iterations)
                 push!(iterations, sum(i for i in exp.outputs.iterations))
-                push!(iterations_last_call_SGM, exp.outputs.iterations[1])
+                push!(iterations_first_call_SGM, exp.outputs.iterations[1])
                 if exp.options.refinement_method == "full_refinement"
                     if exp.outputs.iterations[end] > max_second_iter
                         max_second_iter = exp.outputs.iterations[end]
@@ -1794,7 +1794,7 @@ function find_exp_in_category(exps, option_characs)
             else
                 mean_time_900_unsolved += 900.0 # special case where the time is Inf, which we transform to 900
                 push!(iterations, -1)
-                push!(iterations_last_call_SGM, -1)
+                push!(iterations_first_call_SGM, -1)
             end
             push!(solved, exp.outputs.solved)
             push!(cpu_time, real_cpu_time)
@@ -1808,7 +1808,7 @@ function find_exp_in_category(exps, option_characs)
     println("\n\n\n-----> the max number of second iteration is ", max_second_iter, "\n\n\n")
 
     # build statistics_exps structure
-    return statistics_exps(option_characs, nb_instances, nb_solved_instances, mean_time_900_unsolved, mean_time_among_solved, mean_iteration_among_solved, solved, cpu_time, iterations, iterations_last_call_SGM)
+    return statistics_exps(option_characs, nb_instances, nb_solved_instances, mean_time_900_unsolved, mean_time_among_solved, mean_iteration_among_solved, solved, cpu_time, iterations, iterations_first_call_SGM)
 end
 
 function load_all_exps(time_limit = 900)
@@ -2460,9 +2460,9 @@ function iteration_analysis()
                     push!(iters1, all_stats[index1].iterations[it])
                     push!(iters2, all_stats[index2].iterations[it])
                     push!(iters3, all_stats[index3].iterations[it])
-                    push!(iters1_SGM, all_stats[index1].iterations_last_call_SGM[it])
-                    push!(iters2_SGM, all_stats[index2].iterations_last_call_SGM[it])
-                    push!(iters3_SGM, all_stats[index3].iterations_last_call_SGM[it])
+                    push!(iters1_SGM, all_stats[index1].iterations_first_call_SGM[it])
+                    push!(iters2_SGM, all_stats[index2].iterations_first_call_SGM[it])
+                    push!(iters3_SGM, all_stats[index3].iterations_first_call_SGM[it])
                 end
             end
             timess = [times1,times2,times3]
@@ -2557,12 +2557,12 @@ function check_iteration_difference_with_varying_tolerance_wrt_subset_of_instanc
     println("length of all_stats: ", length(all_stats))
 
     # keep only iterations from instances solved for each absgap
-    proper_iterations0 = keep_only_fully_solved(:iterations_last_call_SGM, all_stats)
+    proper_iterations0 = keep_only_fully_solved(:iterations_first_call_SGM, all_stats)
 
     # check that the last function works properly
     println("\n\n\n")
     for i in 1:length(all_stats)
-        println(all_stats[i].iterations_last_call_SGM)
+        println(all_stats[i].iterations_first_call_SGM)
     end
     println()
     for i in 1:length(all_stats)
@@ -2609,7 +2609,7 @@ function check_iteration_difference_with_varying_tolerance_wrt_subset_of_instanc
     # keep only iterations from instances solved for each absgap
     proper_iterations = []
     for i in 1:length(stats)
-        push!(proper_iterations, keep_only_fully_solved(:iterations_last_call_SGM, stats[i]))
+        push!(proper_iterations, keep_only_fully_solved(:iterations_first_call_SGM, stats[i]))
     end
 
     # build plot
@@ -2700,12 +2700,12 @@ function check_iteration_difference_with_varying_tolerance_wrt_players()
     println("length of all_stats: ", length(all_stats))
 
     # keep only iterations from instances solved for each absgap
-    proper_iterations0 = keep_only_fully_solved(:iterations_last_call_SGM, all_stats)
+    proper_iterations0 = keep_only_fully_solved(:iterations_first_call_SGM, all_stats)
 
     # check that the last function works properly
     println("\n\n\n")
     for i in 1:length(all_stats)
-        println(all_stats[i].iterations_last_call_SGM)
+        println(all_stats[i].iterations_first_call_SGM)
     end
     println()
     for i in 1:length(all_stats)
@@ -2749,7 +2749,7 @@ function check_iteration_difference_with_varying_tolerance_wrt_players()
     # keep only iterations from instances solved for each absgap
     proper_iterations = []
     for i in 1:length(stats)
-        push!(proper_iterations, keep_only_fully_solved(:iterations_last_call_SGM, stats[i]))
+        push!(proper_iterations, keep_only_fully_solved(:iterations_first_call_SGM, stats[i]))
     end
 
     # build plot
