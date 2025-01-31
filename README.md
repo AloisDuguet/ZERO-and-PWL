@@ -1,7 +1,7 @@
 ## Forked from
 This git is a fork from ds4dm/ZERO of Gabriele Dragotto and Sriram Sankaranarayanan
 
-It contains the code and results associated with the project "Computing Approximate Nash Equilibria for Integer Programming Games" carried by Margarida Carvalho, Gabriele Dragotto, Aloïs Duguet and Sandra Ulrich Ngueveu. A preprint is available: https://arxiv.org/abs/2402.04250.
+It contains the code and results associated with the project "Computing Approximate Nash Equilibria for Integer Programming Games" carried by Margarida Carvalho, Gabriele Dragotto, Aloïs Duguet and Sandra Ulrich Ngueveu. A preprint is available: https://arxiv.org/abs/2402.04250. Be careful, newer experiments than the one in the arXiv preprint have been done with file results in folder https://github.com/LICO-labs/SGM-and-PWL/tree/master/IPG-and-PWL/src/revision_exps. The full result table for those new results can be found at this address: https://github.com/LICO-labs/SGM-and-PWL/blob/master/Full_experimental_results.pdf. To retrieve the old results, one has to go to commit 2eee484dd18fdff5855219ea5414d36accf131ce.
 
 ## License
 This code is distributed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International.
@@ -43,14 +43,16 @@ OUTPUT:
 ## Benchmark
 The function benchmark_SGM_absolute_direct_solver in file IPG-and-PWL/src/SGM_absolute_direct_solver.jl allows to launch many instances one after the other, created by taking all possibilities of parameters, while saving results in a file in a one-line fashion for each instance.
 The parameters with same name as for function SGM_PWL_absolute_direct_solver plus an "s" at the end are lists for which the elements have the same meaning as for function SGM_PWL_absolute_direct_solver. Example: refinement_methods = ["SGM_SOCP_model","sufficient_refinement"] means all instance files will be solved with the two methods called by refinement_method = "SGM_SOCP_model" and "sufficient_refinement".
--max_iters (DEFAULT = [1]) is a list. It is deprecated and should be let to the default value
+-max_iters (DEFAULT = [1]) is a list. It is deprecated and thus should be left to the default value
 - filename_save (DEFAULT = "last_experiences.txt") is a String, indicating in which .txt file the results should be written
 EXAMPLE:
-benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "SCIP_exps/NL234.txt", PWL_general_constraint = false)
--> launches the experiments of "nonconvex234" in the paper and saves the results in "PWL-and-PWL/src/SCIP_exps/NL234.txt"
+
+benchmark_SGM_absolute_direct_solver(filename_instances = filename_instances, refinement_methods = ["SGM_NL_model","sufficient_refinement","full_refinement"], err_pwlhs = [Absolute(0.05)], NL_terms = ["S+inverse_square_root"], filename_save = "revision_exps/abs_gap_1e-4/nonconvex234.txt", PWL_general_constraint = false)
+
+-> launches the experiments for the nonconvex cybersecurity cost with abs_gap 0.0001 and saves the results in "PWL-and-PWL/src/revision_exps/abs_gap_1e-4/nonconvex234.txt"
 
 ## Experimental results
-The results obtained by solving the instances from subsets of instances are named {subset}.txt. They are located in folder IPG-and-PWL/src/PWLgen for subsets root234, root567, log234 and log567, while for subsets nonconvex234 and nonconvex567 they are in folder IPG-and-PWL/src/SCIP_exps. The number of iterations inside the SGM are not available in those file. They are accessible in separate .txt files called "{subset}_iteration.txt".
+The results obtained by solving the instances from subsets of instances are named {cybersecurity_cost}{range_of_values_of_players}.txt. They are located in folder IPG-and-PWL/src/revision_exps/abs_gap_{abs_gap}. The number of iterations inside the SGM are not available in those file. They are accessible in separate .txt files called "{subset}_iteration.txt".
 
 ## One-line result of an instance
 The different informations are separated by "::". It contains informations described in the two data structures "option_cs_instance" (parameters of the instance) and "output_cs_instance" (results of the instance) described in file "IPG-and-PWL/src/SGM_solver.jl". 
@@ -84,10 +86,7 @@ Examples of one-line result if there is an error during computation:
 instance_4_5_3.txt::delta2.5e-5 epsilon0.0::true::SGM_NL_model::1::0::0.0001::S+inverse_square_root::false::ERROR WHILE WRITING IN FILE: MethodError(length, (ProcessFailedException(Base.Process[Process(`python launch_SGM.py`, ProcessExited(209))]),), 0x0000000000007c84)
 -> caused by "exit(209)" in python code (time limit reached during computation of best response by SCIP solver)
 instance_7_8_2.txt::delta2.5e-5 epsilon0.0::true::sufficient_refinement::1::0::0.0001::S+inverse_square_root::false::ERROR: ErrorException("ERROR time limit reached in SGM")
--> caused by time limit (900 seconds) reached during SGM
+-> caused by time limit (900 seconds) reached during SGM.
 
 # Analysis of one-line result files
-To analyse the one-line result files, functions are available in file IPG-and-PWL/src/analyse_experiences.txt.
-The figures in the paper are computed with function prepare_real_performance_profile_cybersecurity.
-The fictive results with a better MINLP solver are computed with functions compute_best_response_computation_time, include_SCIP_fictive_times and prepare_real_performance_profile_cybersecurity.
-An example of how they are computed is present in file IPG-and-PWL/src/compute_analysis.jl (warning: the naming in this file is particularly bad).
+To analyze the one-line result files, functions are available in file IPG-and-PWL/src/analyse_experiences.txt. For example, the performance profiles in arXiv are computed with function prepare_real_performance_profile_cybersecurity.
